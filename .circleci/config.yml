@@ -16,6 +16,7 @@ jobs:
       - image: elixir:1.10.2
     steps:
       - checkout
+      - run: mix deps.get
       - run: mix test
 
 workflows:
