@@ -8,14 +8,14 @@ The goal of Mosura is to be an all-in-one interface to other task management
 utilities, eg. by allowing users to use Mosura to interface with their existing
 Jira/Github/taskwarrior/etc backends in a single, integrated fashion.
 
-* [ ] implicit equivalence: any entity in another system should have a
-      representation in Mosura
-* [ ] bi-directional sync: some team members should be able to use Mosura while
-      others use a different solution with no conflicts
-* [ ] minimal views: if you don't use a feature, it shouldn't bloat your
-      interface
-* [ ] pre-built roles: getting off the ground with Mosura should be
-      straightfoward, customization should be opt-in
+- [ ] **implicit equivalence**: any entity in another system should have a
+  representation in Mosura
+- [ ] **bi-directional sync**: some team members should be able to use Mosura
+  while others use a different solution with no conflicts
+- [ ] **minimal views**: if you don't use a feature, it shouldn't bloat your
+  interface
+- [ ] **pre-built roles**: getting off the ground with Mosura should be
+  straightfoward, customization should be opt-in
 
 Data Model
 ----------
