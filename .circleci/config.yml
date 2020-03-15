@@ -1,0 +1,18 @@
+version: 2.1
+
+orbs:
+  linter: thekevjames/linter@1
+
+jobs:
+  lint:
+    docker:
+      - image: elixir:1.10.2
+    steps:
+      - checkout
+      - run: mix format --check-formatted
+
+workflows:
+  run-jobs:
+    jobs:
+      - linter/pre-commit
+      - lint
