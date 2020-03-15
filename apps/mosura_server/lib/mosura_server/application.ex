@@ -4,8 +4,11 @@ defmodule MosuraServer.Application do
   use Application
 
   def start(_type, _args) do
+    port = String.to_integer(System.get_env("PORT") || "8080")
+
     children = [
-      # {MosuraServer.Worker, arg}
+      {Task.Supervisor, name: MosuraServer.TaskSupervisor},
+      Supervisor.child_spec({Task, fn -> MosuraServer.accept(port) end}, restart: :permanent)
     ]
 
     opts = [strategy: :one_for_one, name: MosuraServer.Supervisor]
