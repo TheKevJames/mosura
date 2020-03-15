@@ -1,14 +1,13 @@
 defmodule MosuraServer.Application do
-  @moduledoc false
+  @moduledoc "OTP Application specification for MosuraServer"
 
   use Application
 
   def start(_type, _args) do
-    port = String.to_integer(System.get_env("PORT") || "8080")
+    port = Application.get_env(:mosura_server, :port)
 
     children = [
-      {Task.Supervisor, name: MosuraServer.TaskSupervisor},
-      Supervisor.child_spec({Task, fn -> MosuraServer.accept(port) end}, restart: :permanent)
+      Plug.Cowboy.child_spec(scheme: :http, plug: MosuraServer.Endpoint, options: [port: port])
     ]
 
     opts = [strategy: :one_for_one, name: MosuraServer.Supervisor]

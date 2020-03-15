@@ -17,12 +17,15 @@ defmodule MosuraServer.MixProject do
 
   def application do
     [
-      extra_applications: [:logger],
+      extra_applications: [:logger, :plug_cowboy],
       mod: {MosuraServer.Application, []}
     ]
   end
 
   defp deps do
-    []
+    [
+      {:plug_cowboy, "~> 2.1"},
+      {:poison, "~> 4.0"}
+    ]
   end
 end
