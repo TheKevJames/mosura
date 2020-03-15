@@ -13,3 +13,5 @@ Brainstorming
 * blocked on external things (eg. my ticket is blocked on dependency GH issue)
 * public vs private tickets (permissions for out-of-org, etc)
 * easy dependency trees
+* arbitrary levels of nesting (eg. no "epics" vs "stories")
+    * how does this deal with syncing?
