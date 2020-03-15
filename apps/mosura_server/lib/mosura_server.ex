@@ -6,6 +6,7 @@ defmodule MosuraServer do
   def accept(port) do
     {:ok, socket} =
       :gen_tcp.listen(port, [:binary, packet: :line, active: false, reuseaddr: true])
+
     Logger.info("listening on port #{port}")
     loop_acceptor(socket)
   end
@@ -23,6 +24,7 @@ defmodule MosuraServer do
         {:ok, data} ->
           Logger.info("recv #{data}")
           {:ok, data}
+
         {:error, _} = err ->
           err
       end

@@ -11,8 +11,16 @@ jobs:
       - checkout
       - run: mix format --check-formatted
 
+  test:
+    docker:
+      - image: elixir:1.10.2
+    steps:
+      - checkout
+      - run: mix test
+
 workflows:
   run-jobs:
     jobs:
       - linter/pre-commit
       - lint
+      - test
