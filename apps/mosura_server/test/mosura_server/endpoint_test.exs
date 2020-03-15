@@ -1,12 +1,12 @@
 defmodule MosuraServer.EndpointTest do
   use ExUnit.Case, async: true
-  use PlugTest
+  use Plug.Test
 
-  @opts WebhookProcessor.Endpoint.init([])
+  @opts MosuraServer.Endpoint.init([])
 
   test "it is healthy" do
     conn = conn(:get, "/health")
-    conn = WebhookProcessor.Endpoint.call(conn, @opts)
+    conn = MosuraServer.Endpoint.call(conn, @opts)
 
     assert conn.state == :sent
     assert conn.status == 200
