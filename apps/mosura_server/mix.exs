@@ -18,7 +18,7 @@ defmodule MosuraServer.MixProject do
   def application do
     [
       extra_applications: [:logger, :plug_cowboy],
-      mod: {MosuraServer.Application, []}
+      mod: {MosuraServer, []}
     ]
   end
 

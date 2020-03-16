@@ -11,28 +11,30 @@ defmodule MosuraServer.Endpoint do
 
   get("/health", do: send_resp(conn, 200, "ok"))
 
-  # TODO: samples
-  get "/test/1" do
+  get "/ticket/:id" do
     {status, body} =
-      case Poison.encode(%{id: 1}) do
-        {:ok, resp} -> {200, resp}
-        {:error, err} -> {500, Poison.encode!(%{error: err})}
+      case MosuraServer.Project.get(MosuraServer.Project, id) do
+        {:ok, ticket} -> {200, Poison.encode!(%{name: ticket.name})}
+        _ -> {404, Poison.encode!(%{error: "ticket #{id} not found"})}
       end
 
     send_resp(conn, status, body)
   end
 
-  post "/test" do
+  post "/ticket" do
     {status, body} =
       case conn.body_params do
-        %{"data" => data} -> {:ok, Poison.encode!(%{data: data})}
-        _ -> {422, Poison.encode!(%{error: "missing data"})}
+        %{"id" => id, "name" => name} ->
+          ticket = %MosuraServer.Ticket{id: id, name: name}
+          :ok = MosuraServer.Project.put(MosuraServer.Project, ticket)
+          {200, ""}
+
+        _ ->
+          {422, Poison.encode!(%{error: "bad payload"})}
       end
 
     send_resp(conn, status, body)
   end
-
-  # ENDTODO
 
   match(_, do: send_resp(conn, 404, "missing route"))
 end
