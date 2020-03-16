@@ -17,6 +17,28 @@ Jira/Github/taskwarrior/etc backends in a single, integrated fashion.
 - [ ] **pre-built roles**: getting off the ground with Mosura should be
   straightfoward, customization should be opt-in
 
+Hacking
+-------
+
+Useful commands:
+
+.. code-block:: console
+
+    # start an interactive session in the running project
+    $ iex -S mix
+
+    # recompile and reload any changed modules in-place
+    iex> recompile()
+
+    # re-run tests on any source changes
+    $ fd '.exs?$' | entr -d mix test
+
+    # insert a sample ticket
+    $ curl \
+        -H'Content-Type: application/json' \
+        -d'{"id": "123", "name": "Test Ticket"}' \
+        localhost:8080/ticket
+
 Data Model
 ----------
 
