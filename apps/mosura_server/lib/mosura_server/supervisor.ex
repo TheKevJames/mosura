@@ -7,8 +7,10 @@ defmodule MosuraServer.Supervisor do
 
   @impl true
   def init(:ok) do
+    # TODO: configure add/remove projects
     children = [
-      {MosuraServer.Project, name: MosuraServer.Project}
+      {DynamicSupervisor, name: MosuraServer.JiraSupervisor, strategy: :one_for_one},
+      {MosuraServer.JiraProject, name: MosuraServer.JiraProject}
     ]
 
     Supervisor.init(children, strategy: :one_for_one)

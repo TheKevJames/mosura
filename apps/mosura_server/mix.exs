@@ -17,13 +17,14 @@ defmodule MosuraServer.MixProject do
 
   def application do
     [
-      extra_applications: [:logger, :plug_cowboy],
+      extra_applications: [:httpoison, :logger, :plug_cowboy],
       mod: {MosuraServer, []}
     ]
   end
 
   defp deps do
     [
+      {:httpoison, "~> 1.6"},
       {:plug_cowboy, "~> 2.1"},
       {:poison, "~> 4.0"}
     ]

@@ -1,6 +1,7 @@
 *.ez
 /.fetch
 /_build/
+/config/config.secret.exs
 /cover/
 /deps/
 /doc/

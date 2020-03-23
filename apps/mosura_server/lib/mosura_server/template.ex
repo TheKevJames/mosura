@@ -1,3 +1,7 @@
+defmodule MosuraServer.Ticket do
+  defstruct [:id, name: "Test Ticket"]
+end
+
 defmodule MosuraServer.Project do
   require Logger
   use GenServer
