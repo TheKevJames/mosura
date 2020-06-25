@@ -70,6 +70,7 @@ defmodule MosuraServer.JiraProject do
       ]
     ]
 
+    # TODO: pagination
     url = base_url <> <<"/rest/api/3/search?fields=key&jql=project=">> <> project
 
     with {:ok, %{body: body, status_code: 200}} <- HTTPoison.get(url, headers, options),
@@ -94,11 +95,29 @@ defmodule MosuraServer.JiraProject do
     GenServer.call(project, {:get, id})
   end
 
+  def list(project) do
+    GenServer.call(project, {:list})
+  end
+
+  # def put(project, ticket) do
+  #   GenServer.cast(project, {:put, ticket})
+  # end
+
   @impl true
   def handle_call({:get, id}, _from, data) do
     case Map.fetch(data[:tickets], id) do
       {:ok, pid} -> {:reply, MosuraServer.JiraTicket.get(pid), data}
-      {:error, _} = err -> err
+      :error = err -> {:reply, err, data}
     end
   end
+
+  @impl true
+  def handle_call({:list}, _from, data) do
+    {:reply, Map.keys(data[:tickets]), data}
+  end
+
+  # @impl true
+  # def handle_cast({:put, ticket}, _from, data) do
+  #   {:noreply, Map.put(data[:tickets], ticket.id, ticket)}
+  # end
 end
