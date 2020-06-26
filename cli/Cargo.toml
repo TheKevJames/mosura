@@ -15,7 +15,7 @@ circle-ci = { repository = "TheKevJames/mosura", branch = "master" }
 maintenance = { status = "actively-developed" }
 
 [dependencies]
-clap = "~2.27.0"
+clap = "~2.27.1"
 config = { version = "0.10", features = ["yaml"] }
 reqwest = { version = "0.10", features = ["blocking", "json"] }
 serde = { version = "1.0", features = ["derive"] }
