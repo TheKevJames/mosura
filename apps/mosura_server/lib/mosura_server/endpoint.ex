@@ -15,7 +15,7 @@ defmodule MosuraServer.Endpoint do
     {status, body} =
       case MosuraServer.JiraProject.get(MosuraServer.JiraProject, id) do
         :error -> {404, Poison.encode!(%{error: "ticket #{id} not found"})}
-        ticket -> {200, Poison.encode!(%{name: ticket.name})}
+        ticket -> {200, Poison.encode!(%{id: ticket.id, name: ticket.name})}
       end
 
     send_resp(conn, status, body)
@@ -25,7 +25,7 @@ defmodule MosuraServer.Endpoint do
     {status, body} =
       case MosuraServer.JiraProject.list(MosuraServer.JiraProject) do
         :error -> {500, Poison.encode!(%{error: "tickets not found"})}
-        tickets -> {200, Poison.encode!(%{tickets: tickets})}
+        tickets -> {200, Poison.encode!(%{items: tickets})}
       end
 
     send_resp(conn, status, body)
