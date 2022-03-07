@@ -26,7 +26,7 @@ defmodule MosuraServer.MixProject do
     [
       {:httpoison, "~> 1.6"},
       {:plug_cowboy, "~> 2.1"},
-      {:poison, "~> 4.0"}
+      {:poison, "== 5.0.0"}
     ]
   end
 end
