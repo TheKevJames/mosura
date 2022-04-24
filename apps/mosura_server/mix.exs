@@ -24,9 +24,9 @@ defmodule MosuraServer.MixProject do
 
   defp deps do
     [
-      {:httpoison, "~> 1.6"},
-      {:plug_cowboy, "~> 2.1"},
-      {:poison, "~> 4.0"}
+      {:httpoison, "== 1.8.1"},
+      {:plug_cowboy, "== 2.5.2"},
+      {:poison, "== 4.0.1"}
     ]
   end
 end
