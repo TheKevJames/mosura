@@ -78,6 +78,7 @@ repos:
         additional_dependencies:
         - fastapi
         - httpx
+        - jira
         - pytest
         args:
         - --show-error-codes
