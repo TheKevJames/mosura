@@ -1,8 +1,1 @@
-*.ez
-/.fetch
-/_build/
-/config/config.secret.exs
-/cover/
-/deps/
-/doc/
-erl_crash.dump
+**/__pycache__/

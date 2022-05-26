@@ -1,29 +1,14 @@
 version: 2.1
 
 orbs:
-  linter: thekevjames/linter@1
-
-jobs:
-  lint:
-    docker:
-      - image: elixir:1.10.3
-    steps:
-      - checkout
-      - run: mix format --check-formatted
-
-  test:
-    docker:
-      - image: elixir:1.10.3
-    steps:
-      - checkout
-      - run: mix local.hex --force
-      - run: mix local.rebar --force
-      - run: mix deps.get
-      - run: mix test
+  linter: talkiq/linter@2
+  poetry: talkiq/poetry@2
 
 workflows:
   run-jobs:
     jobs:
       - linter/pre-commit
-      - lint
-      - test
+      - poetry/run: &pytest
+          name: pytest
+          cmd: pytest
+          python_version: 3.10.4

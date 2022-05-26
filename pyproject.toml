@@ -1,0 +1,29 @@
+[tool.poetry]
+name = "mosura"
+version = "0.1.0"
+description = "task management system"
+
+repository = ""
+authors = ["Kevin James <KevinJames@thekev.in>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = ">=3.10,<4.0"
+fastapi = "0.78.0"
+httptools = "0.4.0"
+uvicorn = "0.17.6"
+uvloop = "0.16.0"
+
+[tool.poetry.dev-dependencies]
+httpx = "0.23.0"
+pytest = "7.1.2"
+pytest-asyncio = "0.18.3"
+watchgod = "0.8.2"  # poetry run uvicorn mosura.app:app --reload
+
+[tool.pytest.ini_options]
+addopts = "-Werror"
+asyncio_mode = "auto"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
