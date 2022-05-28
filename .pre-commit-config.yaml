@@ -76,10 +76,12 @@ repos:
     -   id: mypy
         require_serial: True
         additional_dependencies:
+        - databases
         - fastapi
         - httpx
         - jira
         - pytest
+        - sqlalchemy-stubs
         args:
         - --show-error-codes
         - --strict
