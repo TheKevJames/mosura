@@ -1,3 +1,4 @@
+import datetime
 import itertools
 import operator
 
@@ -13,6 +14,7 @@ from . import schemas
 Components = models.Component.__table__
 Issues = models.Issue.__table__
 Labels = models.Label.__table__
+Tasks = models.Task.__table__
 
 
 def convert_issue_response(results: list[Row]) -> list[models.Issue]:
@@ -36,7 +38,7 @@ def convert_issue_response(results: list[Row]) -> list[models.Issue]:
     return xs  # type: ignore
 
 
-async def get_issue(key: str) -> models.Issue:
+async def read_issue(key: str) -> models.Issue:
     query = (
         select(Issues, Components.c.component, Labels.c.label)
         .where(key == models.Issue.key)
@@ -47,7 +49,7 @@ async def get_issue(key: str) -> models.Issue:
     return convert_issue_response(results)[0]
 
 
-async def get_issues(offset: int = 0, limit: int = 100) -> list[models.Issue]:
+async def read_issues(offset: int = 0, limit: int = 100) -> list[models.Issue]:
     query = (
         select(Issues, Components.c.component, Labels.c.label)
         .where(models.Issue.key == models.Component.key)
@@ -84,4 +86,26 @@ async def create_issue_component(component: schemas.ComponentCreate,
 async def create_issue_label(label: schemas.LabelCreate, key: str) -> None:
     stmt = insert(models.Label.__table__).values(**label.dict(), key=key)
     query = stmt.on_conflict_do_nothing()
+    await database.database.execute(query)
+
+
+async def read_task(key: str) -> datetime.datetime | None:
+    query = (
+        select(Tasks.c.latest)
+        .where(key == models.Task.key)
+    )
+    result = await database.database.fetch_one(query)
+    if not result:
+        return None
+
+    # TODO: any way to store tz in sqlite?
+    latest: datetime.datetime = result.latest  # type: ignore
+    return latest.replace(tzinfo=datetime.timezone.utc)
+
+
+async def update_task(key: str, latest: datetime.datetime) -> None:
+    stmt = insert(models.Task.__table__).values(key=key, latest=latest)
+    query = stmt.on_conflict_do_update(
+        index_elements=['key'],
+        set_={'latest': stmt.excluded.latest})
     await database.database.execute(query)

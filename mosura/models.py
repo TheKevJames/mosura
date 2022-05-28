@@ -3,15 +3,6 @@ import sqlalchemy
 from . import database
 
 
-class Label(database.Base):  # type: ignore
-    __tablename__ = 'labels'
-
-    key = sqlalchemy.Column(sqlalchemy.String,
-                            sqlalchemy.ForeignKey('issues.key'),
-                            primary_key=True)
-    label = sqlalchemy.Column(sqlalchemy.String, primary_key=True)
-
-
 class Component(database.Base):  # type: ignore
     __tablename__ = 'components'
 
@@ -19,6 +10,15 @@ class Component(database.Base):  # type: ignore
                             sqlalchemy.ForeignKey('issues.key'),
                             primary_key=True)
     component = sqlalchemy.Column(sqlalchemy.String, primary_key=True)
+
+
+class Label(database.Base):  # type: ignore
+    __tablename__ = 'labels'
+
+    key = sqlalchemy.Column(sqlalchemy.String,
+                            sqlalchemy.ForeignKey('issues.key'),
+                            primary_key=True)
+    label = sqlalchemy.Column(sqlalchemy.String, primary_key=True)
 
 
 class Issue(database.Base):  # type: ignore
@@ -34,3 +34,10 @@ class Issue(database.Base):  # type: ignore
     components: list[Component] = sqlalchemy.orm.relationship(  # type: ignore
         'Component')
     labels: list[Label] = sqlalchemy.orm.relationship('Label')  # type: ignore
+
+
+class Task(database.Base):  # type:ignore
+    __tablename__ = 'tasks'
+
+    key = sqlalchemy.Column(sqlalchemy.String, primary_key=True, index=True)
+    latest = sqlalchemy.Column(sqlalchemy.DateTime, nullable=True)

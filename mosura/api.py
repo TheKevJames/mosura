@@ -14,9 +14,9 @@ api.mount('/v0', api_v0)
 @api_v0.get('/issues', response_model=list[schemas.Issue])
 async def read_issues(offset: int = 0,
                       limit: int = 100) -> list[models.Issue]:
-    return await crud.get_issues(offset=offset, limit=limit)
+    return await crud.read_issues(offset=offset, limit=limit)
 
 
 @api_v0.get('/issues/{key}', response_model=schemas.Issue)
 async def read_issue(key: str) -> models.Issue:
-    return await crud.get_issue(key)
+    return await crud.read_issue(key)

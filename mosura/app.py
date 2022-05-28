@@ -1,5 +1,8 @@
 import asyncio
+import datetime
+import logging.config
 import os
+import random
 
 import fastapi
 import jira
@@ -7,6 +10,7 @@ import jira
 from . import api
 from . import crud
 from . import database
+from . import log
 from . import schemas
 
 
@@ -19,6 +23,9 @@ app = fastapi.FastAPI()
 app.mount('/api', api.api)
 
 database.Base.metadata.create_all(bind=database.engine)
+
+logging.config.dictConfig(log.LogConfig().dict())
+logger = logging.getLogger(__name__)
 
 
 # Events
@@ -39,6 +46,16 @@ async def shutdown() -> None:
 # Tasks
 async def fetch() -> None:
     while True:
+        now = datetime.datetime.now(datetime.timezone.utc)
+        latest = await crud.read_task('fetch')
+        if latest and latest + datetime.timedelta(minutes=5) > now:
+            logger.debug('fetch(): too soon, sleeping')
+            await asyncio.sleep(random.uniform(0, 60))
+            continue
+
+        await crud.update_task('fetch', now)
+
+        logger.info('fetch(): fetching data')
         jql = f"project = '{JIRA_PROJECT}' AND status != 'Closed'"
         fields = ('key,summary,description,status,assignee,priority,'
                   'components,labels')
@@ -61,5 +78,3 @@ async def fetch() -> None:
                 status=str(issue.fields.status),
                 summary=issue.fields.summary,
             ))
-
-        await asyncio.sleep(300)
