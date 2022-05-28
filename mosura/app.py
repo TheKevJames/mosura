@@ -4,9 +4,9 @@ import os
 import fastapi
 import jira
 
+from . import api
 from . import crud
 from . import database
-from . import models
 from . import schemas
 
 
@@ -16,6 +16,7 @@ JIRA_TOKEN = os.environ['JIRA_TOKEN']
 JIRA_USERNAME = os.environ['JIRA_USERNAME']
 
 app = fastapi.FastAPI()
+app.mount('/api', api.api)
 
 database.Base.metadata.create_all(bind=database.engine)
 
@@ -62,15 +63,3 @@ async def fetch() -> None:
             ))
 
         await asyncio.sleep(300)
-
-
-# Routes
-@app.get('/', response_model=list[schemas.Issue])
-async def read_issues(offset: int = 0,
-                      limit: int = 100) -> list[models.Issue]:
-    return await crud.get_issues(offset=offset, limit=limit)
-
-
-@app.get('/{key}', response_model=schemas.Issue)
-async def read_issue(key: str) -> models.Issue:
-    return await crud.get_issue(key)
