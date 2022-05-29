@@ -17,6 +17,23 @@ Labels = models.Label.__table__
 Tasks = models.Task.__table__
 
 
+def convert_field_response(key: str, results: list[Row], *, idx: int,
+                           name: str) -> list[dict[str, str]]:
+    deduped = {x for x in {x[idx] for x in results} if x}
+    ordered = sorted(deduped)
+    return [{'key': key, name: x} for x in ordered]
+
+
+def convert_component_response(key: str,
+                               results: list[Row]) -> list[dict[str, str]]:
+    return convert_field_response(key, results, idx=6, name='component')
+
+
+def convert_label_response(key: str,
+                           results: list[Row]) -> list[dict[str, str]]:
+    return convert_field_response(key, results, idx=7, name='label')
+
+
 def convert_issue_response(results: list[Row]) -> list[schemas.Issue]:
     xs = []
     for key, group in itertools.groupby(results, operator.attrgetter('key')):
@@ -28,13 +45,8 @@ def convert_issue_response(results: list[Row]) -> list[schemas.Issue]:
             'status': fields[0][3],
             'assignee': fields[0][4],
             'priority': fields[0][5],
-            'components': [{'key': key, 'component': x}
-                           for x in {x[6] for x in fields}
-                           if x],
-            'labels': [{'key': key, 'label': x}
-                       for x in {x[7] for x in fields}
-                       if x],
-        }))
+            'components': convert_component_response(key, fields),
+            'labels': convert_label_response(key, fields)}))
 
     return xs
 
