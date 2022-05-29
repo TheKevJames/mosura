@@ -41,7 +41,8 @@ async def startup() -> None:
     await database.database.connect()
 
     # TODO: attach error handler
-    asyncio.create_task(tasks.fetch(app.state.jira))
+    asyncio.create_task(tasks.fetch_closed(app.state.jira))
+    asyncio.create_task(tasks.fetch_open(app.state.jira))
 
 
 @app.on_event('shutdown')

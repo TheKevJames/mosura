@@ -16,36 +16,36 @@ from . import schemas
 logger = logging.getLogger(__name__)
 
 
-async def fetch(client: jira.JIRA) -> None:
-    # TODO: consider longer interval for 'Closed' issues
-    interval = datetime.timedelta(minutes=5)
+async def fetch(client: jira.JIRA, *, variant: str, jql: str,
+                interval: datetime.timedelta) -> None:
+    page_size = 100
+    fields = ['key', 'summary', 'description', 'status', 'assignee',
+              'priority', 'components', 'labels']
+
     while True:
         now = datetime.datetime.now(datetime.timezone.utc)
-        task = await crud.read_task('fetch', 'open')
+        task = await crud.read_task('fetch', variant)
         if task and task.latest + interval > now:
-            logger.debug('fetch(): too soon, sleeping at least %ds',
+            logger.debug('fetch(%s): too soon, sleeping at least %ds', variant,
                          (task.latest - now + interval).seconds)
             await asyncio.sleep(random.uniform(0, 60))
             continue
 
-        logger.info('fetch(): fetching data')
-        jql = f"project = '{config.JIRA_PROJECT}'"
-        fields = ['key', 'summary', 'description', 'status', 'assignee',
-                  'priority', 'components', 'labels']
+        logger.info('fetch(%s): fetching data', variant)
 
-        page_size = 100
         for idx in itertools.count(0, page_size):
             issues: dict[str, Any] = cast(dict[str, Any],
                                           await asyncio.to_thread(
                 client.search_issues, jql, startAt=idx, maxResults=page_size,
                 fields=fields, expand='renderedFields', json_result=True))
-            logger.debug('fetch(): fetched %d issues, writing to localdb',
-                         len(issues.get('issues', [])))
+            logger.debug('fetch(%s): fetched %d issues, writing to localdb',
+                         variant, len(issues.get('issues', [])))
             for issue in issues.get('issues', []):
                 for component in issue['fields']['components']:
                     await crud.create_issue_component(
                         schemas.ComponentCreate(component=component['name']),
                         issue['key'])
+
                 for label in issue['fields']['labels']:
                     await crud.create_issue_label(
                         schemas.LabelCreate(label=label), issue['key'])
@@ -63,9 +63,28 @@ async def fetch(client: jira.JIRA) -> None:
             if issues['total'] < idx + page_size:
                 break
 
-        logger.info('fetch(): fetched %d issues in total', issues['total'])
+        logger.info('fetch(%s): fetched %d issues in total', variant,
+                    issues['total'])
         task = schemas.Task.parse_obj({
             'key': 'fetch',
-            'variant': 'open',
+            'variant': variant,
             'latest': datetime.datetime.now(datetime.timezone.utc)})
         await crud.update_task(task)
+
+
+async def fetch_closed(client: jira.JIRA) -> None:
+    await fetch(
+        client,
+        interval=datetime.timedelta(minutes=15),
+        jql=f"project = '{config.JIRA_PROJECT}' AND status = 'Closed'",
+        variant='closed',
+    )
+
+
+async def fetch_open(client: jira.JIRA) -> None:
+    await fetch(
+        client,
+        interval=datetime.timedelta(minutes=5),
+        jql=f"project = '{config.JIRA_PROJECT}' AND status != 'Closed'",
+        variant='open',
+    )
