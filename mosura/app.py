@@ -1,7 +1,6 @@
 import asyncio
 import datetime
 import logging.config
-import os
 import random
 
 import fastapi.staticfiles
@@ -10,16 +9,12 @@ import jira
 import starlette
 
 from . import api
+from . import config
 from . import crud
 from . import database
 from . import log
 from . import schemas
 
-
-JIRA_DOMAIN = os.environ['JIRA_DOMAIN']
-JIRA_PROJECT = os.environ['JIRA_PROJECT']
-JIRA_TOKEN = os.environ['JIRA_TOKEN']
-JIRA_USERNAME = os.environ['JIRA_USERNAME']
 
 app = fastapi.FastAPI()
 app.mount('/api', api.api)
@@ -37,8 +32,9 @@ logger = logging.getLogger(__name__)
 # Events
 @app.on_event('startup')
 async def startup() -> None:
-    app.state.jira = jira.JIRA(JIRA_DOMAIN,
-                               basic_auth=(JIRA_USERNAME, JIRA_TOKEN))
+    app.state.jira = jira.JIRA(config.JIRA_DOMAIN,
+                               basic_auth=(config.JIRA_USERNAME,
+                                           config.JIRA_TOKEN))
     app.state.myself = app.state.jira.myself()['displayName']
     logger.info('startup(): connected to jira as "%s"', app.state.myself)
 
@@ -62,7 +58,7 @@ async def fetch() -> None:
             continue
 
         logger.info('fetch(): fetching data')
-        jql = f"project = '{JIRA_PROJECT}'"
+        jql = f"project = '{config.JIRA_PROJECT}'"
         fields = ('key,summary,description,status,assignee,priority,'
                   'components,labels')
         issues = await asyncio.to_thread(app.state.jira.search_issues, jql,
@@ -100,7 +96,7 @@ async def list_issues(
     meta = schemas.Meta(issues)
     return templates.TemplateResponse(
         'issues.list.html',
-        {'request': request, 'issues': issues, 'jira_domain': JIRA_DOMAIN,
+        {'request': request, 'config': config, 'issues': issues,
          'meta': meta})
 
 
@@ -112,7 +108,7 @@ async def list_my_issues(
     meta = schemas.Meta(issues)
     return templates.TemplateResponse(
         'issues.list.html',
-        {'request': request, 'issues': issues, 'jira_domain': JIRA_DOMAIN,
+        {'request': request, 'config': config, 'issues': issues,
          'meta': meta})
 
 
@@ -125,4 +121,14 @@ async def show_issue(request: fastapi.Request,
 
     return templates.TemplateResponse(
         'issues.show.html',
-        {'request': request, 'issue': issue, 'jira_domain': JIRA_DOMAIN})
+        {'request': request, 'config': config, 'issue': issue})
+
+
+@app.get('/settings', response_class=fastapi.responses.HTMLResponse)
+async def settings(
+        request: fastapi.Request,
+) -> starlette.templating._TemplateResponse:
+    return templates.TemplateResponse(
+        'settings.html',
+        {'request': request, 'config': config,
+         'myself': request.app.state.myself})
