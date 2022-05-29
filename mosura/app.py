@@ -4,8 +4,10 @@ import logging.config
 import os
 import random
 
-import fastapi
+import fastapi.staticfiles
+import fastapi.templating
 import jira
+import starlette
 
 from . import api
 from . import crud
@@ -21,6 +23,10 @@ JIRA_USERNAME = os.environ['JIRA_USERNAME']
 
 app = fastapi.FastAPI()
 app.mount('/api', api.api)
+app.mount('/static', fastapi.staticfiles.StaticFiles(directory='static'),
+          name='static')
+
+templates = fastapi.templating.Jinja2Templates(directory='templates')
 
 database.Base.metadata.create_all(bind=database.engine)
 
@@ -78,3 +84,13 @@ async def fetch() -> None:
                 status=str(issue.fields.status),
                 summary=issue.fields.summary,
             ))
+
+
+# Routes
+@app.get('/issues/{key}', response_class=fastapi.responses.HTMLResponse)
+async def show_issue(request: fastapi.Request,
+                     key: str) -> starlette.templating._TemplateResponse:
+    issue = await crud.read_issue(key)
+    return templates.TemplateResponse(
+        'issues.show.html',
+        {'request': request, 'issue': issue, 'jira_domain': JIRA_DOMAIN})

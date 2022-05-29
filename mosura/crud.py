@@ -17,11 +17,11 @@ Labels = models.Label.__table__
 Tasks = models.Task.__table__
 
 
-def convert_issue_response(results: list[Row]) -> list[models.Issue]:
+def convert_issue_response(results: list[Row]) -> list[schemas.Issue]:
     xs = []
     for key, group in itertools.groupby(results, operator.attrgetter('key')):
         fields = list(group)
-        xs.append({
+        xs.append(schemas.Issue.parse_obj({
             'key': key,
             'summary': fields[0][1],
             'description': fields[0][2],
@@ -32,24 +32,27 @@ def convert_issue_response(results: list[Row]) -> list[models.Issue]:
                            for x in {x[6] for x in fields}],
             'labels': [{'key': key, 'label': x}
                        for x in {x[7] for x in fields}],
-        })
+        }))
 
-    # TODO: get type hints to work better for sqlalchemy
-    return xs  # type: ignore
+    return xs
 
 
-async def read_issue(key: str) -> models.Issue:
+async def read_issue(key: str) -> schemas.Issue | None:
     query = (
         select(Issues, Components.c.component, Labels.c.label)
         .where(key == models.Issue.key)
         .where(models.Issue.key == models.Component.key)
         .where(models.Issue.key == models.Label.key)
     )
-    results = await database.database.fetch_all(query)
-    return convert_issue_response(results)[0]
+    result = await database.database.fetch_one(query)
+    if not result:
+        return None
+
+    return convert_issue_response([result])[0]
 
 
-async def read_issues(offset: int = 0, limit: int = 100) -> list[models.Issue]:
+async def read_issues(offset: int = 0,
+                      limit: int = 100) -> list[schemas.Issue]:
     query = (
         select(Issues, Components.c.component, Labels.c.label)
         .where(models.Issue.key == models.Component.key)

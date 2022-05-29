@@ -12,6 +12,7 @@ python = ">=3.10,<4.0"
 databases = {version = "0.5.5", extras = ["sqlite"]}
 fastapi = "0.78.0"
 httptools = "0.4.0"
+jinja2 = "3.1.2"
 jira = "3.2.0"
 sqlalchemy = "1.4.36"
 uvicorn = "0.17.6"

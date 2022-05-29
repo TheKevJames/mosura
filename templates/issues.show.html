@@ -1,0 +1,51 @@
+<!-- TODO: common headers -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Mosura | {{ issue.key }}</title>
+    <link href="{{ url_for('static', path='/bulma-0.9.4.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', path='/app.css') }}" rel="stylesheet">
+  </head>
+
+  <body>
+    <header>
+      <nav class="navbar is-primary">
+        <div class="navbar-brand">
+          <a class="navbar-item is-size-4" href="/">Home</a>
+        </div>
+        <div class="navbar-menu">
+          <div class="navbar-start">
+            <!-- TODO: nav pages -->
+          </div>
+          <div class="navbar-end">
+            <!-- TODO: settings -->
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <section class="section">
+      <div class="card">
+        <div class="card-header">
+          <p class="card-header-title">{{ issue.name }}</p>
+        </div>
+        <div class="card-content content">
+          {{ issue.description }}
+        </div>
+        <footer class="card-footer">
+          <p class="card-footer-item">Status: {{ issue.status }}</p>
+          <p class="card-footer-item">Assignee: {{ issue.assignee }}</p>
+          <p class="card-footer-item">Priority: {{ issue.priority }}</p>
+          <p class="card-footer-item">Components: {% for c in issue.components %}{{ c.component }}{% endfor %}</p>
+          <p class="card-footer-item">Labels: {{ issue.labels }}</p>
+        </footer>
+        <footer class="card-footer">
+          <a href="https://{{ jira_domain }}/browse/{{ issue.key }}"} class="card-footer-item">Edit</a>
+        </footer>
+      </div>
+    </section>
+
+  </body>
+</html>
