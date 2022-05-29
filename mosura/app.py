@@ -15,7 +15,8 @@ from . import ui
 
 app = fastapi.FastAPI()
 app.include_router(ui.router)
-app.include_router(api.router)
+app.include_router(api.router, prefix='/api/v0')
+app.include_router(api.router, prefix='/api/latest')
 app.mount('/static', fastapi.staticfiles.StaticFiles(directory='static'),
           name='static')
 
