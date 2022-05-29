@@ -3,11 +3,13 @@
 {% block header %}
 <link href="{{ url_for('static', path='/semantic-2.4.1.dropdown.min.css') }}" rel="stylesheet">
 <script src="{{ url_for('static', path='/semantic-2.4.1.dropdown.min.js') }}"></script>
+<script src="{{ url_for('static', path='/tablesort-0.0.11.js') }}"></script>
 <script>
 $(window).on('load', function() {
   $('.ui.dropdown').dropdown();
+  $('table').tablesort()
 
-  $('thead input.filter').each(function() {
+  $('input.filter').each(function() {
     update_filter(this.name, this.value);
   });
 })
@@ -27,70 +29,120 @@ function update_filter(field, value) {
 {% endblock %}
 
 {% block content %}
+<div class="ui modal" id="filter-assignees">
+  <div class="header">
+    <i class="filter icon"></i>Filter by Assignee
+  </div>
+  <div class="content">
+    <div class="ui fluid multiple search selection dropdown">
+      <input type="hidden" class="filter" name="3" onChange="update_filter(this.name, this.value);" value="{{ meta.assignees | join(',') }}">
+      <i class="dropdown icon"></i>
+      <div class="default text"></div>
+      <div class="menu">
+      {% for x in meta.assignees %}
+      <div class="item" data-value="{{ x }}">{{ x }}</div>
+      {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="ui modal" id="filter-components">
+  <div class="header">
+    <i class="filter icon"></i>Filter by Component
+  </div>
+  <div class="content">
+    <div class="ui fluid multiple search selection dropdown">
+      <input type="hidden" class="filter" name="5" onChange="update_filter(this.name, this.value);" value="{{ meta.components | join(',') }}">
+      <i class="dropdown icon"></i>
+      <div class="default text"></div>
+      <div class="menu">
+      {% for x in meta.components %}
+      <div class="item" data-value="{{ x }}">{{ x }}</div>
+      {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="ui modal" id="filter-labels">
+  <div class="header">
+    <i class="filter icon"></i>Filter by Label
+  </div>
+  <div class="content">
+    <div class="ui fluid multiple search selection dropdown">
+      <input type="hidden" class="filter" name="6" onChange="update_filter(this.name, this.value);" value="{{ meta.labels | join(',') }}">
+      <i class="dropdown icon"></i>
+      <div class="default text"></div>
+      <div class="menu">
+      {% for x in meta.labels %}
+      <div class="item" data-value="{{ x }}">{{ x }}</div>
+      {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="ui modal" id="filter-priorities">
+  <div class="header">
+    <i class="filter icon"></i>Filter by Priority
+  </div>
+  <div class="content">
+    <div class="ui fluid multiple search selection dropdown">
+      <input type="hidden" class="filter" name="4" onChange="update_filter(this.name, this.value);" value="{{ meta.priorities | join(',') }}">
+      <i class="dropdown icon"></i>
+      <div class="default text"></div>
+      <div class="menu">
+      {% for x in meta.priorities %}
+      <div class="item" data-value="{{ x }}">{{ x }}</div>
+      {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="ui modal" id="filter-statuses">
+  <div class="header">
+    <i class="filter icon"></i>Filter by Status
+  </div>
+  <div class="content">
+    <div class="ui fluid multiple search selection dropdown">
+      <input type="hidden" class="filter" name="2" onChange="update_filter(this.name, this.value);" value="{{ meta.statuses | join(',') }}">
+      <i class="dropdown icon"></i>
+      <div class="default text"></div>
+      <div class="menu">
+      {% for x in meta.statuses %}
+      <div class="item" data-value="{{ x }}">{{ x }}</div>
+      {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="ui main container">
-  <table class="ui celled striped unstackable selectable table">
-    <thead>
+  <table class="ui celled striped unstackable selectable sortable table">
+    <thead class="single line">
       <th>Key</th>
       <th>Summary</th>
       <th>
-        <div>Status</div>
-        <div class="ui fluid multiple search selection dropdown">
-          <input type="hidden" class="filter" name="2" onChange="update_filter(this.name, this.value);" value="{{ meta.statuses | join(',') }}">
-          <i class="dropdown icon"></i>
-          <div class="default text"></div>
-          <div class="menu">
-          {% for x in meta.statuses %}
-          <div class="item" data-value="{{ x }}">{{ x }}</div>
-          {% endfor %}
-        </div>
+        <i class="filter icon" onClick="$('#filter-statuses').modal('show');"></i>
+        Status
       </th>
       <th>
-        <div>Assignee</div>
-        <div class="ui fluid multiple search selection dropdown">
-          <input type="hidden" class="filter" name="3" onChange="update_filter(this.name, this.value);" value="{{ meta.assignees | join(',') }}">
-          <i class="dropdown icon"></i>
-          <div class="default text"></div>
-          <div class="menu">
-          {% for x in meta.assignees %}
-          <div class="item" data-value="{{ x }}">{{ x }}</div>
-          {% endfor %}
-        </div>
+        <i class="filter icon" onClick="$('#filter-assignees').modal('show');"></i>
+        Assignee
       </th>
       <th>
-        <div>Priority</div>
-        <div class="ui fluid multiple search selection dropdown">
-          <input type="hidden" class="filter" name="4" onChange="update_filter(this.name, this.value);" value="{{ meta.priorities | join(',') }}">
-          <i class="dropdown icon"></i>
-          <div class="default text"></div>
-          <div class="menu">
-          {% for x in meta.priorities %}
-          <div class="item" data-value="{{ x }}">{{ x }}</div>
-          {% endfor %}
-        </div>
+        <i class="filter icon" onClick="$('#filter-priorities').modal('show');"></i>
+        Priority
       </th>
       <th>
-        <div>Components</div>
-        <div class="ui fluid multiple search selection dropdown">
-          <input type="hidden" class="filter" name="5" onChange="update_filter(this.name, this.value);" value="{{ meta.components | join(',') }}">
-          <i class="dropdown icon"></i>
-          <div class="default text"></div>
-          <div class="menu">
-          {% for x in meta.components %}
-          <div class="item" data-value="{{ x }}">{{ x }}</div>
-          {% endfor %}
-        </div>
+        <i class="filter icon" onClick="$('#filter-components').modal('show');"></i>
+        Components
       </th>
       <th>
-        <div>Labels</div>
-        <div class="ui fluid multiple search selection dropdown">
-          <input type="hidden" class="filter" name="6" onChange="update_filter(this.name, this.value);" value="{{ meta.labels | join(',') }}">
-          <i class="dropdown icon"></i>
-          <div class="default text"></div>
-          <div class="menu">
-          {% for x in meta.labels %}
-          <div class="item" data-value="{{ x }}">{{ x }}</div>
-          {% endfor %}
-        </div>
+        <i class="filter icon" onClick="$('#filter-labels').modal('show');"></i>
+        Labels
       </th>
     </thead>
 
