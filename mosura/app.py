@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import itertools
 import logging.config
 import random
 
@@ -49,40 +50,54 @@ async def shutdown() -> None:
 
 # Tasks
 async def fetch() -> None:
+    # TODO: consider longer interval for 'Closed' issues
+    interval = datetime.timedelta(minutes=5)
     while True:
         now = datetime.datetime.now(datetime.timezone.utc)
         latest = await crud.read_task('fetch')
-        if latest and latest + datetime.timedelta(minutes=5) > now:
-            logger.debug('fetch(): too soon, sleeping')
+        if latest and latest + interval > now:
+            logger.debug('fetch(): too soon, sleeping at least %ds',
+                         (latest - now + interval).seconds)
             await asyncio.sleep(random.uniform(0, 60))
             continue
 
         logger.info('fetch(): fetching data')
         jql = f"project = '{config.JIRA_PROJECT}'"
-        fields = ('key,summary,description,status,assignee,priority,'
-                  'components,labels')
-        issues = await asyncio.to_thread(app.state.jira.search_issues, jql,
-                                         maxResults=0, fields=fields,
-                                         expand='renderedFields')
-        for issue in issues:
-            for component in issue.fields.components:
-                await crud.create_issue_component(
-                    schemas.ComponentCreate(component=str(component)),
-                    issue.key)
-            for label in issue.fields.labels:
-                await crud.create_issue_label(
-                    schemas.LabelCreate(label=label), issue.key)
+        fields = ['key', 'summary', 'description', 'status', 'assignee',
+                  'priority', 'components', 'labels']
 
-            await crud.create_issue(schemas.IssueCreate(
-                assignee=str(issue.fields.assignee),
-                description=issue.fields.description,
-                key=issue.key,
-                priority=str(issue.fields.priority),
-                status=str(issue.fields.status),
-                summary=issue.fields.summary,
-            ))
+        page_size = 100
+        for idx in itertools.count(0, page_size):
+            issues = await asyncio.to_thread(app.state.jira.search_issues, jql,
+                                             startAt=idx, maxResults=page_size,
+                                             fields=fields,
+                                             expand='renderedFields',
+                                             json_result=True)
+            logger.debug('fetch(): fetched %d issues, writing to localdb',
+                         len(issues.get('issues', [])))
+            for issue in issues.get('issues', []):
+                for component in issue['fields']['components']:
+                    await crud.create_issue_component(
+                        schemas.ComponentCreate(component=component['name']),
+                        issue['key'])
+                for label in issue['fields']['labels']:
+                    await crud.create_issue_label(
+                        schemas.LabelCreate(label=label), issue['key'])
 
-        logger.info('fetch(): fetched %d issues', len(issues))
+                await crud.create_issue(schemas.IssueCreate(
+                    assignee=(issue['fields']['assignee']
+                              or {}).get('displayName'),
+                    description=issue['renderedFields']['description'],
+                    key=issue['key'],
+                    priority=issue['fields']['priority']['name'],
+                    status=issue['fields']['status']['name'],
+                    summary=issue['fields']['summary'],
+                ))
+
+            if issues['total'] < idx + page_size:
+                break
+
+        logger.info('fetch(): fetched %d issues in total', issues['total'])
         now = datetime.datetime.now(datetime.timezone.utc)
         await crud.update_task('fetch', now)
 

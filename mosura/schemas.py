@@ -36,7 +36,7 @@ class IssueBase(pydantic.BaseModel):
     summary: str
     description: str | None
     status: str
-    assignee: str
+    assignee: str | None
     priority: str
 
 
@@ -51,6 +51,11 @@ class Issue(IssueBase):
     class Config:
         orm_mode = True
 
+    @property
+    def body(self) -> str:
+        # TODO: apply additional formatting
+        return self.description or ''
+
 
 @pydantic.dataclasses.dataclass(init=False)
 class Meta:
@@ -61,7 +66,7 @@ class Meta:
     statuses: list[str]
 
     def __init__(self, issues: list[Issue]):
-        self.assignees = sorted({i.assignee for i in issues})
+        self.assignees = sorted({i.assignee for i in issues if i.assignee})
         self.components = sorted({c.component for i in issues
                                   for c in i.components})
         self.labels = sorted({lb.label for i in issues for lb in i.labels})

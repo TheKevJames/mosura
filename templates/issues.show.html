@@ -14,7 +14,7 @@
     </div>
     <div class="row">
       <div class="sixteen wide column">
-        <p>{{ issue.description }}</p>
+        {{ issue.body | safe }}
       </div>
     </div>
     <div class="row">
