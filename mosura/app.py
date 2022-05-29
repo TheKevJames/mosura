@@ -59,14 +59,13 @@ async def fetch() -> None:
             await asyncio.sleep(random.uniform(0, 60))
             continue
 
-        await crud.update_task('fetch', now)
-
         logger.info('fetch(): fetching data')
-        jql = f"project = '{JIRA_PROJECT}' AND status != 'Closed'"
+        jql = f"project = '{JIRA_PROJECT}'"
         fields = ('key,summary,description,status,assignee,priority,'
                   'components,labels')
-        issues = app.state.jira.search_issues(jql, maxResults=0, fields=fields,
-                                              expand='renderedFields')
+        issues = await asyncio.to_thread(app.state.jira.search_issues, jql,
+                                         maxResults=0, fields=fields,
+                                         expand='renderedFields')
         for issue in issues:
             for component in issue.fields.components:
                 await crud.create_issue_component(
@@ -86,6 +85,8 @@ async def fetch() -> None:
             ))
 
         logger.info('fetch(): fetched %d issues', len(issues))
+        now = datetime.datetime.now(datetime.timezone.utc)
+        await crud.update_task('fetch', now)
 
 
 # Routes

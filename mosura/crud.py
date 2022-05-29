@@ -42,7 +42,7 @@ def convert_issue_response(results: list[Row]) -> list[schemas.Issue]:
 async def read_issue(key: str) -> schemas.Issue | None:
     query = (
         select(Issues, Components.c.component, Labels.c.label)
-        .where(key == models.Issue.key)
+        .where(models.Issue.key == key)
         .join(Components, models.Issue.key == models.Component.key,
               isouter=True)
         .join(Labels, models.Issue.key == models.Label.key, isouter=True)
@@ -57,6 +57,7 @@ async def read_issue(key: str) -> schemas.Issue | None:
 async def read_issues() -> list[schemas.Issue]:
     query = (
         select(Issues, Components.c.component, Labels.c.label)
+        .where(models.Issue.status != 'Closed')
         .join(Components, models.Issue.key == models.Component.key,
               isouter=True)
         .join(Labels, models.Issue.key == models.Label.key, isouter=True)
