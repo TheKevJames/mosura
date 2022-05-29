@@ -80,6 +80,7 @@ async def read_issues() -> list[schemas.Issue]:
 
 async def read_issues_needing_triage() -> list[schemas.Issue]:
     results = await read_issues()
+    # TODO: make this configurable
     return [r for r in results
             if r.status == 'Needs Triage'
             or not r.components

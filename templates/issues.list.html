@@ -151,15 +151,17 @@ function update_filter(field, value) {
       <tr onclick="location.href='/issues/{{ issue.key }}'">
         <td data-label="Key">{{ issue.key }}</td>
         <td data-label="Summary">{{ issue.summary }}</td>
-        <td data-label="Status">{{ issue.status }}</td>
+        <td data-label="Status" {% if issue.status == "Needs Triage" %}class="warning"{% endif %}>
+          {{ issue.status }}
+        </td>
         <td data-label="Assignee">{{ issue.assignee }}</td>
         <td data-label="Priority">{{ issue.priority }}</td>
-        <td data-label="Components">
+        <td data-label="Components" {% if not issue.components %}class="warning"{% endif %}>
         {% for c in issue.components %}
           <p>{{ c.component }}</p>
         {% endfor %}
         </td>
-        <td data-label="Labels">
+        <td data-label="Labels" {% if not issue.labels %}class="warning"{% endif %}>
         {% for l in issue.labels %}
           <p>{{ l.label }}</p>
         {% endfor %}
