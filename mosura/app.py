@@ -1,5 +1,6 @@
 import asyncio
 import logging.config
+from typing import Any
 
 import fastapi.staticfiles
 import fastapi.templating
@@ -28,6 +29,15 @@ logging.config.dictConfig(log.LogConfig().dict())
 logger = logging.getLogger(__name__)
 
 
+def log_exception(_loop: asyncio.AbstractEventLoop,
+                  context: dict[str, Any]) -> None:
+    if context.get('exception'):
+        logger.error(context['message'], exc_info=context['exception'])
+        return
+
+    logger.error(context['message'])
+
+
 # Events
 @app.on_event('startup')
 async def startup() -> None:
@@ -40,7 +50,7 @@ async def startup() -> None:
 
     await database.database.connect()
 
-    # TODO: attach error handler
+    asyncio.get_event_loop().set_exception_handler(log_exception)
     asyncio.create_task(tasks.fetch_closed(app.state.jira))
     asyncio.create_task(tasks.fetch_open(app.state.jira))
 
