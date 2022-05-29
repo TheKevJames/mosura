@@ -19,7 +19,7 @@ async def list_issues(
     meta = schemas.Meta(issues)
     return templates.TemplateResponse(
         'issues.list.html',
-        {'request': request, 'config': config, 'issues': issues,
+        {'request': request, 'settings': config.settings, 'issues': issues,
          'meta': meta})
 
 
@@ -31,7 +31,7 @@ async def list_my_issues(
     meta = schemas.Meta(issues)
     return templates.TemplateResponse(
         'issues.list.html',
-        {'request': request, 'config': config, 'issues': issues,
+        {'request': request, 'settings': config.settings, 'issues': issues,
          'meta': meta})
 
 
@@ -44,7 +44,7 @@ async def show_issue(request: fastapi.Request,
 
     return templates.TemplateResponse(
         'issues.show.html',
-        {'request': request, 'config': config, 'issue': issue})
+        {'request': request, 'settings': config.settings, 'issue': issue})
 
 
 @router.get('/settings', response_class=fastapi.responses.HTMLResponse)
@@ -53,7 +53,7 @@ async def settings(
 ) -> starlette.templating._TemplateResponse:
     return templates.TemplateResponse(
         'settings.html',
-        {'request': request, 'config': config,
+        {'request': request, 'settings': config.settings,
          'myself': request.app.state.myself})
 
 
@@ -65,5 +65,5 @@ async def list_triagable_issues(
     meta = schemas.Meta(issues)
     return templates.TemplateResponse(
         'issues.list.html',
-        {'request': request, 'config': config, 'issues': issues,
+        {'request': request, 'settings': config.settings, 'issues': issues,
          'meta': meta})

@@ -38,9 +38,9 @@ def log_exception(_loop: asyncio.AbstractEventLoop,
 # Events
 @app.on_event('startup')
 async def startup() -> None:
-    app.state.jira = jira.JIRA(config.JIRA_DOMAIN,
-                               basic_auth=(config.JIRA_USERNAME,
-                                           config.JIRA_TOKEN))
+    app.state.jira = jira.JIRA(config.settings.jira_domain,
+                               basic_auth=(config.settings.jira_username,
+                                           config.settings.jira_token))
     # TODO: dynamic user selection
     app.state.myself = app.state.jira.myself()['displayName']
     logger.info('startup(): connected to jira as "%s"', app.state.myself)

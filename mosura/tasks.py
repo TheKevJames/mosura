@@ -75,7 +75,8 @@ async def fetch_closed(client: jira.JIRA) -> None:
     await fetch(
         client,
         interval=datetime.timedelta(minutes=15),
-        jql=f"project = '{config.JIRA_PROJECT}' AND status = 'Closed'",
+        jql=(f"project = '{config.settings.jira_project}' "
+             "AND status = 'Closed'"),
         variant='closed',
     )
 
@@ -84,6 +85,7 @@ async def fetch_open(client: jira.JIRA) -> None:
     await fetch(
         client,
         interval=datetime.timedelta(minutes=5),
-        jql=f"project = '{config.JIRA_PROJECT}' AND status != 'Closed'",
+        jql=(f"project = '{config.settings.jira_project}' "
+             "AND status != 'Closed'"),
         variant='open',
     )

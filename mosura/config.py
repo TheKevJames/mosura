@@ -1,7 +1,11 @@
-import os
+import pydantic
 
 
-JIRA_DOMAIN = os.environ['JIRA_DOMAIN']
-JIRA_PROJECT = os.environ['JIRA_PROJECT']
-JIRA_TOKEN = os.environ['JIRA_TOKEN']
-JIRA_USERNAME = os.environ['JIRA_USERNAME']
+class Settings(pydantic.BaseSettings):
+    jira_domain: str
+    jira_project: str
+    jira_token: str
+    jira_username: str
+
+
+settings = Settings()
