@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}All Issues{% endblock %}
+
+{% block content %}
+<div class="ui main container">
+  <table class="ui celled striped unstackable selectable table">
+    <thead>
+      <tr>
+        <th>Key</th>
+        <th>Summary</th>
+        <th>Status</th>
+        <th>Assignee</th>
+        <th>Priority</th>
+        <th>Components</th>
+        <th>Labels</th>
+      </tr>
+    </thead>
+
+    <tbody>
+    {% for issue in issues %}
+      <tr onclick="location.href='/issues/{{ issue.key }}'">
+        <td data-label="Key">{{ issue.key }}</td>
+        <td data-label="Summary">{{ issue.summary }}</td>
+        <td data-label="Status">{{ issue.status }}</td>
+        <td data-label="Assignee">{{ issue.assignee }}</td>
+        <td data-label="Priority">{{ issue.priority }}</td>
+        <td data-label="Components">
+        {% for c in issue.components %}
+          <p>{{ c.component }}</p>
+        {% endfor %}
+        </td>
+        <td data-label="Labels">
+        {% for l in issue.labels %}
+          <p>{{ l.label }}</p>
+        {% endfor %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

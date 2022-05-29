@@ -18,4 +18,8 @@ async def read_issues(offset: int = 0,
 
 @api_v0.get('/issues/{key}', response_model=schemas.Issue)
 async def read_issue(key: str) -> schemas.Issue:
-    return await crud.read_issue(key)
+    issue = await crud.read_issue(key)
+    if not issue:
+        raise fastapi.HTTPException(status_code=404)
+
+    return issue

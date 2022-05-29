@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Mosura | {% block title %}{% endblock %}</title>
+    <link href="{{ url_for('static', path='/semantic-2.4.1.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', path='/app.css') }}" rel="stylesheet">
+  </head>
+
+  <body>
+    <div class="ui fixed inverted menu">
+      <div class="ui container">
+        <a class="header item" href="/">Home</a>
+        <a class="header item" href="/issues">All Issues</a>
+        <a class="header right floated item" href="TODO">TODO: settings</a>
+      </div>
+    </div>
+
+    {% block content %}{% endblock %}
+  </body>
+</html>

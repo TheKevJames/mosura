@@ -1,63 +1,48 @@
-<!-- TODO: common headers -->
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Mosura | {{ issue.key }}</title>
-    <link href="{{ url_for('static', path='/semantic-2.4.1.min.css') }}" rel="stylesheet">
-    <link href="{{ url_for('static', path='/app.css') }}" rel="stylesheet">
-  </head>
+{% extends "base.html" %}
+{% block title %}{{ issue.key }}{% endblock %}
 
-  <body>
-    <div class="ui fixed inverted menu">
-      <div class="ui container">
-        <a class="header item" href="/">Home</a>
-        <a class="header item" href="/issues">All Issues</a>
-        <a class="header right floated item" href="TODO">TODO: settings</a>
+{% block content %}
+<div class="ui main text container">
+  <div class="ui grid">
+    <div class="row">
+      <div class="two wide column">
+        <p>{{ issue.key }}</p>
+      </div>
+      <div class="twelve wide column">
+        <p>{{ issue.summary }}</p>
       </div>
     </div>
-
-    <div class="ui main text container">
-      <div class="ui grid">
-        <div class="row">
-          <div class="two wide column">
-            <p>{{ issue.key }}</p>
-          </div>
-          <div class="twelve wide column">
-            <p>{{ issue.summary }}</p>
-          </div>
-        </div>
-        <div class="row">
-          <div class="sixteen wide column">
-            <p>{{ issue.description }}</p>
-          </div>
-        </div>
-        <div class="row">
-          <div class="two wide column">
-            <p>Status: {{ issue.status }}</p>
-          </div>
-          <div class="two wide column">
-            <p>Assignee: {{ issue.assignee }}</p>
-          </div>
-          <div class="two wide column">
-            <p>Priority: {{ issue.priority }}</p>
-          </div>
-          <div class="four wide column">
-            <p>Components:</p>
-            <p>{% for c in issue.components %}{{ c.component }}{% endfor %}</p>
-          </div>
-          <div class="four wide column">
-            <p>Labels:</p>
-            <p>{% for l in issue.labels %}{{ l.label }}{% endfor %}</p>
-          </div>
-          <div class="two wide column">
-            <a href="https://{{ jira_domain }}/browse/{{ issue.key }}">Edit</a>
-          </div>
-        </div>
-
+    <div class="row">
+      <div class="sixteen wide column">
+        <p>{{ issue.description }}</p>
       </div>
     </div>
-
-  </body>
-</html>
+    <div class="row">
+      <div class="two wide column">
+        <p>Status: {{ issue.status }}</p>
+      </div>
+      <div class="two wide column">
+        <p>Assignee: {{ issue.assignee }}</p>
+      </div>
+      <div class="two wide column">
+        <p>Priority: {{ issue.priority }}</p>
+      </div>
+      <div class="four wide column">
+        <p>Components:</p>
+        {% for c in issue.components %}
+        <p>{{ c.component }}</p>
+        {% endfor %}
+      </div>
+      <div class="four wide column">
+        <p>Labels:</p>
+        {% for l in issue.labels %}
+        <p>{{ l.label }}</p>
+        {% endfor %}
+      </div>
+      <div class="two wide column">
+        <a href="https://{{ jira_domain }}/browse/{{ issue.key }}">Edit</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

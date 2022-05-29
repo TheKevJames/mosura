@@ -87,10 +87,23 @@ async def fetch() -> None:
 
 
 # Routes
+@app.get('/issues', response_class=fastapi.responses.HTMLResponse)
+async def list_issues(
+        request: fastapi.Request,
+) -> starlette.templating._TemplateResponse:
+    issues = await crud.read_issues(limit=500)
+    return templates.TemplateResponse(
+        'issues.list.html',
+        {'request': request, 'issues': issues, 'jira_domain': JIRA_DOMAIN})
+
+
 @app.get('/issues/{key}', response_class=fastapi.responses.HTMLResponse)
 async def show_issue(request: fastapi.Request,
                      key: str) -> starlette.templating._TemplateResponse:
     issue = await crud.read_issue(key)
+    if not issue:
+        raise fastapi.HTTPException(status_code=404)
+
     return templates.TemplateResponse(
         'issues.show.html',
         {'request': request, 'issue': issue, 'jira_domain': JIRA_DOMAIN})
