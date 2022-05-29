@@ -85,16 +85,20 @@ async def fetch() -> None:
                 summary=issue.fields.summary,
             ))
 
+        logger.info('fetch(): fetched %d issues', len(issues))
+
 
 # Routes
 @app.get('/issues', response_class=fastapi.responses.HTMLResponse)
 async def list_issues(
         request: fastapi.Request,
 ) -> starlette.templating._TemplateResponse:
-    issues = await crud.read_issues(limit=500)
+    issues = await crud.read_issues()
+    meta = schemas.Meta(issues)
     return templates.TemplateResponse(
         'issues.list.html',
-        {'request': request, 'issues': issues, 'jira_domain': JIRA_DOMAIN})
+        {'request': request, 'issues': issues, 'jira_domain': JIRA_DOMAIN,
+         'meta': meta})
 
 
 @app.get('/issues/{key}', response_class=fastapi.responses.HTMLResponse)

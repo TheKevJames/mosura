@@ -29,9 +29,11 @@ def convert_issue_response(results: list[Row]) -> list[schemas.Issue]:
             'assignee': fields[0][4],
             'priority': fields[0][5],
             'components': [{'key': key, 'component': x}
-                           for x in {x[6] for x in fields}],
+                           for x in {x[6] for x in fields}
+                           if x],
             'labels': [{'key': key, 'label': x}
-                       for x in {x[7] for x in fields}],
+                       for x in {x[7] for x in fields}
+                       if x],
         }))
 
     return xs
@@ -41,8 +43,9 @@ async def read_issue(key: str) -> schemas.Issue | None:
     query = (
         select(Issues, Components.c.component, Labels.c.label)
         .where(key == models.Issue.key)
-        .where(models.Issue.key == models.Component.key)
-        .where(models.Issue.key == models.Label.key)
+        .join(Components, models.Issue.key == models.Component.key,
+              isouter=True)
+        .join(Labels, models.Issue.key == models.Label.key, isouter=True)
     )
     results = await database.database.fetch_all(query)
     if not results:
@@ -51,14 +54,12 @@ async def read_issue(key: str) -> schemas.Issue | None:
     return convert_issue_response(results)[0]
 
 
-async def read_issues(offset: int = 0,
-                      limit: int = 100) -> list[schemas.Issue]:
+async def read_issues() -> list[schemas.Issue]:
     query = (
         select(Issues, Components.c.component, Labels.c.label)
-        .where(models.Issue.key == models.Component.key)
-        .where(models.Issue.key == models.Label.key)
-        .offset(offset)
-        .limit(limit)
+        .join(Components, models.Issue.key == models.Component.key,
+              isouter=True)
+        .join(Labels, models.Issue.key == models.Label.key, isouter=True)
     )
     results = await database.database.fetch_all(query)
     return convert_issue_response(results)

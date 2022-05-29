@@ -1,19 +1,97 @@
 {% extends "base.html" %}
 {% block title %}All Issues{% endblock %}
+{% block header %}
+<link href="{{ url_for('static', path='/semantic-2.4.1.dropdown.min.css') }}" rel="stylesheet">
+<script src="{{ url_for('static', path='/semantic-2.4.1.dropdown.min.js') }}"></script>
+<script>
+$(window).on('load', function() {
+  $('.ui.dropdown').dropdown();
+
+  $('thead input.filter').each(function() {
+    update_filter(this.name, this.value);
+  });
+})
+
+function update_filter(field, value) {
+  let selected = new Set(value.split(','));
+
+  $('tbody tr').each(function(i) {
+    if (selected.has(this.children[field].innerText)) {
+      this.style.display = '';
+    } else {
+      this.style.display = 'none';
+    }
+  })
+};
+</script>
+{% endblock %}
 
 {% block content %}
 <div class="ui main container">
   <table class="ui celled striped unstackable selectable table">
     <thead>
-      <tr>
-        <th>Key</th>
-        <th>Summary</th>
-        <th>Status</th>
-        <th>Assignee</th>
-        <th>Priority</th>
-        <th>Components</th>
-        <th>Labels</th>
-      </tr>
+      <th>Key</th>
+      <th>Summary</th>
+      <th>
+        <div>Status</div>
+        <div class="ui fluid multiple search selection dropdown">
+          <input type="hidden" class="filter" name="2" onChange="update_filter(this.name, this.value);" value="{{ meta.statuses | join(',') }}">
+          <i class="dropdown icon"></i>
+          <div class="default text"></div>
+          <div class="menu">
+          {% for x in meta.statuses %}
+          <div class="item" data-value="{{ x }}">{{ x }}</div>
+          {% endfor %}
+        </div>
+      </th>
+      <th>
+        <div>Assignee</div>
+        <div class="ui fluid multiple search selection dropdown">
+          <input type="hidden" class="filter" name="3" onChange="update_filter(this.name, this.value);" value="{{ meta.assignees | join(',') }}">
+          <i class="dropdown icon"></i>
+          <div class="default text"></div>
+          <div class="menu">
+          {% for x in meta.assignees %}
+          <div class="item" data-value="{{ x }}">{{ x }}</div>
+          {% endfor %}
+        </div>
+      </th>
+      <th>
+        <div>Priority</div>
+        <div class="ui fluid multiple search selection dropdown">
+          <input type="hidden" class="filter" name="4" onChange="update_filter(this.name, this.value);" value="{{ meta.priorities | join(',') }}">
+          <i class="dropdown icon"></i>
+          <div class="default text"></div>
+          <div class="menu">
+          {% for x in meta.priorities %}
+          <div class="item" data-value="{{ x }}">{{ x }}</div>
+          {% endfor %}
+        </div>
+      </th>
+      <th>
+        <div>Components</div>
+        <div class="ui fluid multiple search selection dropdown">
+          <input type="hidden" class="filter" name="5" onChange="update_filter(this.name, this.value);" value="{{ meta.components | join(',') }}">
+          <i class="dropdown icon"></i>
+          <div class="default text"></div>
+          <div class="menu">
+          {% for x in meta.components %}
+          <div class="item" data-value="{{ x }}">{{ x }}</div>
+          {% endfor %}
+        </div>
+      </th>
+      <th>
+        <div>Labels</div>
+        <div class="ui fluid multiple search selection dropdown">
+          <input type="hidden" class="filter" name="6" onChange="update_filter(this.name, this.value);" value="{{ meta.labels | join(',') }}">
+          <i class="dropdown icon"></i>
+          <div class="default text"></div>
+          <div class="menu">
+          {% for x in meta.labels %}
+          <div class="item" data-value="{{ x }}">{{ x }}</div>
+          {% endfor %}
+        </div>
+      </th>
     </thead>
 
     <tbody>

@@ -50,3 +50,21 @@ class Issue(IssueBase):
 
     class Config:
         orm_mode = True
+
+
+@pydantic.dataclasses.dataclass(init=False)
+class Meta:
+    assignees: list[str]
+    components: list[str]
+    labels: list[str]
+    priorities: list[str]
+    statuses: list[str]
+
+    def __init__(self, issues: list[Issue]):
+        # TODO: better sorting
+        self.assignees = sorted({i.assignee for i in issues})
+        self.components = sorted({c.component for i in issues
+                                  for c in i.components})
+        self.labels = sorted({lb.label for i in issues for lb in i.labels})
+        self.priorities = sorted({i.priority for i in issues})
+        self.statuses = sorted({i.status for i in issues})
