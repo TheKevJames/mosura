@@ -3,37 +3,23 @@ import datetime
 import pydantic
 
 
-class ComponentBase(pydantic.BaseModel):
+class Component(pydantic.BaseModel):
+    key: str
     component: str
 
-
-class ComponentCreate(ComponentBase):
-    pass
-
-
-class Component(ComponentBase):
-    key: str
-
     class Config:
         orm_mode = True
 
 
-class LabelBase(pydantic.BaseModel):
+class Label(pydantic.BaseModel):
+    key: str
     label: str
 
-
-class LabelCreate(LabelBase):
-    pass
-
-
-class Label(LabelBase):
-    key: str
-
     class Config:
         orm_mode = True
 
 
-class IssueBase(pydantic.BaseModel):
+class IssueCreate(pydantic.BaseModel):
     key: str
     summary: str
     description: str | None
@@ -42,11 +28,7 @@ class IssueBase(pydantic.BaseModel):
     priority: str
 
 
-class IssueCreate(IssueBase):
-    pass
-
-
-class Issue(IssueBase):
+class Issue(IssueCreate):
     components: list[Component]
     labels: list[Label]
 
@@ -55,21 +37,14 @@ class Issue(IssueBase):
 
     @property
     def body(self) -> str:
-        # TODO: apply additional formatting
         return self.description or ''
 
 
-class TaskBase(pydantic.BaseModel):
+class Task(pydantic.BaseModel):
     key: str
     variant: str
     latest: datetime.datetime
 
-
-class TaskCreate(TaskBase):
-    pass
-
-
-class Task(TaskBase):
     class Config:
         orm_mode = True
 

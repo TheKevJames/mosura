@@ -87,7 +87,7 @@ async def read_issues_for_user(username: str) -> list[schemas.Issue]:
     return convert_issue_response(results)
 
 
-async def create_issue(issue: schemas.IssueCreate) -> None:
+async def upsert_issue(issue: schemas.IssueCreate) -> None:
     stmt = insert(models.Issue.__table__).values(**issue.dict())
     query = stmt.on_conflict_do_update(
         index_elements=['key'],
@@ -101,18 +101,14 @@ async def create_issue(issue: schemas.IssueCreate) -> None:
     await database.database.execute(query)
 
 
-async def create_issue_component(component: schemas.ComponentCreate,
-                                 key: str) -> None:
-    stmt = insert(models.Component.__table__).values(**component.dict(),
-                                                     key=key)
-    # TODO: upsert?
+async def upsert_issue_component(component: schemas.Component) -> None:
+    stmt = insert(models.Component.__table__).values(**component.dict())
     query = stmt.on_conflict_do_nothing()
     await database.database.execute(query)
 
 
-async def create_issue_label(label: schemas.LabelCreate, key: str) -> None:
-    stmt = insert(models.Label.__table__).values(**label.dict(), key=key)
-    # TODO: upsert?
+async def upsert_issue_label(label: schemas.Label) -> None:
+    stmt = insert(models.Label.__table__).values(**label.dict())
     query = stmt.on_conflict_do_nothing()
     await database.database.execute(query)
 
@@ -135,7 +131,7 @@ async def read_task(key: str, variant: str) -> schemas.Task | None:
     })
 
 
-async def update_task(task: schemas.Task) -> None:
+async def upsert_task(task: schemas.Task) -> None:
     stmt = insert(models.Task.__table__).values(**task.dict())
     query = stmt.on_conflict_do_update(
         index_elements=['key', 'variant'],

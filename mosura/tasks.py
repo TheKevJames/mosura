@@ -42,23 +42,22 @@ async def fetch(client: jira.JIRA, *, variant: str, jql: str,
                          variant, len(issues.get('issues', [])))
             for issue in issues.get('issues', []):
                 for component in issue['fields']['components']:
-                    await crud.create_issue_component(
-                        schemas.ComponentCreate(component=component['name']),
-                        issue['key'])
+                    await crud.upsert_issue_component(
+                        schemas.Component(key=issue['key'],
+                                          component=component['name']))
 
                 for label in issue['fields']['labels']:
-                    await crud.create_issue_label(
-                        schemas.LabelCreate(label=label), issue['key'])
+                    await crud.upsert_issue_label(
+                        schemas.Label(key=issue['key'], label=label))
 
-                await crud.create_issue(schemas.IssueCreate(
+                await crud.upsert_issue(schemas.IssueCreate(
                     assignee=(issue['fields']['assignee']
                               or {}).get('displayName'),
                     description=issue['renderedFields']['description'],
                     key=issue['key'],
                     priority=issue['fields']['priority']['name'],
                     status=issue['fields']['status']['name'],
-                    summary=issue['fields']['summary'],
-                ))
+                    summary=issue['fields']['summary']))
 
             if issues['total'] < idx + page_size:
                 break
@@ -69,7 +68,7 @@ async def fetch(client: jira.JIRA, *, variant: str, jql: str,
             'key': 'fetch',
             'variant': variant,
             'latest': datetime.datetime.now(datetime.timezone.utc)})
-        await crud.update_task(task)
+        await crud.upsert_task(task)
 
 
 async def fetch_closed(client: jira.JIRA) -> None:
