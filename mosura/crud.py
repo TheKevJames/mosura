@@ -44,11 +44,11 @@ async def read_issue(key: str) -> schemas.Issue | None:
         .where(models.Issue.key == models.Component.key)
         .where(models.Issue.key == models.Label.key)
     )
-    result = await database.database.fetch_one(query)
-    if not result:
+    results = await database.database.fetch_all(query)
+    if not results:
         return None
 
-    return convert_issue_response([result])[0]
+    return convert_issue_response(results)[0]
 
 
 async def read_issues(offset: int = 0,

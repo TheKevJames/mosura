@@ -5,47 +5,59 @@
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Mosura | {{ issue.key }}</title>
-    <link href="{{ url_for('static', path='/bulma-0.9.4.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', path='/semantic-2.4.1.min.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', path='/app.css') }}" rel="stylesheet">
   </head>
 
   <body>
-    <header>
-      <nav class="navbar is-primary">
-        <div class="navbar-brand">
-          <a class="navbar-item is-size-4" href="/">Home</a>
-        </div>
-        <div class="navbar-menu">
-          <div class="navbar-start">
-            <!-- TODO: nav pages -->
-          </div>
-          <div class="navbar-end">
-            <!-- TODO: settings -->
-          </div>
-        </div>
-      </nav>
-    </header>
-
-    <section class="section">
-      <div class="card">
-        <div class="card-header">
-          <p class="card-header-title">{{ issue.name }}</p>
-        </div>
-        <div class="card-content content">
-          {{ issue.description }}
-        </div>
-        <footer class="card-footer">
-          <p class="card-footer-item">Status: {{ issue.status }}</p>
-          <p class="card-footer-item">Assignee: {{ issue.assignee }}</p>
-          <p class="card-footer-item">Priority: {{ issue.priority }}</p>
-          <p class="card-footer-item">Components: {% for c in issue.components %}{{ c.component }}{% endfor %}</p>
-          <p class="card-footer-item">Labels: {{ issue.labels }}</p>
-        </footer>
-        <footer class="card-footer">
-          <a href="https://{{ jira_domain }}/browse/{{ issue.key }}"} class="card-footer-item">Edit</a>
-        </footer>
+    <div class="ui fixed inverted menu">
+      <div class="ui container">
+        <a class="header item" href="/">Home</a>
+        <a class="header item" href="/issues">All Issues</a>
+        <a class="header right floated item" href="TODO">TODO: settings</a>
       </div>
-    </section>
+    </div>
+
+    <div class="ui main text container">
+      <div class="ui grid">
+        <div class="row">
+          <div class="two wide column">
+            <p>{{ issue.key }}</p>
+          </div>
+          <div class="twelve wide column">
+            <p>{{ issue.summary }}</p>
+          </div>
+        </div>
+        <div class="row">
+          <div class="sixteen wide column">
+            <p>{{ issue.description }}</p>
+          </div>
+        </div>
+        <div class="row">
+          <div class="two wide column">
+            <p>Status: {{ issue.status }}</p>
+          </div>
+          <div class="two wide column">
+            <p>Assignee: {{ issue.assignee }}</p>
+          </div>
+          <div class="two wide column">
+            <p>Priority: {{ issue.priority }}</p>
+          </div>
+          <div class="four wide column">
+            <p>Components:</p>
+            <p>{% for c in issue.components %}{{ c.component }}{% endfor %}</p>
+          </div>
+          <div class="four wide column">
+            <p>Labels:</p>
+            <p>{% for l in issue.labels %}{{ l.label }}{% endfor %}</p>
+          </div>
+          <div class="two wide column">
+            <a href="https://{{ jira_domain }}/browse/{{ issue.key }}">Edit</a>
+          </div>
+        </div>
+
+      </div>
+    </div>
 
   </body>
 </html>
