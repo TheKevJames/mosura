@@ -66,6 +66,19 @@ async def read_issues() -> list[schemas.Issue]:
     return convert_issue_response(results)
 
 
+async def read_issues_for_user(username: str) -> list[schemas.Issue]:
+    query = (
+        select(Issues, Components.c.component, Labels.c.label)
+        .where(models.Issue.status != 'Closed')
+        .where(models.Issue.assignee == username)
+        .join(Components, models.Issue.key == models.Component.key,
+              isouter=True)
+        .join(Labels, models.Issue.key == models.Label.key, isouter=True)
+    )
+    results = await database.database.fetch_all(query)
+    return convert_issue_response(results)
+
+
 async def create_issue(issue: schemas.IssueCreate) -> None:
     stmt = insert(models.Issue.__table__).values(**issue.dict())
     query = stmt.on_conflict_do_update(

@@ -61,7 +61,6 @@ class Meta:
     statuses: list[str]
 
     def __init__(self, issues: list[Issue]):
-        # TODO: better sorting
         self.assignees = sorted({i.assignee for i in issues})
         self.components = sorted({c.component for i in issues
                                   for c in i.components})

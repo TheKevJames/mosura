@@ -39,6 +39,8 @@ logger = logging.getLogger(__name__)
 async def startup() -> None:
     app.state.jira = jira.JIRA(JIRA_DOMAIN,
                                basic_auth=(JIRA_USERNAME, JIRA_TOKEN))
+    app.state.myself = app.state.jira.myself()['displayName']
+    logger.info('startup(): connected to jira as "%s"', app.state.myself)
 
     await database.database.connect()
     asyncio.create_task(fetch())
@@ -95,6 +97,18 @@ async def list_issues(
         request: fastapi.Request,
 ) -> starlette.templating._TemplateResponse:
     issues = await crud.read_issues()
+    meta = schemas.Meta(issues)
+    return templates.TemplateResponse(
+        'issues.list.html',
+        {'request': request, 'issues': issues, 'jira_domain': JIRA_DOMAIN,
+         'meta': meta})
+
+
+@app.get('/mine', response_class=fastapi.responses.HTMLResponse)
+async def list_my_issues(
+        request: fastapi.Request,
+) -> starlette.templating._TemplateResponse:
+    issues = await crud.read_issues_for_user(request.app.state.myself)
     meta = schemas.Meta(issues)
     return templates.TemplateResponse(
         'issues.list.html',
