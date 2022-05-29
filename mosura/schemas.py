@@ -1,3 +1,5 @@
+import datetime
+
 import pydantic
 
 
@@ -55,6 +57,21 @@ class Issue(IssueBase):
     def body(self) -> str:
         # TODO: apply additional formatting
         return self.description or ''
+
+
+class TaskBase(pydantic.BaseModel):
+    key: str
+    variant: str
+    latest: datetime.datetime
+
+
+class TaskCreate(TaskBase):
+    pass
+
+
+class Task(TaskBase):
+    class Config:
+        orm_mode = True
 
 
 @pydantic.dataclasses.dataclass(init=False)

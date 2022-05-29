@@ -1,8 +1,5 @@
 import asyncio
-import datetime
-import itertools
 import logging.config
-import random
 
 import fastapi.staticfiles
 import fastapi.templating
@@ -15,6 +12,7 @@ from . import crud
 from . import database
 from . import log
 from . import schemas
+from . import tasks
 
 
 app = fastapi.FastAPI()
@@ -36,70 +34,19 @@ async def startup() -> None:
     app.state.jira = jira.JIRA(config.JIRA_DOMAIN,
                                basic_auth=(config.JIRA_USERNAME,
                                            config.JIRA_TOKEN))
+    # TODO: dynamic user selection
     app.state.myself = app.state.jira.myself()['displayName']
     logger.info('startup(): connected to jira as "%s"', app.state.myself)
 
     await database.database.connect()
-    asyncio.create_task(fetch())
+
+    # TODO: attach error handler
+    asyncio.create_task(tasks.fetch(app.state.jira))
 
 
 @app.on_event('shutdown')
 async def shutdown() -> None:
     await database.database.disconnect()
-
-
-# Tasks
-async def fetch() -> None:
-    # TODO: consider longer interval for 'Closed' issues
-    interval = datetime.timedelta(minutes=5)
-    while True:
-        now = datetime.datetime.now(datetime.timezone.utc)
-        latest = await crud.read_task('fetch')
-        if latest and latest + interval > now:
-            logger.debug('fetch(): too soon, sleeping at least %ds',
-                         (latest - now + interval).seconds)
-            await asyncio.sleep(random.uniform(0, 60))
-            continue
-
-        logger.info('fetch(): fetching data')
-        jql = f"project = '{config.JIRA_PROJECT}'"
-        fields = ['key', 'summary', 'description', 'status', 'assignee',
-                  'priority', 'components', 'labels']
-
-        page_size = 100
-        for idx in itertools.count(0, page_size):
-            issues = await asyncio.to_thread(app.state.jira.search_issues, jql,
-                                             startAt=idx, maxResults=page_size,
-                                             fields=fields,
-                                             expand='renderedFields',
-                                             json_result=True)
-            logger.debug('fetch(): fetched %d issues, writing to localdb',
-                         len(issues.get('issues', [])))
-            for issue in issues.get('issues', []):
-                for component in issue['fields']['components']:
-                    await crud.create_issue_component(
-                        schemas.ComponentCreate(component=component['name']),
-                        issue['key'])
-                for label in issue['fields']['labels']:
-                    await crud.create_issue_label(
-                        schemas.LabelCreate(label=label), issue['key'])
-
-                await crud.create_issue(schemas.IssueCreate(
-                    assignee=(issue['fields']['assignee']
-                              or {}).get('displayName'),
-                    description=issue['renderedFields']['description'],
-                    key=issue['key'],
-                    priority=issue['fields']['priority']['name'],
-                    status=issue['fields']['status']['name'],
-                    summary=issue['fields']['summary'],
-                ))
-
-            if issues['total'] < idx + page_size:
-                break
-
-        logger.info('fetch(): fetched %d issues in total', issues['total'])
-        now = datetime.datetime.now(datetime.timezone.utc)
-        await crud.update_task('fetch', now)
 
 
 # Routes

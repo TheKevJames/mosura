@@ -40,4 +40,6 @@ class Task(database.Base):  # type:ignore
     __tablename__ = 'tasks'
 
     key = sqlalchemy.Column(sqlalchemy.String, primary_key=True, index=True)
+    variant = sqlalchemy.Column(sqlalchemy.String, primary_key=True,
+                                index=True)
     latest = sqlalchemy.Column(sqlalchemy.DateTime, nullable=True)

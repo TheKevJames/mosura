@@ -105,33 +105,39 @@ async def create_issue_component(component: schemas.ComponentCreate,
                                  key: str) -> None:
     stmt = insert(models.Component.__table__).values(**component.dict(),
                                                      key=key)
+    # TODO: upsert?
     query = stmt.on_conflict_do_nothing()
     await database.database.execute(query)
 
 
 async def create_issue_label(label: schemas.LabelCreate, key: str) -> None:
     stmt = insert(models.Label.__table__).values(**label.dict(), key=key)
+    # TODO: upsert?
     query = stmt.on_conflict_do_nothing()
     await database.database.execute(query)
 
 
-async def read_task(key: str) -> datetime.datetime | None:
+async def read_task(key: str, variant: str) -> schemas.Task | None:
     query = (
-        select(Tasks.c.latest)
-        .where(key == models.Task.key)
+        select(Tasks)
+        .where(models.Task.key == key)
+        .where(models.Task.variant == variant)
     )
     result = await database.database.fetch_one(query)
     if not result:
         return None
 
     # TODO: any way to store tz in sqlite?
-    latest: datetime.datetime = result.latest  # type: ignore
-    return latest.replace(tzinfo=datetime.timezone.utc)
+    return schemas.Task.parse_obj({
+        'key': result['key'],
+        'variant': result['variant'],
+        'latest': result['latest'].replace(tzinfo=datetime.timezone.utc),
+    })
 
 
-async def update_task(key: str, latest: datetime.datetime) -> None:
-    stmt = insert(models.Task.__table__).values(key=key, latest=latest)
+async def update_task(task: schemas.Task) -> None:
+    stmt = insert(models.Task.__table__).values(**task.dict())
     query = stmt.on_conflict_do_update(
-        index_elements=['key'],
+        index_elements=['key', 'variant'],
         set_={'latest': stmt.excluded.latest})
     await database.database.execute(query)
