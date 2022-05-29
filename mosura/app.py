@@ -132,3 +132,15 @@ async def settings(
         'settings.html',
         {'request': request, 'config': config,
          'myself': request.app.state.myself})
+
+
+@app.get('/triage', response_class=fastapi.responses.HTMLResponse)
+async def list_triagable_issues(
+        request: fastapi.Request,
+) -> starlette.templating._TemplateResponse:
+    issues = await crud.read_issues_needing_triage()
+    meta = schemas.Meta(issues)
+    return templates.TemplateResponse(
+        'issues.list.html',
+        {'request': request, 'config': config, 'issues': issues,
+         'meta': meta})

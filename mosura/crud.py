@@ -66,6 +66,14 @@ async def read_issues() -> list[schemas.Issue]:
     return convert_issue_response(results)
 
 
+async def read_issues_needing_triage() -> list[schemas.Issue]:
+    results = await read_issues()
+    return [r for r in results
+            if r.status == 'Needs Triage'
+            or not r.components
+            or not r.labels]
+
+
 async def read_issues_for_user(username: str) -> list[schemas.Issue]:
     query = (
         select(Issues, Components.c.component, Labels.c.label)
