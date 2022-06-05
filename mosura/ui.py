@@ -11,6 +11,15 @@ router = fastapi.APIRouter(tags=['ui'])
 templates = fastapi.templating.Jinja2Templates(directory='templates')
 
 
+@router.get('/', response_class=fastapi.responses.HTMLResponse)
+async def home(
+        request: fastapi.Request,
+) -> starlette.templating._TemplateResponse:
+    return templates.TemplateResponse(
+        'home.html',
+        {'request': request, 'settings': config.settings})
+
+
 @router.get('/issues', response_class=fastapi.responses.HTMLResponse)
 async def list_issues(
         request: fastapi.Request,
