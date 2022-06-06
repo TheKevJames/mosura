@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Gannt{% endblock %}
+
+{% block content %}
+<div class="ui main container">
+  <table class="ui celled fixed unstackable structured table">
+    <!-- TODO: point at current date -->
+    <thead>
+      <tr>
+        <th colspan="1">Name</th>
+        {% for span, disabled, header in schedule.quarter.headers %}
+        <th colspan="{{ span }}" {% if disabled %}style="color:gray;"{% endif %}>
+          {{ header.strftime("%Y-%m-%d") }}
+        </th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for assignee, boxes in schedule.aligned.items() %}
+      <tr>
+        <td>{{ assignee }}</td>
+        {% for span, issue in boxes %}
+          {% if issue %}
+          <td colspan="{{ span }}" title="{{ issue.summary }}">
+            <a href="{{ settings.jira_domain }}/browse/{{ issue.key }}">{{ issue.key }}</a>
+          {% else %}
+          <td colspan="{{ span }}">
+          {% endif %}
+          </td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

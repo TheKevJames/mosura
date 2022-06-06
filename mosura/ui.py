@@ -20,6 +20,19 @@ async def home(
         {'request': request, 'settings': config.settings})
 
 
+@router.get('/gannt', response_class=fastapi.responses.HTMLResponse)
+async def gannt(
+        request: fastapi.Request,
+) -> starlette.templating._TemplateResponse:
+    issues = await crud.read_issues()
+    schedule = schemas.Schedule(issues)
+
+    return templates.TemplateResponse(
+        'gannt.html',
+        {'request': request, 'settings': config.settings, 'issues': issues,
+         'schedule': schedule})
+
+
 @router.get('/issues', response_class=fastapi.responses.HTMLResponse)
 async def list_issues(
         request: fastapi.Request,

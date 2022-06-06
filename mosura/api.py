@@ -19,3 +19,8 @@ async def read_issue(key: str) -> schemas.Issue:
         raise fastapi.HTTPException(status_code=404)
 
     return issue
+
+
+@router.get('/ping')
+async def ping() -> dict[str, str]:
+    return {'status': 'ok'}
