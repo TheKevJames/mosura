@@ -16,11 +16,18 @@ from . import schemas
 logger = logging.getLogger(__name__)
 
 
+def datetime_or_null(x: str | None) -> datetime.datetime | None:
+    if x is None:
+        return x
+    return datetime.datetime.fromisoformat(x)
+
+
 async def fetch(client: jira.JIRA, *, variant: str, jql: str,
                 interval: datetime.timedelta) -> None:
     page_size = 100
     fields = ['key', 'summary', 'description', 'status', 'assignee',
-              'priority', 'components', 'labels']
+              'priority', 'components', 'labels', 'customfield_12161',
+              'timeoriginalestimate']
 
     while True:
         now = datetime.datetime.now(datetime.timezone.utc)
@@ -57,7 +64,12 @@ async def fetch(client: jira.JIRA, *, variant: str, jql: str,
                     key=issue['key'],
                     priority=issue['fields']['priority']['name'],
                     status=issue['fields']['status']['name'],
-                    summary=issue['fields']['summary']))
+                    summary=issue['fields']['summary'],
+                    startdate=datetime_or_null(
+                        issue['fields']['customfield_12161']),
+                    timeoriginalestimate=(
+                        issue['fields'].get('timeoriginalestimate') or '0m'),
+                ))
 
             if issues['total'] < idx + page_size:
                 break

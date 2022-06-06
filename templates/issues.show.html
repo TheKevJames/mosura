@@ -9,7 +9,20 @@
         <p>{{ issue.key }}</p>
       </div>
       <div class="twelve wide column">
-        <p>{{ issue.summary }}</p>
+        <p>
+          {% if issue.priority == "Low" %}
+          <i class="green angle down icon" title="Low Priority"></i>
+          {% elif issue.priority == "Medium" %}
+          <i class="yellow minus icon" title="Medium Priority"></i>
+          {% elif issue.priority == "High" %}
+          <i class="orange angle up icon" title="High Priority"></i>
+          {% elif issue.priority == "Urgent" %}
+          <i class="red angle double up icon" title="Urgent Priority"></i>
+          {% else %}
+          <i class="question circle outline icon" title="Unknown Priority"></i>
+          {% endif %}
+          {{ issue.summary }}
+        </p>
       </div>
     </div>
     <div class="row">
@@ -25,7 +38,10 @@
         <p>Assignee: {{ issue.assignee }}</p>
       </div>
       <div class="two wide column">
-        <p>Priority: {{ issue.priority }}</p>
+        <p>Start Date: {{ issue.startdate.strftime("%Y-%m-%d") }}</p>
+      </div>
+      <div class="two wide column">
+        <p>Time Estimate: {{ issue.timeestimate }}</p>
       </div>
       <div class="four wide column">
         <p>Components:</p>
@@ -39,7 +55,9 @@
         <p>{{ l.label }}</p>
         {% endfor %}
       </div>
-      <div class="two wide column">
+    </div>
+    <div class="row">
+      <div class="twelve wide column">
         <a href="{{ settings.jira_domain }}/browse/{{ issue.key }}">Edit</a>
       </div>
     </div>

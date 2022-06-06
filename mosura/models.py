@@ -30,6 +30,8 @@ class Issue(database.Base):  # type: ignore
     status = sqlalchemy.Column(sqlalchemy.String, nullable=False)
     assignee = sqlalchemy.Column(sqlalchemy.String)
     priority = sqlalchemy.Column(sqlalchemy.String, nullable=False)
+    startdate = sqlalchemy.Column(sqlalchemy.DateTime, nullable=True)
+    timeoriginalestimate = sqlalchemy.Column(sqlalchemy.String, nullable=False)
 
     components: list[Component] = sqlalchemy.orm.relationship(  # type: ignore
         'Component')

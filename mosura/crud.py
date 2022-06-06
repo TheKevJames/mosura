@@ -26,12 +26,12 @@ def convert_field_response(key: str, results: list[Row], *, idx: int,
 
 def convert_component_response(key: str,
                                results: list[Row]) -> list[dict[str, str]]:
-    return convert_field_response(key, results, idx=6, name='component')
+    return convert_field_response(key, results, idx=8, name='component')
 
 
 def convert_label_response(key: str,
                            results: list[Row]) -> list[dict[str, str]]:
-    return convert_field_response(key, results, idx=7, name='label')
+    return convert_field_response(key, results, idx=9, name='label')
 
 
 def convert_issue_response(results: list[Row]) -> list[schemas.Issue]:
@@ -45,8 +45,11 @@ def convert_issue_response(results: list[Row]) -> list[schemas.Issue]:
             'status': fields[0][3],
             'assignee': fields[0][4],
             'priority': fields[0][5],
+            'startdate': fields[0][6],
+            'timeoriginalestimate': fields[0][7],
             'components': convert_component_response(key, fields),
-            'labels': convert_label_response(key, fields)}))
+            'labels': convert_label_response(key, fields),
+        }))
 
     return xs
 
@@ -110,6 +113,8 @@ async def upsert_issue(issue: schemas.IssueCreate) -> None:
             'priority': stmt.excluded.priority,
             'status': stmt.excluded.status,
             'summary': stmt.excluded.summary,
+            'startdate': stmt.excluded.startdate,
+            'timeoriginalestimate': stmt.excluded.timeoriginalestimate,
         })
     await database.database.execute(query)
 

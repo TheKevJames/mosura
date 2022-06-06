@@ -26,6 +26,19 @@ class IssueCreate(pydantic.BaseModel):
     status: str
     assignee: str | None
     priority: str
+    startdate: datetime.datetime | None
+    timeoriginalestimate: str
+
+    @property
+    def timeestimate(self) -> datetime.timedelta:
+        seconds_per_day = 60 * 60 * 8
+        days_per_week = 5
+
+        total_seconds = int(self.timeoriginalestimate)
+        days = total_seconds // seconds_per_day
+        days += (days // days_per_week) * 2
+        seconds = total_seconds % seconds_per_day
+        return datetime.timedelta(days=days, seconds=seconds)
 
 
 class Issue(IssueCreate):
