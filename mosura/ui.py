@@ -35,11 +35,10 @@ async def home(
 async def gannt(
         request: fastapi.Request,
 ) -> starlette.templating._TemplateResponse:
-    issues = await crud.read_issues()
+    issues = await crud.read_issues()  # TODO: include Closed
     schedule = schemas.Schedule(issues)
 
-    okr_label = '/'.join((config.settings.jira_label_prefix,
-                          config.settings.jira_label_okr))
+    okr_label = config.settings.jira_label_okr
     issues = [issue for issue in issues
               if okr_label in {x.label for x in issue.labels}
               and issue not in schedule.raw]
