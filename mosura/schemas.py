@@ -99,7 +99,7 @@ class Quarter:
             self,
             date: datetime.datetime = datetime.datetime.now(
                 datetime.timezone.utc),
-            padding: int = 14,
+            padding: int = 7,
     ) -> None:
         self.padding = padding
         self.year = date.year if date.month > 1 else date.year - 1
@@ -110,16 +110,25 @@ class Quarter:
         self.display = f'{self.year}Q{quarter}'
 
     @property
-    def boxes(self) -> Iterator[datetime.datetime]:
-        end = datetime.datetime(year=self.year, month=self.startmonth + 3,
-                                day=self.padding)
+    def _start(self) -> datetime.datetime:
+        x = datetime.datetime(year=self.year, month=self.startmonth, day=1)
+        if x.isoweekday() != 1:
+            x += datetime.timedelta(days=8 - x.isoweekday())
+        x -= datetime.timedelta(days=self.padding)
+        return x
 
-        start = (datetime.datetime(year=self.year, month=self.startmonth,
-                                   day=1)
-                 - datetime.timedelta(days=self.padding))
-        while start < end:
-            yield start
-            start += datetime.timedelta(days=7)
+    @property
+    def _end(self) -> datetime.datetime:
+        x = datetime.datetime(year=self.year, month=self.startmonth + 3,
+                              day=self.padding)
+        return x
+
+    @property
+    def boxes(self) -> Iterator[datetime.datetime]:
+        curr = self._start
+        while curr < self._end:
+            yield curr
+            curr += datetime.timedelta(days=7)
 
     @property
     def headers(self) -> Iterator[tuple[int, bool, datetime.datetime]]:
@@ -130,17 +139,15 @@ class Quarter:
             yield len(xs), box in padding, xs[0]
 
     def contains(self, x: Issue) -> bool:
-        if not x.startdate:
+        startdate = x.startdate
+        if not startdate:
             return False
 
-        start = (datetime.datetime(year=self.year, month=self.startmonth,
-                                   day=1)
-                 - datetime.timedelta(days=self.padding))
-        end = datetime.datetime(year=self.year, month=self.startmonth + 3,
-                                day=self.padding)
+        enddate = x.enddate
+        if not enddate:
+            return False
 
-        enddate: datetime.datetime = x.enddate  # type: ignore[assignment]
-        return enddate > start and x.startdate < end
+        return enddate > self._start and startdate < self._end
 
 
 @pydantic.dataclasses.dataclass(init=False)
@@ -171,7 +178,7 @@ class Schedule:
                 xs = [x for x in assigned
                       if x.startdate
                       if box <= x.startdate
-                      and x.startdate <= box + datetime.timedelta(days=7)]
+                      and x.startdate < box + datetime.timedelta(days=7)]
                 if not xs:
                     self.aligned[assignee].append((1, None))
                     idx += 1
