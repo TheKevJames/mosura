@@ -111,7 +111,8 @@ class Quarter:
 
     @property
     def _start(self) -> datetime.datetime:
-        x = datetime.datetime(year=self.year, month=self.startmonth, day=1)
+        x = datetime.datetime(year=self.year, month=self.startmonth, day=1,
+                              tzinfo=datetime.timezone.utc)
         if x.isoweekday() != 1:
             x += datetime.timedelta(days=8 - x.isoweekday())
         x -= datetime.timedelta(days=self.padding)
@@ -120,7 +121,7 @@ class Quarter:
     @property
     def _end(self) -> datetime.datetime:
         x = datetime.datetime(year=self.year, month=self.startmonth + 3,
-                              day=self.padding)
+                              day=self.padding, tzinfo=datetime.timezone.utc)
         return x
 
     @property
@@ -148,6 +149,17 @@ class Quarter:
             return False
 
         return enddate > self._start and startdate < self._end
+
+    def pointer(
+            self,
+            date: datetime.datetime = datetime.datetime.now(
+                datetime.timezone.utc),
+    ) -> Iterator[bool]:
+        for box in self.boxes:
+            if box <= date < box + datetime.timedelta(days=7):
+                yield True
+                continue
+            yield False
 
 
 @pydantic.dataclasses.dataclass(init=False)

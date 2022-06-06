@@ -1,8 +1,21 @@
 {% extends "base.html" %}
 {% block title %}Gannt{% endblock %}
+{% block header %}
+<script>
+function onclick_navigate(e, key) {
+  var target = '_self';
+  if (e.ctrlKey || e.metaKey) {
+    target = '_blank';
+  }
+  window.open('/issues/' + key, target=target);
+};
+</script>
+{% endblock %}
 
 {% block content %}
 <div class="ui main container">
+  <h1>{{ schedule.quarter.display }}</h1>
+
   <table class="ui celled fixed unstackable structured table">
     <!-- TODO: point at current date -->
     <thead>
@@ -16,13 +29,27 @@
       </tr>
     </thead>
     <tbody>
+      <tr>
+        <td></td>
+        {% for p in schedule.quarter.pointer() %}
+          {% if p %}
+          <!-- TODO: should just be 0-padding, but the center aligned didn't work? -->
+          <td class="center aligned" style="padding:0 0 0 0.4em;">
+            <i class="caret down icon"></i>
+          </td>
+          {% else %}
+          <td></td>
+          {% endif %}
+        {% endfor %}
+      </tr>
+
       {% for assignee, boxes in schedule.aligned.items() %}
       <tr>
         <td>{{ assignee }}</td>
         <!-- TODO: consider allowing concurrent issues -->
         {% for span, issue in boxes %}
           {% if issue %}
-          <td colspan="{{ span }}" title="{{ issue.summary }}"
+          <td colspan="{{ span }}" title="{{ issue.key}}: {{ issue.summary }}"
             {% if issue.status == "Needs Triage" %}
             class="negative"
             {% elif issue.status in ("In Progress", "Code Review") %}
@@ -31,7 +58,7 @@
             class="positive"
             {% endif %}
           >
-            <a href="{{ settings.jira_domain }}/browse/{{ issue.key }}">{{ issue.key }}</a>
+            <a href="/issues/{{ issue.key }}">{{ issue.summary }}</a>
           {% else %}
           <td colspan="{{ span }}">
           {% endif %}
@@ -61,7 +88,7 @@
 
     <tbody>
     {% for issue in issues %}
-      <tr onclick="location.href='/issues/{{ issue.key }}'">
+      <tr onclick="onclick_navigate(event, '{{ issue.key }}');">
         <td data-label="Key">{{ issue.key }}</td>
         <td data-label="Summary">{{ issue.summary }}</td>
         <td data-label="Status">{{ issue.status }}</td>

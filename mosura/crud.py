@@ -39,6 +39,9 @@ def convert_issue_response(results: list[Row]) -> list[schemas.Issue]:
     xs = []
     for key, group in itertools.groupby(results, operator.attrgetter('key')):
         fields = list(group)
+        # TODO: store tzinfo in db
+        startdate = (fields[0][6].replace(tzinfo=datetime.timezone.utc)
+                     if fields[0][6] else None)
         xs.append(schemas.Issue.parse_obj({
             'key': key,
             'summary': fields[0][1],
@@ -46,7 +49,7 @@ def convert_issue_response(results: list[Row]) -> list[schemas.Issue]:
             'status': fields[0][3],
             'assignee': fields[0][4],
             'priority': fields[0][5],
-            'startdate': fields[0][6],
+            'startdate': startdate,
             'timeoriginalestimate': fields[0][7],
             'components': convert_component_response(key, fields),
             'labels': convert_label_response(key, fields),
