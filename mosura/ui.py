@@ -38,6 +38,11 @@ async def gannt(
     issues = await crud.read_issues()
     schedule = schemas.Schedule(issues)
 
+    okr_label = '/'.join((config.settings.jira_label_prefix,
+                          config.settings.jira_label_okr))
+    issues = [issue for issue in issues
+              if okr_label in {x.label for x in issue.labels}]
+
     return templates.TemplateResponse(
         'gannt.html',
         {'request': request, 'settings': config.settings, 'issues': issues,
