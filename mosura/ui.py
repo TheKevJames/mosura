@@ -41,7 +41,8 @@ async def gannt(
     okr_label = '/'.join((config.settings.jira_label_prefix,
                           config.settings.jira_label_okr))
     issues = [issue for issue in issues
-              if okr_label in {x.label for x in issue.labels}]
+              if okr_label in {x.label for x in issue.labels}
+              and issue not in schedule.raw]
 
     return templates.TemplateResponse(
         'gannt.html',

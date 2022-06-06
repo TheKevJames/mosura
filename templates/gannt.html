@@ -19,6 +19,7 @@
       {% for assignee, boxes in schedule.aligned.items() %}
       <tr>
         <td>{{ assignee }}</td>
+        <!-- TODO: consider allowing concurrent issues -->
         {% for span, issue in boxes %}
           {% if issue %}
           <td colspan="{{ span }}" title="{{ issue.summary }}">

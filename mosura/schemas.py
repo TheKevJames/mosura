@@ -147,7 +147,7 @@ class Quarter:
 class Schedule:
     quarter: Quarter
     aligned: dict[str | None, list[tuple[int, Issue | None]]]
-    raw: dict[str | None, list[Issue]]
+    raw: list[Issue]
 
     def __init__(self, issues: list[Issue],
                  quarter: Quarter | None = None) -> None:
@@ -156,21 +156,22 @@ class Schedule:
         def grouper(x: Issue) -> str:
             return x.assignee or ''
 
-        relevant = [x for x in issues if self.quarter.contains(x)]
-        self.raw = {k: list(v)
-                    for k, v in itertools.groupby(
-                        sorted(relevant, key=grouper), grouper)}
+        self.raw = [x for x in issues if self.quarter.contains(x)]
+        grouped = {k: list(v)
+                   for k, v in itertools.groupby(
+                       sorted(self.raw, key=grouper), grouper)}
 
-        self.aligned = {k: [] for k in self.raw}
-        for assignee, assigned in self.raw.items():
+        self.aligned = {k: [] for k in grouped}
+        for assignee, assigned in grouped.items():
             boxes = list(self.quarter.boxes)
             idx = 0
 
             while idx < len(boxes):
                 box = boxes[idx]
                 xs = [x for x in assigned
-                      if x.enddate
-                      and box <= x.enddate <= box + datetime.timedelta(days=7)]
+                      if x.startdate
+                      if box <= x.startdate
+                      and x.startdate <= box + datetime.timedelta(days=7)]
                 if not xs:
                     self.aligned[assignee].append((1, None))
                     idx += 1
