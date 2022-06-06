@@ -38,7 +38,7 @@
         <p>Assignee: {{ issue.assignee }}</p>
       </div>
       <div class="two wide column">
-        <p>Start Date: {{ issue.startdate.strftime("%Y-%m-%d") }}</p>
+        <p>Start Date: {{ issue.startdate | dateformat }}</p>
       </div>
       <div class="two wide column">
         <p>Time Estimate: {{ issue.timeestimate }}</p>

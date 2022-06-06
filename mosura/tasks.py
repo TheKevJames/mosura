@@ -68,7 +68,7 @@ async def fetch(client: jira.JIRA, *, variant: str, jql: str,
                     startdate=datetime_or_null(
                         issue['fields']['customfield_12161']),
                     timeoriginalestimate=(
-                        issue['fields'].get('timeoriginalestimate') or '0m'),
+                        issue['fields'].get('timeoriginalestimate') or '0'),
                 ))
 
             if issues['total'] < idx + page_size:

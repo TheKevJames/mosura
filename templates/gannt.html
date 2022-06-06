@@ -10,7 +10,7 @@
         <th colspan="1">Name</th>
         {% for span, disabled, header in schedule.quarter.headers %}
         <th colspan="{{ span }}" {% if disabled %}style="color:gray;"{% endif %}>
-          {{ header.strftime("%Y-%m-%d") }}
+          {{ header | dateformat }}
         </th>
         {% endfor %}
       </tr>

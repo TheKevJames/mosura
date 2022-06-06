@@ -1,3 +1,5 @@
+import datetime
+
 import fastapi.templating
 import starlette
 
@@ -9,6 +11,15 @@ from . import schemas
 router = fastapi.APIRouter(tags=['ui'])
 
 templates = fastapi.templating.Jinja2Templates(directory='templates')
+
+
+def dateformat(x: datetime.datetime | None) -> str:
+    if x is None:
+        return ''
+    return x.strftime('%Y-%m-%d')
+
+
+templates.env.filters['dateformat'] = dateformat
 
 
 @router.get('/', response_class=fastapi.responses.HTMLResponse)
