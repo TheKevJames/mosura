@@ -25,6 +25,14 @@ function update_filter(field, value) {
     }
   })
 };
+
+function onclick_navigate(e, key) {
+  var target = '_self';
+  if (e.ctrlKey || e.metaKey) {
+    target = '_blank';
+  }
+  window.open('/issues/' + key, target=target);
+};
 </script>
 {% endblock %}
 
@@ -148,7 +156,7 @@ function update_filter(field, value) {
 
     <tbody>
     {% for issue in issues %}
-      <tr onclick="location.href='/issues/{{ issue.key }}'">
+      <tr onclick="onclick_navigate(event, '{{ issue.key }}');">
         <td data-label="Key">{{ issue.key }}</td>
         <td data-label="Summary">{{ issue.summary }}</td>
         <td data-label="Status" {% if issue.status == "Needs Triage" %}class="warning"{% endif %}>
