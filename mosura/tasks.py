@@ -48,11 +48,14 @@ async def fetch(client: jira.JIRA, *, variant: str, jql: str,
             logger.debug('fetch(%s): fetched %d issues, writing to localdb',
                          variant, len(issues.get('issues', [])))
             for issue in issues.get('issues', []):
+                # TODO: in-place componet and label upserts
+                await crud.delete_issue_components(key=issue['key'])
                 for component in issue['fields']['components']:
                     await crud.upsert_issue_component(
                         schemas.Component(key=issue['key'],
                                           component=component['name']))
 
+                await crud.delete_issue_labels(key=issue['key'])
                 for label in issue['fields']['labels']:
                     await crud.upsert_issue_label(
                         schemas.Label(key=issue['key'], label=label))

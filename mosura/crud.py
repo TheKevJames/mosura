@@ -4,6 +4,7 @@ import operator
 
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.engine.row import Row  # type: ignore
+from sqlalchemy.sql import delete
 from sqlalchemy.sql import select
 
 from . import database
@@ -119,9 +120,25 @@ async def upsert_issue(issue: schemas.IssueCreate) -> None:
     await database.database.execute(query)
 
 
+async def delete_issue_components(key: str) -> None:
+    query = (
+        delete(models.Component.__table__)
+        .where(models.Component.key == key)
+    )
+    await database.database.execute(query)
+
+
 async def upsert_issue_component(component: schemas.Component) -> None:
     stmt = insert(models.Component.__table__).values(**component.dict())
     query = stmt.on_conflict_do_nothing()
+    await database.database.execute(query)
+
+
+async def delete_issue_labels(key: str) -> None:
+    query = (
+        delete(models.Label.__table__)
+        .where(models.Label.key == key)
+    )
     await database.database.execute(query)
 
 

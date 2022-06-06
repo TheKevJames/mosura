@@ -173,6 +173,7 @@ class Schedule:
             boxes = list(self.quarter.boxes)
             idx = 0
 
+            # TODO: account for projects which bled over from last quarter
             while idx < len(boxes):
                 box = boxes[idx]
                 xs = [x for x in assigned
