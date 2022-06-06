@@ -157,7 +157,7 @@ async def read_task(key: str, variant: str) -> schemas.Task | None:
         .where(models.Task.key == key)
         .where(models.Task.variant == variant)
     )
-    result = await database.database.fetch_one(query)
+    result: Row = await database.database.fetch_one(query)
     if not result:
         return None
 
