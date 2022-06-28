@@ -1,6 +1,7 @@
 version: 2.1
 
 orbs:
+  docker: talkiq/docker@2
   linter: talkiq/linter@2
   poetry: talkiq/poetry@3
 
@@ -15,6 +16,32 @@ executors:
       JIRA_PROJECT: MOS
     resource_class: small
 
+jobs:
+  docker-readme-build:
+    docker:
+      - image: pandoc/core:2.18.0
+    steps:
+      - run: apk add --no-cache --no-progress ca-certificates openssl
+      - run: mkdir /meta
+      - checkout
+      - run: pandoc -o/meta/README.md README.rst
+      - persist_to_workspace:
+          root: /meta
+          paths:
+            - README.md
+
+  # TODO: this should be doable with curl or python...
+  docker-readme-push:
+    docker:
+      - image: node:18.3.0-alpine
+    steps:
+      - run: apk add --no-cache --no-progress ca-certificates openssl
+      - checkout
+      - run: npm install docker-hub-api
+      - attach_workspace:
+          at: /meta
+      - run: node ./docker-update-readme.js thekevjames mosura /meta/README.md
+
 workflows:
   run-jobs:
     jobs:
@@ -23,3 +50,15 @@ workflows:
           name: pytest
           cmd: pytest
           executor: python
+      - docker/publish:
+          requires:
+            - linter/pre-commit
+            - pytest
+      - docker-readme-build:
+          requires:
+            - linter/pre-commit
+            - pytest
+      - docker-readme-publish:
+          requires:
+            - docker/publish
+            - docker-readme-build
