@@ -51,6 +51,7 @@ workflows:
           cmd: pytest
           executor: python
       - docker/publish:
+          image: thekevjames/mosura  # TODO: fix orb (force lowercase username)
           pre-steps:
             - setup_remote_docker:
                 version: 20.10.6
