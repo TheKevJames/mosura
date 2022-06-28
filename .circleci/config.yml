@@ -31,7 +31,7 @@ jobs:
             - README.md
 
   # TODO: this should be doable with curl or python...
-  docker-readme-push:
+  docker-readme-publish:
     docker:
       - image: node:18.3.0-alpine
     steps:

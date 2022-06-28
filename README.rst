@@ -10,6 +10,9 @@ Mosura is an opinionated Task management frontend. Overall project goals are:
 * **opinionated workflows**: Mosura assumes you're looking for a simplified
   experience and trims out all the inessential cruft
 
+I don't currently expect Mosura to be useful for anyone but myself. Maybe
+eventually!
+
 Hacking
 -------
 
@@ -38,6 +41,8 @@ Useful commands:
 
     # build docker image
     docker build -t thekevjames/mosura:latest .
+    # or pull the latest image
+    docker pull thekevjames/mosura:latest
 
     # run prod server (localhost:8000)
     docker run --rm -it \
