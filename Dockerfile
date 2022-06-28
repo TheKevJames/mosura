@@ -16,6 +16,8 @@ RUN --mount=type=cache,target=/root/.cache \
     poetry install --no-root --no-dev
 
 COPY mosura ./mosura
+COPY static ./static
+COPY templates ./templates
 
 
 FROM base AS test
