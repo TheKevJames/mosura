@@ -22,7 +22,7 @@ jobs:
       - image: pandoc/core:2.18.0
     steps:
       - run: apk add --no-cache --no-progress ca-certificates openssl
-      - run: mkdir /tmp
+      - run: mkdir -p /tmp
       - checkout
       - run: pandoc -o/tmp/README.md README.rst
       - persist_to_workspace:
