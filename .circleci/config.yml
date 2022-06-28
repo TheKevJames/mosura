@@ -52,7 +52,7 @@ workflows:
           executor: python
       - docker/publish:
           pre-steps:
-            - setup_remove_docker:
+            - setup_remote_docker:
                 version: 20.10.6
             - run: echo "$DOCKER_PASS" | docker login --username "$DOCKER_USER" --password-stdin
           requires:
