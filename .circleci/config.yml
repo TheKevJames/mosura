@@ -22,11 +22,11 @@ jobs:
       - image: pandoc/core:2.18.0
     steps:
       - run: apk add --no-cache --no-progress ca-certificates openssl
-      - run: mkdir /meta
+      - run: mkdir /tmp
       - checkout
-      - run: pandoc -o/meta/README.md README.rst
+      - run: pandoc -o/tmp/README.md README.rst
       - persist_to_workspace:
-          root: /meta
+          root: /tmp
           paths:
             - README.md
 
@@ -39,8 +39,8 @@ jobs:
       - checkout
       - run: npm install docker-hub-api
       - attach_workspace:
-          at: /meta
-      - run: node ./docker-update-readme.js thekevjames mosura /meta/README.md
+          at: /tmp
+      - run: node ./docker-update-readme.js thekevjames mosura
 
 workflows:
   run-jobs:
