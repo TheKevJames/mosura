@@ -93,7 +93,6 @@ class Quarter:
     startmonth: int
     display: str
     padding: int
-    weeks: int
 
     def __init__(
             self,
