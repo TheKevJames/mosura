@@ -94,12 +94,10 @@ class Quarter:
     display: str
     padding: int
 
-    def __init__(
-            self,
-            date: datetime.datetime = datetime.datetime.now(
-                datetime.timezone.utc),
-            padding: int = 7,
-    ) -> None:
+    def __init__(self, date: datetime.datetime | None = None,
+                 padding: int = 7) -> None:
+        date = date or datetime.datetime.now(datetime.timezone.utc)
+
         self.padding = padding
         self.year = date.year if date.month > 1 else date.year - 1
 
