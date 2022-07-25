@@ -14,7 +14,15 @@ function onclick_navigate(e, key) {
 
 {% block content %}
 <div class="ui main container">
-  <h1>{{ schedule.quarter.display }}</h1>
+  <h1>
+    <a href="?quarter={{schedule.quarter.display_offset(-1)}}">
+      <i class="icon angle left"></i>
+    </a>
+    {{ schedule.quarter.display }}
+    <a href="?quarter={{schedule.quarter.display_offset(1)}}">
+      <i class="icon angle right"></i>
+    </a>
+  </h1>
 
   <table class="ui celled fixed unstackable structured table">
     <!-- TODO: point at current date -->

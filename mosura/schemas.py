@@ -159,6 +159,13 @@ class Quarter:
 
         return enddate > self._start and startdate < self._end
 
+    def display_offset(self, offset: int) -> str:
+        year, quarter = (int(x) for x in self.display.split('Q', maxsplit=1))
+
+        year += (abs(offset) // offset) * (abs(offset) // 4)
+        quarter += offset
+        return f'{year}Q{quarter}'
+
     def pointer(
             self,
             date: datetime.datetime = datetime.datetime.now(
