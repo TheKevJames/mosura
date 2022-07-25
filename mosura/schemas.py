@@ -106,6 +106,18 @@ class Quarter:
 
         self.display = f'{self.year}Q{quarter}'
 
+    @classmethod
+    def from_display(cls, display: str | None, padding: int = 7) -> 'Quarter':
+        if not display:
+            return Quarter(padding=padding)
+
+        year, quarter = display.split('Q', maxsplit=1)
+        month = int(quarter) * 3
+
+        date = datetime.datetime(year=int(year), month=month, day=1,
+                                 tzinfo=datetime.timezone.utc)
+        return Quarter(date=date, padding=padding)
+
     @property
     def _start(self) -> datetime.datetime:
         x = datetime.datetime(year=self.year, month=self.startmonth, day=1,
