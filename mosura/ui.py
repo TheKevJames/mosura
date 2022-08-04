@@ -36,19 +36,22 @@ async def gannt(
         request: fastapi.Request,
         quarter: str | None = None,
 ) -> starlette.templating._TemplateResponse:
-    issues = await crud.read_issues()  # TODO: include Closed
-    schedule = schemas.Schedule(issues,
-                                quarter=schemas.Quarter.from_display(quarter))
-
     okr_label = config.settings.jira_label_okr
-    issues = [issue for issue in issues
-              if okr_label in {x.label for x in issue.labels}
-              and issue not in schedule.raw]
+    # TODO: include Closed
+    issues = [issue for issue in await crud.read_issues()
+              if okr_label in {x.label for x in issue.labels}]
+
+    q = schemas.Quarter.from_display(quarter)
+    schedule = schemas.Schedule(issues, quarter=q)
+
+    issues = [x for x in issues
+              if x not in schedule.raw
+              and not q.uncontained(x)]
 
     return templates.TemplateResponse(
         'gannt.html',
         {'request': request, 'settings': config.settings, 'issues': issues,
-         'schedule': schedule})
+         'okr_label': okr_label, 'schedule': schedule})
 
 
 @router.get('/issues', response_class=fastapi.responses.HTMLResponse)

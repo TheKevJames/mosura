@@ -14,15 +14,21 @@ function onclick_navigate(e, key) {
 
 {% block content %}
 <div class="ui main container">
-  <h1>
-    <a href="?quarter={{schedule.quarter.display_offset(-1)}}">
-      <i class="icon angle left"></i>
-    </a>
-    {{ schedule.quarter.display }}
-    <a href="?quarter={{schedule.quarter.display_offset(1)}}">
-      <i class="icon angle right"></i>
-    </a>
-  </h1>
+  <div>
+    <h1>
+      <a href="?quarter={{schedule.quarter.display_offset(-1)}}">
+        <i class="icon angle left"></i>
+      </a>
+      {{ schedule.quarter.display }}
+      <a href="?quarter={{schedule.quarter.display_offset(1)}}">
+        <i class="icon angle right"></i>
+      </a>
+    </h1>
+
+    <div class="ui icon" data-tooltip="Usage:&#xa;1. Label relevant tickets as {{okr_label}}&#xa;2. Assign owners/start times/time estimations&#xa;3. Resolve conflicts" data-position="top left">
+      <i class="question circle icon"></i>
+    </div>
+  </div>
 
   <table class="ui celled fixed unstackable structured table">
     <!-- TODO: point at current date -->
@@ -54,7 +60,6 @@ function onclick_navigate(e, key) {
       {% for assignee, boxes in schedule.aligned.items() %}
       <tr>
         <td>{{ assignee }}</td>
-        <!-- TODO: consider allowing concurrent issues -->
         {% for span, issue in boxes %}
           {% if issue %}
           <td colspan="{{ span }}" title="{{ issue.key}}: {{ issue.summary }}"
@@ -76,46 +81,82 @@ function onclick_navigate(e, key) {
       {% endfor %}
     </tbody>
   </table>
-</div>
 
-<!-- TODO dedupe with other list pages -->
-{% if issues %}
-<div class="ui divider"></div>
+  {% if schedule.unaligned %}
+  <div class="ui divider"></div>
 
-<div class="ui container">
-  <table class="ui celled striped unstackable selectable table">
-    <thead class="single line">
-      <th>Key</th>
-      <th>Summary</th>
-      <th>Status</th>
-      <th>Assignee</th>
-      <th>Priority</th>
-      <th>Components</th>
-      <th>Labels</th>
-    </thead>
+  <h3>Unassigned / Incomplete Scheduling Data / Time Conflicts</h3>
 
+  <table class="ui celled fixed unstackable structured table">
     <tbody>
-    {% for issue in issues %}
-      <tr onclick="onclick_navigate(event, '{{ issue.key }}');">
-        <td data-label="Key">{{ issue.key }}</td>
-        <td data-label="Summary">{{ issue.summary }}</td>
-        <td data-label="Status">{{ issue.status }}</td>
-        <td data-label="Assignee">{{ issue.assignee }}</td>
-        <td data-label="Priority">{{ issue.priority }}</td>
-        <td data-label="Components">
-        {% for c in issue.components %}
-          <p>{{ c.component }}</p>
+      {% for (start, span, issue) in schedule.unaligned %}
+      <tr>
+        <td>{{ issue.assignee or "Unassigned" }}</td>
+
+        {% for _ in range(start) %}
+        <td></td>
         {% endfor %}
+        <td colspan="{{ span }}" title="{{ issue.key}}: {{ issue.summary }}"
+          {% if issue.status == "Needs Triage" %}
+          class="negative"
+          {% elif issue.status in ("In Progress", "Code Review") %}
+          class="warning"
+          {% elif issue.status == "Closed" %}
+          class="positive"
+          {% endif %}
+        >
+          <a href="/issues/{{ issue.key }}">{{ issue.summary }}</a>
         </td>
-        <td data-label="Labels">
-        {% for l in issue.labels %}
-          <p>{{ l.label }}</p>
+        {% for _ in range(schedule.quarter.boxes | list | length - start - span) %}
+        <td></td>
         {% endfor %}
-        </td>
       </tr>
-    {% endfor %}
+      {% endfor %}
     </tbody>
   </table>
+  {% endif %}
+
+  <!-- TODO dedupe with other list pages -->
+  {% if issues %}
+  <div class="ui divider"></div>
+
+  <h3>All Other {{okr_label}} Issues</h3>
+
+  <div class="ui container">
+    <table class="ui celled striped unstackable selectable table">
+      <thead class="single line">
+        <th>Key</th>
+        <th>Summary</th>
+        <th>Status</th>
+        <th>Assignee</th>
+        <th>Priority</th>
+        <th>Components</th>
+        <th>Labels</th>
+      </thead>
+
+      <tbody>
+      {% for issue in issues %}
+        <tr onclick="onclick_navigate(event, '{{ issue.key }}');">
+          <td data-label="Key">{{ issue.key }}</td>
+          <td data-label="Summary">{{ issue.summary }}</td>
+          <td data-label="Status">{{ issue.status }}</td>
+          <td data-label="Assignee">{{ issue.assignee }}</td>
+          <td data-label="Priority">{{ issue.priority }}</td>
+          <td data-label="Components">
+          {% for c in issue.components %}
+            <p>{{ c.component }}</p>
+          {% endfor %}
+          </td>
+          <td data-label="Labels">
+          {% for l in issue.labels %}
+            <p>{{ l.label }}</p>
+          {% endfor %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
 </div>
-{% endif %}
 {% endblock %}

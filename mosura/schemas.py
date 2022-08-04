@@ -1,5 +1,6 @@
 import datetime
 import itertools
+from collections.abc import Iterable
 from collections.abc import Iterator
 
 import pydantic
@@ -177,31 +178,61 @@ class Quarter:
                 continue
             yield False
 
+    def uncontained(self, x: Issue) -> bool:
+        startdate = x.startdate
+        if not startdate:
+            return False
+
+        enddate = x.enddate
+        if not enddate:
+            return False
+
+        return startdate > self._end or enddate < self._start
+
 
 @pydantic.dataclasses.dataclass(init=False)
 class Schedule:
     quarter: Quarter
-    aligned: dict[str | None, list[tuple[int, Issue | None]]]
+    aligned: dict[str, list[tuple[int, Issue | None]]]
     raw: list[Issue]
 
     def __init__(self, issues: list[Issue],
                  quarter: Quarter | None = None) -> None:
         self.quarter = quarter or Quarter()
 
+        in_quarter = [x for x in issues
+                      if self.quarter.contains(x)
+                      and x.assignee]
+        invalid = [x for x in issues if x not in in_quarter]
+
+        self.unaligned = []
+        self.aligned = {}
+
+        boxes = list(self.quarter.boxes)
+        self._build_aligned(in_quarter, boxes)
+
+        for issue in invalid[::-1]:
+            data = self._get_unaligned_data(boxes, issue)
+            if not data:
+                invalid.remove(issue)
+                continue
+
+            self.unaligned.append(data)
+
+        self.raw = list(in_quarter) + invalid
+
+    def _build_aligned(self, issues: Iterable[Issue],
+                       boxes: list[datetime.datetime]) -> None:
         def grouper(x: Issue) -> str:
             return x.assignee or ''
 
-        self.raw = [x for x in issues if self.quarter.contains(x)]
-        grouped = {k: list(v)
-                   for k, v in itertools.groupby(
-                       sorted(self.raw, key=grouper), grouper)}
-
+        grouped = {k: list(v) for k, v in itertools.groupby(
+            sorted(issues, key=grouper), grouper)}
         self.aligned = {k: [] for k in grouped}
-        for assignee, assigned in grouped.items():
-            boxes = list(self.quarter.boxes)
-            idx = 0
 
+        for assignee, assigned in grouped.items():
             # TODO: account for projects which bled over from last quarter
+            idx = 0
             while idx < len(boxes):
                 box = boxes[idx]
                 xs = [x for x in assigned
@@ -213,6 +244,32 @@ class Schedule:
                     idx += 1
                     continue
 
-                fills = -(-xs[0].timeestimate.days // 7)
-                self.aligned[assignee].append((fills, xs[0]))
+                x = xs.pop()
+                fills = -(-x.timeestimate.days // 7)
+                self.aligned[assignee].append((fills, x))
+
+                for x in xs:
+                    fill = -(-x.timeestimate.days // 7)
+                    self.unaligned.append((idx, fill, x))
+
                 idx += fills
+
+    @staticmethod
+    def _get_unaligned_data(boxes: list[datetime.datetime],
+                            x: Issue) -> tuple[int, int, Issue] | None:
+        if x.startdate:
+            for idx, box in enumerate(boxes):
+                if (box <= x.startdate
+                        and (x.startdate < box + datetime.timedelta(days=7))):
+                    break
+            else:
+                return None
+        else:
+            idx = 1
+
+        if x.timeestimate:
+            fills = -(-x.timeestimate.days // 7)
+        else:
+            fills = len(boxes) - 2
+
+        return (idx, fills, x)

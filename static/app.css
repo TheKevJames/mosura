@@ -1,2 +1,6 @@
 .ui.main.container {
   margin-top: 7em; }
+
+/* &#xa; -> linebreak in data-tooltip fields */
+[data-tooltip]::after {
+  white-space: pre; }
