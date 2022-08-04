@@ -231,8 +231,16 @@ class Schedule:
         self.aligned = {k: [] for k in grouped}
 
         for assignee, assigned in grouped.items():
-            # TODO: account for projects which bled over from last quarter
-            idx = 0
+            xs = [x for x in assigned
+                  if x.startdate and x.startdate < boxes[0]]
+            if xs:
+                x = xs.pop()
+                assert x.enddate, 'enddate missing for aligned data'
+                fills = -(-(x.enddate - boxes[0]).days // 7)
+                self.aligned[assignee].append((fills, x))
+                self._handle_overlap(xs, 0)
+
+            idx = 1
             while idx < len(boxes):
                 box = boxes[idx]
                 xs = [x for x in assigned
@@ -247,12 +255,14 @@ class Schedule:
                 x = xs.pop()
                 fills = -(-x.timeestimate.days // 7)
                 self.aligned[assignee].append((fills, x))
-
-                for x in xs:
-                    fill = -(-x.timeestimate.days // 7)
-                    self.unaligned.append((idx, fill, x))
-
+                self._handle_overlap(xs, idx)
                 idx += fills
+
+    def _handle_overlap(self, xs: list[Issue], idx: int) -> None:
+        """Handle overlapping Issues by marking 'em as unaligned."""
+        for x in xs:
+            fill = -(-x.timeestimate.days // 7)
+            self.unaligned.append((idx, fill, x))
 
     @staticmethod
     def _get_unaligned_data(boxes: list[datetime.datetime],
