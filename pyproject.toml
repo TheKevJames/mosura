@@ -9,7 +9,7 @@ license = "MIT"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<4.0"
-databases = {version = "0.5.5", extras = ["sqlite"]}
+databases = {version = "0.6.1", extras = ["sqlite"]}
 fastapi = "0.78.0"
 httptools = "0.4.0"
 jinja2 = "3.1.2"
