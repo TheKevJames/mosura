@@ -62,15 +62,12 @@ function onclick_navigate(e, key) {
         <td>{{ assignee }}</td>
         {% for span, issue in boxes %}
           {% if issue %}
-          <td colspan="{{ span }}" title="{{ issue.key}}: {{ issue.summary }}"
-            {% if issue.status == "Needs Triage" %}
-            class="negative"
-            {% elif issue.status in ("In Progress", "Code Review") %}
-            class="warning"
-            {% elif issue.status == "Closed" %}
-            class="positive"
+          <td colspan="{{ span }}" title="{{ issue.key}}: {{ issue.summary }}" class="ui message
+            {% if issue.status == "Closed" %}green
+            {% elif issue.status in ("In Progress", "Code Review") %}yellow
+            {% elif issue.status == "Needs Triage" %}red
             {% endif %}
-          >
+          ">
             <a href="/issues/{{ issue.key }}">{{ issue.summary }}</a>
           {% else %}
           <td colspan="{{ span }}">
@@ -90,27 +87,26 @@ function onclick_navigate(e, key) {
   <table class="ui celled fixed unstackable structured table">
     <tbody>
       {% for (start, span, issue) in schedule.unaligned %}
-      <tr>
-        <td>{{ issue.assignee or "Unassigned" }}</td>
+        {% if issue.status != "Closed" %}
+        <tr>
+          <td>{{ issue.assignee or "Unassigned" }}</td>
 
-        {% for _ in range(start) %}
-        <td></td>
-        {% endfor %}
-        <td colspan="{{ span }}" title="{{ issue.key}}: {{ issue.summary }}"
-          {% if issue.status == "Needs Triage" %}
-          class="negative"
-          {% elif issue.status in ("In Progress", "Code Review") %}
-          class="warning"
-          {% elif issue.status == "Closed" %}
-          class="positive"
-          {% endif %}
-        >
-          <a href="/issues/{{ issue.key }}">{{ issue.summary }}</a>
-        </td>
-        {% for _ in range(schedule.quarter.boxes | list | length - start - span) %}
-        <td></td>
-        {% endfor %}
-      </tr>
+          {% for _ in range(start) %}
+          <td></td>
+          {% endfor %}
+          <td colspan="{{ span }}" title="{{ issue.key}}: {{ issue.summary }}" class="ui message
+            {% if issue.status == "Closed" %}green
+            {% elif issue.status in ("In Progress", "Code Review") %}yellow
+            {% elif issue.status == "Needs Triage" %}red
+            {% endif %}
+          ">
+            <a href="/issues/{{ issue.key }}">{{ issue.summary }}</a>
+          </td>
+          {% for _ in range(schedule.quarter.boxes | list | length - start - span) %}
+          <td></td>
+          {% endfor %}
+        </tr>
+        {% endif %}
       {% endfor %}
     </tbody>
   </table>
