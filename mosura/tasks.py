@@ -8,7 +8,6 @@ from typing import cast
 
 import jira
 
-from . import config
 from . import crud
 from . import schemas
 
@@ -86,21 +85,21 @@ async def fetch(client: jira.JIRA, *, variant: str, jql: str,
         await crud.upsert_task(task)
 
 
-async def fetch_closed(client: jira.JIRA) -> None:
+async def fetch_closed(client: jira.JIRA, project: str) -> None:
     await fetch(
         client,
         interval=datetime.timedelta(minutes=15),
-        jql=(f"project = '{config.settings.jira_project}' "
+        jql=(f"project = '{project}' "
              "AND status = 'Closed'"),
         variant='closed',
     )
 
 
-async def fetch_open(client: jira.JIRA) -> None:
+async def fetch_open(client: jira.JIRA, project: str) -> None:
     await fetch(
         client,
         interval=datetime.timedelta(minutes=5),
-        jql=(f"project = '{config.settings.jira_project}' "
+        jql=(f"project = '{project}' "
              "AND status != 'Closed'"),
         variant='open',
     )

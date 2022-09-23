@@ -3,13 +3,10 @@ import logging.config
 from typing import Any
 
 import fastapi.staticfiles
-import jira
 
 from . import api
-from . import config
 from . import database
 from . import log
-from . import tasks
 from . import ui
 
 
@@ -22,8 +19,8 @@ app.mount('/static', fastapi.staticfiles.StaticFiles(directory='static'),
 
 database.Base.metadata.create_all(bind=database.engine)
 
-logging.config.dictConfig(log.LogConfig().dict())
 logger = logging.getLogger(__name__)
+logging.config.dictConfig(log.LogConfig().dict())
 
 
 def log_exception(_loop: asyncio.AbstractEventLoop,
@@ -38,18 +35,7 @@ def log_exception(_loop: asyncio.AbstractEventLoop,
 # Events
 @app.on_event('startup')
 async def startup() -> None:
-    app.state.jira = jira.JIRA(config.settings.jira_domain,
-                               basic_auth=(config.settings.jira_username,
-                                           config.settings.jira_token))
-    # TODO: dynamic user selection
-    app.state.myself = app.state.jira.myself()['displayName']
-    logger.info('startup(): connected to jira as "%s"', app.state.myself)
-
     await database.database.connect()
-
-    asyncio.get_event_loop().set_exception_handler(log_exception)
-    asyncio.create_task(tasks.fetch_closed(app.state.jira))
-    asyncio.create_task(tasks.fetch_open(app.state.jira))
 
 
 @app.on_event('shutdown')

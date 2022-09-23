@@ -3,7 +3,6 @@ import datetime
 import fastapi.templating
 import starlette
 
-from . import config
 from . import crud
 from . import schemas
 
@@ -25,21 +24,21 @@ templates.env.filters['dateformat'] = dateformat
 @router.get('/', response_class=fastapi.responses.HTMLResponse)
 async def home(
         request: fastapi.Request,
-) -> starlette.templating._TemplateResponse:
+) -> starlette.responses.Response:
     return templates.TemplateResponse(
         'home.html',
-        {'request': request, 'settings': config.settings})
+        {'request': request})
 
 
 @router.get('/gannt', response_class=fastapi.responses.HTMLResponse)
 async def gannt(
         request: fastapi.Request,
         quarter: str | None = None,
-) -> starlette.templating._TemplateResponse:
-    okr_label = config.settings.jira_label_okr
+        jira_label_okr: str = fastapi.Cookie(default='okr'),
+) -> starlette.responses.Response:
     # TODO: include Closed
     issues = [issue for issue in await crud.read_issues()
-              if okr_label in {x.label for x in issue.labels}]
+              if jira_label_okr in {x.label for x in issue.labels}]
 
     q = schemas.Quarter.from_display(quarter)
     schedule = schemas.Schedule(issues, quarter=q)
@@ -50,63 +49,92 @@ async def gannt(
 
     return templates.TemplateResponse(
         'gannt.html',
-        {'request': request, 'settings': config.settings, 'issues': issues,
-         'okr_label': okr_label, 'schedule': schedule})
+        {'request': request, 'issues': issues, 'okr_label': jira_label_okr,
+         'schedule': schedule})
 
 
 @router.get('/issues', response_class=fastapi.responses.HTMLResponse)
 async def list_issues(
         request: fastapi.Request,
-) -> starlette.templating._TemplateResponse:
+) -> starlette.responses.Response:
     issues = await crud.read_issues()
     meta = schemas.Meta(issues)
     return templates.TemplateResponse(
         'issues.list.html',
-        {'request': request, 'settings': config.settings, 'issues': issues,
-         'meta': meta})
+        {'request': request, 'issues': issues, 'meta': meta})
 
 
 @router.get('/mine', response_class=fastapi.responses.HTMLResponse)
 async def list_my_issues(
         request: fastapi.Request,
-) -> starlette.templating._TemplateResponse:
-    issues = await crud.read_issues_for_user(request.app.state.myself)
+        jira_domain: str | None = fastapi.Cookie(default=None),
+        jira_label_okr: str = fastapi.Cookie(default='okr'),
+        jira_project: str | None = fastapi.Cookie(default=None),
+        jira_token: str | None = fastapi.Cookie(default=None),
+        jira_username: str | None = fastapi.Cookie(default=None),
+) -> starlette.responses.Response:
+    settings = schemas.Settings(
+        jira_domain=jira_domain, jira_label_okr=jira_label_okr,
+        jira_project=jira_project, jira_token=jira_token,
+        jira_username=jira_username)
+
+    client = settings.jira_client
+    if not client:
+        return fastapi.responses.RedirectResponse('/settings')
+
+    myself = client.myself()['displayName']
+    issues = await crud.read_issues_for_user(myself)
     meta = schemas.Meta(issues)
     return templates.TemplateResponse(
         'issues.list.html',
-        {'request': request, 'settings': config.settings, 'issues': issues,
-         'meta': meta})
+        {'request': request, 'issues': issues, 'meta': meta})
 
 
 @router.get('/issues/{key}', response_class=fastapi.responses.HTMLResponse)
-async def show_issue(request: fastapi.Request,
-                     key: str) -> starlette.templating._TemplateResponse:
+async def show_issue(
+        request: fastapi.Request,
+        key: str,
+        jira_domain: str = fastapi.Cookie(),
+) -> starlette.responses.Response:
     issue = await crud.read_issue(key)
     if not issue:
         raise fastapi.HTTPException(status_code=404)
 
     return templates.TemplateResponse(
         'issues.show.html',
-        {'request': request, 'settings': config.settings, 'issue': issue})
+        {'request': request, 'jira_domain': jira_domain, 'issue': issue})
 
 
 @router.get('/settings', response_class=fastapi.responses.HTMLResponse)
-async def settings(
+async def show_settings(
         request: fastapi.Request,
-) -> starlette.templating._TemplateResponse:
+        jira_domain: str | None = fastapi.Cookie(default=None),
+        jira_label_okr: str = fastapi.Cookie(default='okr'),
+        jira_project: str | None = fastapi.Cookie(default=None),
+        jira_token: str | None = fastapi.Cookie(default=None),
+        jira_username: str | None = fastapi.Cookie(default=None),
+) -> starlette.responses.Response:
+    settings = schemas.Settings(
+        jira_domain=jira_domain, jira_label_okr=jira_label_okr,
+        jira_project=jira_project, jira_token=jira_token,
+        jira_username=jira_username)
+
+    client = settings.jira_client
+    myself = 'Please configure your Jira credentials'
+    if client:
+        myself = client.myself()['displayName']
+
     return templates.TemplateResponse(
         'settings.html',
-        {'request': request, 'settings': config.settings,
-         'myself': request.app.state.myself})
+        {'request': request, 'settings': settings, 'myself': myself})
 
 
 @router.get('/triage', response_class=fastapi.responses.HTMLResponse)
 async def list_triagable_issues(
         request: fastapi.Request,
-) -> starlette.templating._TemplateResponse:
+) -> starlette.responses.Response:
     issues = await crud.read_issues_needing_triage()
     meta = schemas.Meta(issues)
     return templates.TemplateResponse(
         'issues.list.html',
-        {'request': request, 'settings': config.settings, 'issues': issues,
-         'meta': meta})
+        {'request': request, 'issues': issues, 'meta': meta})

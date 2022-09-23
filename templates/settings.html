@@ -1,17 +1,68 @@
 {% extends "base.html" %}
 {% block title %}Settings{% endblock %}
+{% block header %}
+<script>
+function update() {
+  let xhr = new XMLHttpRequest();
+  xhr.open('POST', '/api/v0/settings');
+  xhr.setRequestHeader('Accept', 'application/json');
+  xhr.setRequestHeader('Content-Type', 'application/json');
+
+  let domain = document.getElementById('jira-domain').value;
+  let label_okr = document.getElementById('jira-label-okr').value;
+  let project = document.getElementById('jira-project').value;
+  let token = document.getElementById('jira-token').value;
+  let username = document.getElementById('jira-username').value;
+  let body = `{
+    "jira_domain": "${domain}",
+    "jira_label_okr": "${label_okr}",
+    "jira_project": "${project}",
+    "jira_token": "${token}",
+    "jira_username": "${username}"
+  }`;
+  xhr.send(body);
+};
+</script>
+{% endblock %}
 
 {% block content %}
 <div class="ui main text container">
   <div class="ui segments">
     <div class="ui segment">
-      Domain: {{ settings.jira_domain }}
+      <div class="ui fluid labeled input {% if not settings.jira_domain %}error{% endif %}">
+        <div class="ui label">Domain</div>
+        <input type="text" value="{{ settings.jira_domain }}" id="jira-domain" oninput="update()">
+      </div>
+
+      <div class="ui fluid labeled input {% if not settings.jira_username %}error{% endif %}">
+        <div class="ui label">Username</div>
+        <input type="text" value="{{ settings.jira_username }}" id="jira-username" oninput="update()">
+      </div>
+
+      <div class="ui fluid labeled input {% if not settings.jira_token %}error{% endif %}">
+        <div class="ui label">
+          <div class="ui icon" data-tooltip="Click here to generate a token" data-position="top left">
+            <a href="https://id.atlassian.com/manage-profile/security/api-tokens">
+              Token <i class="question circle icon"></i>
+            </a>
+          </div>
+      </div>
+       <input type="password" value="{{ settings.jira_token }}" id="jira-token" oninput="update()">
+      </div>
+
+      <div class="ui fluid labeled input {% if not settings.jira_project %}error{% endif %}">
+        <div class="ui label">Project</div>
+        <input type="text" value="{{ settings.jira_project }}" id="jira-project" oninput="update()">
+      </div>
+
+      <div class="ui fluid labeled input">
+        <div class="ui label">OKR Label</div>
+        <input type="text" value="{{ settings.jira_label_okr }}" id="jira-label-okr" oninput="update()">
+      </div>
     </div>
+
     <div class="ui segment">
-      Project: {{ settings.jira_project }}
-    </div>
-    <div class="ui segment">
-      User: {{ myself }}
+      Authenticated as: {{ myself }}
     </div>
   </div>
 </div>

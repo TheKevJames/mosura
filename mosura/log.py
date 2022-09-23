@@ -26,7 +26,6 @@ class LogConfig(pydantic.BaseModel):
     loggers = {
         'aiosqlite': {'handlers': ['default'], 'level': NONDEBUG_LEVEL},
         'databases': {'handlers': ['default'], 'level': NONDEBUG_LEVEL},
-        # 'mosura': {'handlers': ['default'], 'level': LOG_LEVEL},
         'root': {'handlers': ['default'], 'level': LOG_LEVEL},
         'urllib3': {'handlers': ['default'], 'level': NONDEBUG_LEVEL},
     }

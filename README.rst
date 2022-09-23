@@ -16,16 +16,6 @@ eventually!
 Hacking
 -------
 
-You'll need to `configure yourself a Jira connection`_ before being able to run
-Mosura. For now, Mosura requires you select a single Jira project to follow:
-
-.. code-block:: console
-
-    export JIRA_DOMAIN=https://myinstance.atlassian.net
-    export JIRA_USERNAME=mosura@thekev.in
-    export JIRA_TOKEN=FooBaR123!
-    export JIRA_PROJECT=MOS
-
 Useful commands:
 
 .. code-block:: console
@@ -51,6 +41,9 @@ Useful commands:
         -e PORT=8000 \
         -p8000:8000 \
         thekevjames/mosura:latest
+
+Note that most pages of Mosura do nothing without a configured Jira connection.
+Filling out the settings page should do the trick!
 
 Workflow Assumptions
 --------------------
@@ -102,11 +95,10 @@ fields:
 
   * if a ticket has no listed labels, it will get highlighted as requiring
     attention
-  * if the label matches ``$JIRA_LABEL_OKR`` (default: ``okr``), include it in
-    the shortlist of "issues that need scheduling" on the Gannt page
+  * if the label matches your configured "OKR Label" setting (default:
+    ``okr``), include it in the shortlist of "issues that need scheduling" on
+    the Gannt page
 
 We also assume that you are interested in quarterly planning, using the
 financial quarter model starting on February, eg. Q1 starts on February 1st and
 the quarter's year is the one that Q4 will fall in (so 2022-02-01 is 2023Q1).
-
-.. _configure yourself a Jira connection: https://id.atlassian.com/manage-profile/security/api-tokens
