@@ -85,6 +85,18 @@ async def read_issues() -> list[schemas.Issue]:
     return convert_issue_response(results)
 
 
+async def read_issues_including_closed() -> list[schemas.Issue]:
+    # TODO: dedupe with read_issues()
+    query = (
+        select(Issues, Components.c.component, Labels.c.label)
+        .join(Components, models.Issue.key == models.Component.key,
+              isouter=True)
+        .join(Labels, models.Issue.key == models.Label.key, isouter=True)
+    )
+    results = await database.database.fetch_all(query)
+    return convert_issue_response(results)
+
+
 async def read_issues_needing_triage() -> list[schemas.Issue]:
     results = await read_issues()
     # TODO: make this configurable

@@ -36,8 +36,7 @@ async def gannt(
         quarter: str | None = None,
         jira_label_okr: str = fastapi.Cookie(default='okr'),
 ) -> starlette.responses.Response:
-    # TODO: include Closed
-    issues = [issue for issue in await crud.read_issues()
+    issues = [issue for issue in await crud.read_issues_including_closed()
               if jira_label_okr in {x.label for x in issue.labels}]
 
     q = schemas.Quarter.from_display(quarter)
