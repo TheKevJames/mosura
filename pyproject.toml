@@ -3,7 +3,7 @@ name = "mosura"
 version = "0.1.0"
 description = "task management system"
 
-repository = ""
+repository = "https://github.com/TheKevJames/mosura"
 authors = ["Kevin James <KevinJames@thekev.in>"]
 license = "MIT"
 
