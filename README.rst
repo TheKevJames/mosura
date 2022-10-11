@@ -27,7 +27,7 @@ Useful commands:
     poetry run pytest
 
     # run dev server (localhost:8000)
-    poetry run uvicorn mosura.app:app --reload
+    poetry run devserver
 
     # build docker image
     docker build -t thekevjames/mosura:latest .
@@ -37,7 +37,6 @@ Useful commands:
     # run prod server (localhost:8000)
     docker run --rm -it \
         -v "${PWD}/mosura.db:/app/mosura.db" \
-        -e JIRA_DOMAIN -e JIRA_USERNAME -e JIRA_TOKEN -e JIRA_PROJECT -e JIRA_LABEL_OKR \
         -e PORT=8000 \
         -p8000:8000 \
         thekevjames/mosura:latest
