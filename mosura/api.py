@@ -15,6 +15,7 @@ router = fastapi.APIRouter(tags=['api'])
 @router.post('/settings', status_code=fastapi.status.HTTP_201_CREATED)
 async def create_settings(response: fastapi.Response,
                           settings: schemas.Settings) -> None:
+    # TODO: debounce
     if settings.jira_domain:
         response.set_cookie(
             key='jira_domain', value=settings.jira_domain, httponly=True,
