@@ -2,7 +2,7 @@ version: 2.1
 
 orbs:
   docker: talkiq/docker@2
-  linter: talkiq/linter@2
+  linter: talkiq/linter@3
   poetry: talkiq/poetry@3
 
 executors:
