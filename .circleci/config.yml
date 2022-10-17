@@ -19,7 +19,7 @@ executors:
 jobs:
   docker-readme-build:
     docker:
-      - image: pandoc/core:2.18.0
+      - image: pandoc/core:2.19.2
     steps:
       - run: apk add --no-cache --no-progress ca-certificates openssl
       - run: mkdir -p /tmp
