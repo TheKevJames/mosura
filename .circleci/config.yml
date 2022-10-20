@@ -1,9 +1,9 @@
 version: 2.1
 
 orbs:
-  docker: talkiq/docker@2
-  linter: talkiq/linter@2
-  poetry: talkiq/poetry@3
+  docker: talkiq/docker@3
+  linter: talkiq/linter@3
+  poetry: talkiq/poetry@4
 
 executors:
   python:
@@ -45,10 +45,12 @@ jobs:
 workflows:
   run-jobs:
     jobs:
-      - linter/pre-commit
+      - linter/pre-commit:
+          executor: python
       - poetry/run: &pytest
           name: pytest
-          cmd: pytest
+          commands:
+            - run: poetry run pytest
           executor: python
       - docker/publish:
           image: thekevjames/mosura  # TODO: fix orb (force lowercase username)
