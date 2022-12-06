@@ -33,7 +33,7 @@ jobs:
   # TODO: this should be doable with curl or python...
   docker-readme-publish:
     docker:
-      - image: node:19.1.0-alpine
+      - image: node:19.2.0-alpine
     steps:
       - run: apk add --no-cache --no-progress ca-certificates openssl
       - checkout
