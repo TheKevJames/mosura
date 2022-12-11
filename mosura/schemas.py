@@ -1,11 +1,16 @@
 import datetime
 import itertools
 import logging
+import warnings
 from collections.abc import Iterable
 from collections.abc import Iterator
 
-import jira
 import pydantic
+
+
+with warnings.catch_warnings():
+    warnings.simplefilter('ignore', DeprecationWarning)
+    import jira
 
 
 logger = logging.getLogger(__name__)
@@ -102,7 +107,7 @@ class Quarter:
 
     def __init__(self, date: datetime.datetime | None = None,
                  padding: int = 7) -> None:
-        date = date or datetime.datetime.now(datetime.timezone.utc)
+        date = date or datetime.datetime.now(datetime.UTC)
 
         self.padding = padding
         self.year = date.year if date.month > 1 else date.year - 1
@@ -121,13 +126,13 @@ class Quarter:
         month = int(quarter) * 3
 
         date = datetime.datetime(year=int(year), month=month, day=1,
-                                 tzinfo=datetime.timezone.utc)
+                                 tzinfo=datetime.UTC)
         return Quarter(date=date, padding=padding)
 
     @property
     def _start(self) -> datetime.datetime:
         x = datetime.datetime(year=self.year, month=self.startmonth, day=1,
-                              tzinfo=datetime.timezone.utc)
+                              tzinfo=datetime.UTC)
         if x.isoweekday() != 1:
             x += datetime.timedelta(days=8 - x.isoweekday())
         x -= datetime.timedelta(days=self.padding)
@@ -136,7 +141,7 @@ class Quarter:
     @property
     def _end(self) -> datetime.datetime:
         x = datetime.datetime(year=self.year, month=self.startmonth + 3,
-                              day=self.padding, tzinfo=datetime.timezone.utc)
+                              day=self.padding, tzinfo=datetime.UTC)
         return x
 
     @property
@@ -174,8 +179,7 @@ class Quarter:
 
     def pointer(
             self,
-            date: datetime.datetime = datetime.datetime.now(
-                datetime.timezone.utc),
+            date: datetime.datetime = datetime.datetime.now(datetime.UTC),
     ) -> Iterator[bool]:
         for box in self.boxes:
             if box <= date < box + datetime.timedelta(days=7):

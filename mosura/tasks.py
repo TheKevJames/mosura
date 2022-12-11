@@ -3,13 +3,16 @@ import datetime
 import itertools
 import logging
 import random
+import warnings
 from typing import Any
 from typing import cast
 
-import jira
-
 from . import crud
 from . import schemas
+
+with warnings.catch_warnings():
+    warnings.simplefilter('ignore', DeprecationWarning)
+    import jira
 
 
 logger = logging.getLogger(__name__)
@@ -29,7 +32,7 @@ async def fetch(client: jira.JIRA, *, variant: str, jql: str,
               'timeoriginalestimate']
 
     while True:
-        now = datetime.datetime.now(datetime.timezone.utc)
+        now = datetime.datetime.now(datetime.UTC)
         task = await crud.read_task('fetch', variant)
         if task and task.latest + interval > now:
             logger.debug('fetch(%s): too soon, sleeping at least %ds', variant,
@@ -81,7 +84,7 @@ async def fetch(client: jira.JIRA, *, variant: str, jql: str,
         task = schemas.Task.parse_obj({
             'key': 'fetch',
             'variant': variant,
-            'latest': datetime.datetime.now(datetime.timezone.utc)})
+            'latest': datetime.datetime.now(datetime.UTC)})
         await crud.upsert_task(task)
 
 
