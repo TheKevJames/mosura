@@ -40,7 +40,7 @@ def convert_issue_response(results: list[Row]) -> list[schemas.Issue]:
     for key, group in itertools.groupby(results, operator.attrgetter('key')):
         fields = list(group)
         # TODO: store tzinfo in db
-        startdate = (fields[0][6].replace(tzinfo=datetime.timezone.utc)
+        startdate = (fields[0][6].replace(tzinfo=datetime.UTC)
                      if fields[0][6] else None)
         xs.append(schemas.Issue.parse_obj({
             'key': key,
@@ -177,7 +177,7 @@ async def read_task(key: str, variant: str) -> schemas.Task | None:
     return schemas.Task.parse_obj({
         'key': result['key'],
         'variant': result['variant'],
-        'latest': result['latest'].replace(tzinfo=datetime.timezone.utc),
+        'latest': result['latest'].replace(tzinfo=datetime.UTC),
     })
 
 
