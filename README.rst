@@ -33,6 +33,8 @@ Useful commands:
     docker build -t thekevjames/mosura:latest .
     # or pull the latest image
     docker pull thekevjames/mosura:latest
+    # also available from quay.io
+    docker pull quay.io/thekevjames/mosura:latest
 
     # run prod server (localhost:8000)
     docker run --rm -it \

@@ -54,10 +54,14 @@ workflows:
           executor: python
       - docker/publish:
           image: thekevjames/mosura  # TODO: fix orb (force lowercase username)
+          matrix:
+            parameters:
+              reqistry: ['docker.io', 'quay.io']
           pre-steps:
             - setup_remote_docker:
                 version: 20.10.6
             - run: echo "$DOCKER_PASS" | docker login --username "$DOCKER_USER" --password-stdin
+            - run: echo "$QUAY_PASS" | docker login quay.io --username "$QUAY_USER" --password-stdin
           requires:
             - linter/pre-commit
             - pytest
