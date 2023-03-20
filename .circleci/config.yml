@@ -56,7 +56,7 @@ workflows:
           image: thekevjames/mosura  # TODO: fix orb (force lowercase username)
           matrix:
             parameters:
-              reqistry: ['docker.io', 'quay.io']
+              registry: ['docker.io', 'quay.io']
           pre-steps:
             - setup_remote_docker:
                 version: 20.10.6
