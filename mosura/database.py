@@ -2,8 +2,10 @@ import databases
 import sqlalchemy
 from sqlalchemy.ext.declarative import declarative_base
 
+from . import config
 
-DATABASE_URL = 'sqlite:///./mosura.db'
+
+DATABASE_URL = f'sqlite:///{config.settings.mosura_appdata}/mosura.db'
 
 database = databases.Database(DATABASE_URL)
 engine = sqlalchemy.create_engine(DATABASE_URL,

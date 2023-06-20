@@ -16,16 +16,16 @@ function onclick_navigate(e, key) {
 <div class="ui main container">
   <div>
     <h1>
-      <a href="?quarter={{schedule.quarter.display_offset(-1)}}">
+      <a href="?quarter={{ schedule.quarter.display_offset(-1) }}">
         <i class="icon angle left"></i>
       </a>
       {{ schedule.quarter.display }}
-      <a href="?quarter={{schedule.quarter.display_offset(1)}}">
+      <a href="?quarter={{ schedule.quarter.display_offset(1) }}">
         <i class="icon angle right"></i>
       </a>
     </h1>
 
-    <div class="ui icon" data-tooltip="Usage:&#xa;1. Label relevant tickets as {{okr_label}}&#xa;2. Assign owners/start times/time estimations&#xa;3. Resolve conflicts" data-position="top left">
+    <div class="ui icon" data-tooltip="Usage:&#xa;1. Label relevant tickets as {{ settings.jira_label_okr }}&#xa;2. Assign owners/start times/time estimations&#xa;3. Resolve conflicts" data-position="top left">
       <i class="question circle icon"></i>
     </div>
   </div>
@@ -116,7 +116,7 @@ function onclick_navigate(e, key) {
   {% if issues %}
   <div class="ui divider"></div>
 
-  <h3>All Other {{okr_label}} Issues</h3>
+  <h3>All Other {{ settings.jira_label_okr }} Issues</h3>
 
   <div class="ui container">
     <table class="ui celled striped unstackable selectable table">

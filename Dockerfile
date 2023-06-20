@@ -27,4 +27,4 @@ CMD ["tests/"]
 
 
 FROM base AS app
-CMD exec uvicorn --host 0.0.0.0 --port $PORT --proxy-headers mosura.app:app
+CMD exec uvicorn --host 0.0.0.0 --port $MOSURA_PORT --proxy-headers mosura.app:app

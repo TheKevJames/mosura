@@ -1,16 +1,10 @@
 import datetime
 import itertools
 import logging
-import warnings
 from collections.abc import Iterable
 from collections.abc import Iterator
 
 import pydantic
-
-
-with warnings.catch_warnings():
-    warnings.simplefilter('ignore', DeprecationWarning)
-    import jira
 
 
 logger = logging.getLogger(__name__)
@@ -292,28 +286,3 @@ class Schedule:
             fills = len(boxes) - 2
 
         return (idx, fills, x)
-
-
-class Settings(pydantic.BaseSettings):
-    jira_domain: str | None
-    jira_label_okr: str
-    jira_project: str | None
-    # TODO: use pydantic.SecretStr once I figure out how to avoid making JS
-    # double-secretify it
-    jira_token: str | None
-    jira_username: str | None
-
-    @property
-    def jira_client(self) -> jira.JIRA | None:
-        if not (self.jira_domain and self.jira_token and self.jira_username):
-            return None
-
-        auth = (self.jira_username, self.jira_token)
-        try:
-            client = jira.JIRA(self.jira_domain, basic_auth=auth,
-                               max_retries=0, validate=True)
-        except Exception:
-            logger.exception('failed to connect to jira')
-            return None
-        else:
-            return client

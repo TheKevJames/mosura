@@ -13,38 +13,38 @@ Mosura is an opinionated Task management frontend. Overall project goals are:
 I don't currently expect Mosura to be useful for anyone but myself. Maybe
 eventually!
 
-Hacking
--------
+Usage
+-----
 
-Useful commands:
+First off, you'll need to `create a Jira API token`_.
+
+Best run via docker/podman/etc:
 
 .. code-block:: console
 
-    # install dependencies
-    poetry install
+    docker run -d \
+        --name=mosura \
+        -p 8080:8080 \
+        -v /path/to/appdata:/data \
+        -e JIRA_DOMAIN=https://myinstance.atlassian.net \
+        -e JIRA_AUTH_USER=myuser@example.com \
+        -e JIRA_AUTH_TOKEN=mytoken123456 \
+        -e JIRA_PROJECT=MOS \  # TODO: comma-separated list
+        -e JIRA_LABEL_OKR=okr \  # (optional, default: okr)
+        -e MOSURA_APPDATA=/data \  # (optional, default: .)
+        -e MOSURA_PORT=8080 \  # (optional, default: 8080)
+        --restart unless-stopped \
+        quay.io/thekevjames/mosura:latest
 
-    # run tests
-    poetry run pytest
+# TODO: docker-compose, k8s
 
-    # run dev server (localhost:8000)
+Can also be run locally for development purposes:
+
+.. code-block:: console
+
+    export ...
+    poetry install --sync
     poetry run devserver
-
-    # build docker image
-    docker build -t thekevjames/mosura:latest .
-    # or pull the latest image
-    docker pull thekevjames/mosura:latest
-    # also available from quay.io
-    docker pull quay.io/thekevjames/mosura:latest
-
-    # run prod server (localhost:8000)
-    docker run --rm -it \
-        -v "${PWD}/mosura.db:/app/mosura.db" \
-        -e PORT=8000 \
-        -p8000:8000 \
-        thekevjames/mosura:latest
-
-Note that most pages of Mosura do nothing without a configured Jira connection.
-Filling out the settings page should do the trick!
 
 Workflow Assumptions
 --------------------
@@ -103,3 +103,5 @@ fields:
 We also assume that you are interested in quarterly planning, using the
 financial quarter model starting on February, eg. Q1 starts on February 1st and
 the quarter's year is the one that Q4 will fall in (so 2022-02-01 is 2023Q1).
+
+.. _create a Jira API token: https://id.atlassian.com/manage-profile/security/api-tokens

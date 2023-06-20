@@ -7,15 +7,36 @@ import warnings
 from typing import Any
 from typing import cast
 
+from . import config
 from . import crud
 from . import schemas
 
+
 with warnings.catch_warnings():
+    # TODO: fixable?
     warnings.simplefilter('ignore', DeprecationWarning)
     import jira
 
 
 logger = logging.getLogger(__name__)
+
+
+# TODO: this ain't the right home
+def jira_init() -> jira.JIRA:
+    auth = (config.settings.jira_auth_user,
+            config.settings.jira_auth_token.get_secret_value())
+    try:
+        client = jira.JIRA(config.settings.jira_domain, basic_auth=auth,
+                           max_retries=0, validate=True)
+    except Exception:
+        logger.exception('failed to connect to jira')
+        # TODO: avoid double-logging, retry some failures, etc
+        raise
+
+    return client
+
+
+jira_client = jira_init()
 
 
 def datetime_or_null(x: str | None) -> datetime.datetime | None:
@@ -24,8 +45,12 @@ def datetime_or_null(x: str | None) -> datetime.datetime | None:
     return datetime.datetime.fromisoformat(x)
 
 
-async def fetch(client: jira.JIRA, *, variant: str, jql: str,
-                interval: datetime.timedelta) -> None:
+async def fetch(
+        *,
+        variant: str,
+        jql: str,
+        interval: datetime.timedelta,
+) -> None:
     page_size = 100
     fields = ['key', 'summary', 'description', 'status', 'assignee',
               'priority', 'components', 'labels', 'customfield_12161',
@@ -43,10 +68,18 @@ async def fetch(client: jira.JIRA, *, variant: str, jql: str,
         logger.info('fetch(%s): fetching data', variant)
 
         for idx in itertools.count(0, page_size):
-            issues: dict[str, Any] = cast(dict[str, Any],
-                                          await asyncio.to_thread(
-                client.search_issues, jql, startAt=idx, maxResults=page_size,
-                fields=fields, expand='renderedFields', json_result=True))
+            issues: dict[str, Any] = cast(
+                dict[str, Any],
+                await asyncio.to_thread(
+                    jira_client.search_issues,
+                    jql,
+                    startAt=idx,
+                    maxResults=page_size,
+                    fields=fields,
+                    expand='renderedFields',
+                    json_result=True,
+                ),
+            )
             logger.debug('fetch(%s): fetched %d issues, writing to localdb',
                          variant, len(issues.get('issues', [])))
             for issue in issues.get('issues', []):
@@ -88,9 +121,8 @@ async def fetch(client: jira.JIRA, *, variant: str, jql: str,
         await crud.upsert_task(task)
 
 
-async def fetch_closed(client: jira.JIRA, project: str) -> None:
+async def fetch_closed(project: str) -> None:
     await fetch(
-        client,
         interval=datetime.timedelta(minutes=15),
         jql=(f"project = '{project}' "
              "AND status = 'Closed'"),
@@ -98,11 +130,21 @@ async def fetch_closed(client: jira.JIRA, project: str) -> None:
     )
 
 
-async def fetch_open(client: jira.JIRA, project: str) -> None:
+async def fetch_open(project: str) -> None:
     await fetch(
-        client,
         interval=datetime.timedelta(minutes=5),
         jql=(f"project = '{project}' "
              "AND status != 'Closed'"),
         variant='open',
     )
+
+
+async def spawn(project: str) -> None:
+    try:
+        _ = jira_client.project(project)
+    except Exception:
+        logger.exception('failed to query project "%s"', project)
+        raise
+
+    asyncio.create_task(fetch_closed(project), name='fetch_closed')
+    asyncio.create_task(fetch_open(project), name='fetch_open')

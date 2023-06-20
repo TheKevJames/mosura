@@ -5,8 +5,10 @@ from typing import Any
 import fastapi.staticfiles
 
 from . import api
+from . import config
 from . import database
 from . import log
+from . import tasks
 from . import ui
 
 
@@ -36,6 +38,9 @@ def log_exception(_loop: asyncio.AbstractEventLoop,
 @app.on_event('startup')
 async def startup() -> None:
     await database.database.connect()
+
+    await tasks.spawn(config.settings.jira_project)
+    logger.info('startup(): begun polling tasks')
 
 
 @app.on_event('shutdown')
