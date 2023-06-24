@@ -3,7 +3,6 @@ import datetime
 import itertools
 import logging
 import random
-import warnings
 from typing import Any
 from typing import cast
 
@@ -12,31 +11,7 @@ from . import crud
 from . import schemas
 
 
-with warnings.catch_warnings():
-    # TODO: fixable?
-    warnings.simplefilter('ignore', DeprecationWarning)
-    import jira
-
-
 logger = logging.getLogger(__name__)
-
-
-# TODO: this ain't the right home
-def jira_init() -> jira.JIRA:
-    auth = (config.settings.jira_auth_user,
-            config.settings.jira_auth_token.get_secret_value())
-    try:
-        client = jira.JIRA(config.settings.jira_domain, basic_auth=auth,
-                           max_retries=0, validate=True)
-    except Exception:
-        logger.exception('failed to connect to jira')
-        # TODO: avoid double-logging, retry some failures, etc
-        raise
-
-    return client
-
-
-jira_client = jira_init()
 
 
 def datetime_or_null(x: str | None) -> datetime.datetime | None:
@@ -71,7 +46,7 @@ async def fetch(
             issues: dict[str, Any] = cast(
                 dict[str, Any],
                 await asyncio.to_thread(
-                    jira_client.search_issues,
+                    config.jira_client.search_issues,
                     jql,
                     startAt=idx,
                     maxResults=page_size,
@@ -141,7 +116,7 @@ async def fetch_open(project: str) -> None:
 
 async def spawn(project: str) -> None:
     try:
-        _ = jira_client.project(project)
+        _ = config.jira_client.project(project)
     except Exception:
         logger.exception('failed to query project "%s"', project)
         raise

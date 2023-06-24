@@ -101,8 +101,7 @@ async def show_settings(
 ) -> starlette.responses.Response:
     return templates.TemplateResponse(
         'settings.html',
-        {'request': request, 'settings': config.settings,
-         'user': commons.user})
+        {'request': request, 'settings': config.settings, 'commons': commons})
 
 
 @router.get('/triage', response_class=fastapi.responses.HTMLResponse)

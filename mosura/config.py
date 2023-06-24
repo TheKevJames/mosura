@@ -1,9 +1,16 @@
-import logging
+import logging.config
+import warnings
 from typing import Annotated
 from typing import Any
+from typing import Self
 
 import fastapi
 import pydantic
+
+with warnings.catch_warnings():
+    # TODO: fixable?
+    warnings.simplefilter('ignore', DeprecationWarning)
+    import jira
 
 
 logger = logging.getLogger(__name__)
@@ -74,19 +81,33 @@ class Settings(pydantic.BaseSettings):
                            'insecure mode as user %s', self.mosura_user)
 
 
+class Jira(jira.JIRA):
+    @classmethod
+    def from_settings(cls, s: Settings) -> Self:
+        auth = (s.jira_auth_user, s.jira_auth_token.get_secret_value())
+        return cls(s.jira_domain, basic_auth=auth, max_retries=0,
+                   validate=True)
+
+
 # TODO: rather than all this import-time crap, can I use app context of some
 # sort? Maybe Dependencies?
 settings = Settings()
+jira_client = Jira.from_settings(settings)
 
 
 class CommonParameters:
+    email: str | None
     user: str | None
 
     def __init__(self, request: fastapi.Request) -> None:
         if settings.mosura_header_user_email:
-            self.user = request.headers.get(settings.mosura_header_user_email)
+            self.email = request.headers.get(settings.mosura_header_user_email)
         else:
-            self.user = settings.mosura_user
+            self.email = settings.mosura_user
+
+        users = jira_client.search_users(query=self.email)
+        if users:
+            self.user = str(users.pop())
 
 
 CommonsDep = Annotated[CommonParameters, fastapi.Depends()]
