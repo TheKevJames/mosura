@@ -48,7 +48,6 @@ class LogConfig(pydantic.BaseModel):
 
 
 class Settings(pydantic.BaseSettings):
-    # TODO: https://docs.pydantic.dev/latest/usage/settings/#secret-support
     jira_auth_token: pydantic.SecretStr
     jira_auth_user: str
     jira_domain: str
@@ -59,6 +58,10 @@ class Settings(pydantic.BaseSettings):
     mosura_log_level: str = 'DEBUG'
     mosura_port: int = 8080
     mosura_user: str | None
+
+    class Config:
+        # support docker compose secrets by default
+        secrets_dir = '/run/secrets'
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
