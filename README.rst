@@ -46,7 +46,7 @@ Can also be run locally for development purposes:
     export ...
     export MOSURA_USER=...  # force the user without going through auth
     poetry install --sync
-    poetry run devserver
+    poetry run uvicorn mosura.app:app --reload
 
 Workflow Assumptions
 --------------------

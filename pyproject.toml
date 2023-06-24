@@ -4,11 +4,8 @@ version = "0.1.0"
 description = "task management system"
 
 repository = "https://github.com/TheKevJames/mosura"
-authors = ["Kevin James <KevinJames@thekev.in>"]
+authors = ["Kevin James <mosura@thekev.in>"]
 license = "MIT"
-
-[tool.poetry.scripts]
-devserver = { callable = "mosura.scripts:devserver", extras = ["dev"] }
 
 [tool.poetry.dependencies]
 python = ">=3.11,<4.0"
@@ -21,7 +18,7 @@ sqlalchemy = "1.4.48"
 uvicorn = "0.22.0"
 uvloop = "0.17.0"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 httpx = "0.23.3"
 pytest = "7.2.2"
 pytest-asyncio = "0.20.3"

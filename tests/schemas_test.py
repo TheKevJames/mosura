@@ -15,7 +15,8 @@ from mosura.schemas import Quarter
 def test_issue_timeestimate(original: str,
                             expected: datetime.timedelta) -> None:
     x = IssueCreate(key='x', summary='x', status='x', priority='x',
-                    timeoriginalestimate=original)
+                    timeoriginalestimate=original, description=None,
+                    assignee=None, startdate=None)
     assert x.timeestimate == expected
 
 
