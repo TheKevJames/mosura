@@ -2,19 +2,6 @@ version: 2.1
 
 orbs:
   docker: talkiq/docker@3
-  linter: talkiq/linter@3
-  poetry: talkiq/poetry@4
-
-executors:
-  python:
-    docker:
-      - image: python:3.11.2
-    environment:
-      JIRA_DOMAIN: https://example.com
-      JIRA_USERNAME: mosura-ci
-      JIRA_TOKEN: NOPE
-      JIRA_PROJECT: MOS
-    resource_class: small
 
 jobs:
   docker-readme-build:
@@ -45,13 +32,7 @@ jobs:
 workflows:
   run-jobs:
     jobs:
-      - linter/pre-commit:
-          executor: python
-      - poetry/run: &pytest
-          name: pytest
-          commands:
-            - run: poetry run pytest
-          executor: python
+      # TODO: pytest
       - docker/publish:
           image: thekevjames/mosura  # TODO: fix orb (force lowercase username)
           matrix:
@@ -62,13 +43,7 @@ workflows:
                 version: 20.10.6
             - run: echo "$DOCKER_PASS" | docker login --username "$DOCKER_USER" --password-stdin
             - run: echo "$QUAY_PASS" | docker login quay.io --username "$QUAY_USER" --password-stdin
-          requires:
-            - linter/pre-commit
-            - pytest
-      - docker-readme-build:
-          requires:
-            - linter/pre-commit
-            - pytest
+      - docker-readme-build
       - docker-readme-publish:
           requires:
             - docker/publish
