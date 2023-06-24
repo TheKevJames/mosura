@@ -68,9 +68,12 @@ async def list_issues(
 @router.get('/mine', response_class=fastapi.responses.HTMLResponse)
 async def list_my_issues(
         request: fastapi.Request,
+        commons: config.CommonsDep,
 ) -> starlette.responses.Response:
-    user = 'kevin@dialpad.com'  # TODO: multi-user, etc
-    issues = await crud.read_issues_for_user(user)
+    if not commons.user:
+        raise fastapi.HTTPException(status_code=403)
+
+    issues = await crud.read_issues_for_user(commons.user)
     meta = schemas.Meta(issues)
     return templates.TemplateResponse(
         'issues.list.html',

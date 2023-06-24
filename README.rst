@@ -33,6 +33,7 @@ Best run via docker/podman/etc:
         -e JIRA_LABEL_OKR=okr \  # (optional, default: okr)
         -e MOSURA_APPDATA=/data \  # (optional, default: .)
         -e MOSURA_PORT=8080 \  # (optional, default: 8080)
+        -e MOSURA_HEADER_USER_EMAIL=X-Token-User-Email \
         --restart unless-stopped \
         quay.io/thekevjames/mosura:latest
 
@@ -43,6 +44,7 @@ Can also be run locally for development purposes:
 .. code-block:: console
 
     export ...
+    export MOSURA_USER=...  # force the user without going through auth
     poetry install --sync
     poetry run devserver
 

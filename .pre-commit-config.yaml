@@ -115,6 +115,7 @@ repos:
         - flake8-comprehensions==3.10.1
         - flake8-typing-imports==1.14.0
         args:
+        - --min-python-version=3.11
         - --ignore=E501,W503,F401,F811
 -   repo: local
     hooks:
