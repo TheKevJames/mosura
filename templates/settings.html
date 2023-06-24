@@ -5,15 +5,22 @@
 <div class="ui main text container">
   <div class="ui segments">
     <div class="ui segment">
-      Authenticated to: {{ settings.jira_domain }} as {{ settings.jira_auth_user }}
+      Authenticated to: {{ settings.jira_domain }}
     </div>
+    <div class="ui segment">
+      Authenticated as: {{ settings.jira_auth_user }}
+    </div>
+  </div>
 
+  <div class="ui segments">
     <div class="ui segment">
       Watching project: {{ settings.jira_project }}
     </div>
-
     <div class="ui segment">
       Configuring OKRs from label: {{ settings.jira_label_okr }}
+    </div>
+    <div class="ui segment">
+      Viewing as: {{ user }}
     </div>
   </div>
 </div>
