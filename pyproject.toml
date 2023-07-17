@@ -14,7 +14,7 @@ fastapi = "0.98.0"
 httptools = "0.6.0"
 jinja2 = "3.1.2"
 jira = "3.5.2"
-sqlalchemy = "1.4.48"
+sqlalchemy = "1.4.49"
 uvicorn = "0.22.0"
 uvloop = "0.17.0"
 
