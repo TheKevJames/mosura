@@ -87,6 +87,7 @@ repos:
         - fastapi
         - httpx
         - jira
+        - pydantic-settings
         - pytest
         - sqlalchemy-stubs
         args:

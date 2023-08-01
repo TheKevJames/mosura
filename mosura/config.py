@@ -6,6 +6,7 @@ from typing import Self
 
 import fastapi
 import pydantic
+import pydantic_settings
 
 with warnings.catch_warnings():
     # TODO: fixable?
@@ -54,7 +55,7 @@ class LogConfig(pydantic.BaseModel):
         return x
 
 
-class Settings(pydantic.BaseSettings):
+class Settings(pydantic_settings.BaseSettings):
     jira_auth_token: pydantic.SecretStr
     jira_auth_user: str
     jira_domain: str
@@ -66,9 +67,10 @@ class Settings(pydantic.BaseSettings):
     mosura_port: int = 8080
     mosura_user: str | None
 
-    class Config:
-        # support docker compose secrets by default
-        secrets_dir = '/run/secrets'
+    # support docker compose secrets by default
+    model_config = pydantic_settings.SettingsConfigDict(
+        secrets_dir='/run/secrets',
+    )
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)

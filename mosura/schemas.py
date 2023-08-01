@@ -14,26 +14,24 @@ class Component(pydantic.BaseModel):
     key: str
     component: str
 
-    class Config:
-        orm_mode = True
+    model_config = pydantic.ConfigDict(from_attributes=True)
 
 
 class Label(pydantic.BaseModel):
     key: str
     label: str
 
-    class Config:
-        orm_mode = True
+    model_config = pydantic.ConfigDict(from_attributes=True)
 
 
 class IssueCreate(pydantic.BaseModel):
     key: str
     summary: str
-    description: str | None
+    description: str | None = None
     status: str
-    assignee: str | None
+    assignee: str | None = None
     priority: str
-    startdate: datetime.datetime | None
+    startdate: datetime.datetime | None = None
     timeoriginalestimate: str
 
     @property
@@ -58,8 +56,7 @@ class Issue(IssueCreate):
     components: list[Component]
     labels: list[Label]
 
-    class Config:
-        orm_mode = True
+    model_config = pydantic.ConfigDict(from_attributes=True)
 
     @property
     def body(self) -> str:
@@ -71,8 +68,7 @@ class Task(pydantic.BaseModel):
     variant: str
     latest: datetime.datetime
 
-    class Config:
-        orm_mode = True
+    model_config = pydantic.ConfigDict(from_attributes=True)
 
 
 @pydantic.dataclasses.dataclass(init=False)
