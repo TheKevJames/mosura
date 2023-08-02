@@ -2,7 +2,7 @@ repository:
   name: mosura
   description: task management system
   topics: bugtracker, task
-  private: true
+  private: false
 
   has_issues: true
   has_projects: true
