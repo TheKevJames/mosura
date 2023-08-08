@@ -62,10 +62,10 @@ class Settings(pydantic_settings.BaseSettings):
     jira_label_okr: str = 'okr'
     jira_project: str
     mosura_appdata: str = '.'
-    mosura_header_user_email: str | None
+    mosura_header_user_email: str | None = None
     mosura_log_level: str = 'DEBUG'
     mosura_port: int = 8080
-    mosura_user: str | None
+    mosura_user: str | None = None
 
     # support docker compose secrets by default
     model_config = pydantic_settings.SettingsConfigDict(
