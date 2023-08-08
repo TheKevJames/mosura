@@ -21,16 +21,16 @@ class LogConfig(pydantic.BaseModel):
     LOG_LEVEL: str
     LOG_FORMAT: str = '%(levelprefix)s [%(name)s] %(message)s'
 
-    version = 1
-    disable_existing_loggers = False
-    formatters = {
+    version: int = 1
+    disable_existing_loggers: bool = False
+    formatters: dict[str, dict[str, str]] = {
         'default': {
             '()': 'uvicorn.logging.DefaultFormatter',
             'fmt': LOG_FORMAT,
             'datefmt': '%Y-%m-%d %H:%M:%S',
         },
     }
-    handlers = {
+    handlers: dict[str, dict[str, str]] = {
         'default': {
             'formatter': 'default',
             'class': 'logging.StreamHandler',
