@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 class LogConfig(pydantic.BaseModel):
     LOG_LEVEL: str
-    LOG_FORMAT = '%(levelprefix)s [%(name)s] %(message)s'
+    LOG_FORMAT: str = '%(levelprefix)s [%(name)s] %(message)s'
 
     version = 1
     disable_existing_loggers = False
