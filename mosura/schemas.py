@@ -71,7 +71,7 @@ class Task(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(from_attributes=True)
 
 
-@pydantic.dataclasses.dataclass(init=False)
+@pydantic.dataclasses.dataclass
 class Meta:
     assignees: list[str]
     components: list[str]
@@ -79,45 +79,46 @@ class Meta:
     priorities: list[str]
     statuses: list[str]
 
-    def __init__(self, issues: list[Issue]):
-        self.assignees = sorted({i.assignee for i in issues if i.assignee})
-        self.components = sorted({c.component for i in issues
-                                  for c in i.components})
-        self.labels = sorted({lb.label for i in issues for lb in i.labels})
-        self.priorities = sorted({i.priority for i in issues})
-        self.statuses = sorted({i.status for i in issues})
+    @classmethod
+    def from_issues(cls, xs: list[Issue]) -> 'Meta':
+        assignees = sorted({i.assignee for i in xs if i.assignee})
+        components = sorted({c.component for i in xs for c in i.components})
+        labels = sorted({lb.label for i in xs for lb in i.labels})
+        priorities = sorted({i.priority for i in xs})
+        statuses = sorted({i.status for i in xs})
+        return cls(assignees, components, labels, priorities, statuses)
 
 
-@pydantic.dataclasses.dataclass(init=False)
+@pydantic.dataclasses.dataclass
 class Quarter:
     year: int
     startmonth: int
     display: str
     padding: int
 
-    def __init__(self, date: datetime.datetime | None = None,
-                 padding: int = 7) -> None:
+    @classmethod
+    def init(cls, date: datetime.datetime | None = None,
+             padding: int = 7) -> 'Quarter':
         date = date or datetime.datetime.now(datetime.UTC)
-
-        self.padding = padding
-        self.year = date.year if date.month > 1 else date.year - 1
+        year = date.year if date.month > 1 else date.year - 1
 
         quarter = ((date.month - 2) // 3 + 1) or 4
-        self.startmonth = {1: 2, 2: 5, 3: 8, 4: 11}[quarter]
+        startmonth = {1: 2, 2: 5, 3: 8, 4: 11}[quarter]
 
-        self.display = f'{self.year}Q{quarter}'
+        display = f'{year}Q{quarter}'
+        return cls(year, startmonth, display, padding)
 
     @classmethod
     def from_display(cls, display: str | None, padding: int = 7) -> 'Quarter':
         if not display:
-            return Quarter(padding=padding)
+            return Quarter.init(padding=padding)
 
         year, quarter = display.split('Q', maxsplit=1)
         month = int(quarter) * 3
 
         date = datetime.datetime(year=int(year), month=month, day=1,
                                  tzinfo=datetime.UTC)
-        return Quarter(date=date, padding=padding)
+        return Quarter.init(date=date, padding=padding)
 
     @property
     def _start(self) -> datetime.datetime:
@@ -189,23 +190,22 @@ class Quarter:
         return startdate > self._end or enddate < self._start
 
 
-@pydantic.dataclasses.dataclass(init=False)
+@pydantic.dataclasses.dataclass
 class Schedule:
     quarter: Quarter
+    unaligned: list[tuple[int, int, Issue]]
     aligned: dict[str, list[tuple[int, Issue | None]]]
     raw: list[Issue]
 
-    def __init__(self, issues: list[Issue],
-                 quarter: Quarter | None = None) -> None:
-        self.quarter = quarter or Quarter()
+    @classmethod
+    def init(cls, issues: list[Issue],
+             quarter: Quarter | None = None) -> 'Schedule':
+        self = cls(quarter or Quarter.init(), [], {}, [])
 
         in_quarter = [x for x in issues
                       if self.quarter.contains(x)
                       and x.assignee]
         invalid = [x for x in issues if x not in in_quarter]
-
-        self.unaligned = []
-        self.aligned = {}
 
         boxes = list(self.quarter.boxes)
         self._build_aligned(in_quarter, boxes)
@@ -219,6 +219,7 @@ class Schedule:
             self.unaligned.append(data)
 
         self.raw = list(in_quarter) + invalid
+        return self
 
     def _build_aligned(self, issues: Iterable[Issue],
                        boxes: list[datetime.datetime]) -> None:

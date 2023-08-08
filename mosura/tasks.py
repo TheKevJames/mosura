@@ -80,8 +80,8 @@ async def fetch(
                     summary=issue['fields']['summary'],
                     startdate=datetime_or_null(
                         issue['fields']['customfield_12161']),
-                    timeoriginalestimate=(
-                        issue['fields'].get('timeoriginalestimate') or '0'),
+                    timeoriginalestimate=str(
+                        issue['fields'].get('timeoriginalestimate') or 0),
                 ))
 
             if issues['total'] < idx + page_size:

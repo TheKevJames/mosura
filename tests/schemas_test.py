@@ -37,6 +37,6 @@ def test_issue_timeestimate(original: str,
      (datetime.datetime(year=2021, month=1, day=1), (2020, 11), (2020, 4))])
 def test_quarter(date: datetime.datetime, expected: tuple[int, int],
                  display: tuple[int, int]) -> None:
-    q = Quarter(date)
+    q = Quarter.init(date)
     assert (q.year, q.startmonth) == expected
     assert q.display == f'{display[0]}Q{display[1]}'

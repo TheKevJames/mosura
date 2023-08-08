@@ -48,7 +48,6 @@ repos:
         - -d duplicate-code
         - -d fixme
         - -d import-error
-        - -d import-only-modules
         - -d invalid-name
         - -d locally-disabled
         - -d missing-docstring

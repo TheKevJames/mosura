@@ -42,7 +42,7 @@ async def gannt(
     ]
 
     q = schemas.Quarter.from_display(quarter)
-    schedule = schemas.Schedule(issues, quarter=q)
+    schedule = schemas.Schedule.init(issues, quarter=q)
 
     issues = [x for x in issues
               if x not in schedule.raw
@@ -59,7 +59,7 @@ async def list_issues(
         request: fastapi.Request,
 ) -> starlette.responses.Response:
     issues = await crud.read_issues()
-    meta = schemas.Meta(issues)
+    meta = schemas.Meta.from_issues(issues)
     return templates.TemplateResponse(
         'issues.list.html',
         {'request': request, 'issues': issues, 'meta': meta})
@@ -74,7 +74,7 @@ async def list_my_issues(
         raise fastapi.HTTPException(status_code=403)
 
     issues = await crud.read_issues_for_user(commons.user)
-    meta = schemas.Meta(issues)
+    meta = schemas.Meta.from_issues(issues)
     return templates.TemplateResponse(
         'issues.list.html',
         {'request': request, 'issues': issues, 'meta': meta})
@@ -109,7 +109,7 @@ async def list_triagable_issues(
         request: fastapi.Request,
 ) -> starlette.responses.Response:
     issues = await crud.read_issues_needing_triage()
-    meta = schemas.Meta(issues)
+    meta = schemas.Meta.from_issues(issues)
     return templates.TemplateResponse(
         'issues.list.html',
         {'request': request, 'issues': issues, 'meta': meta})
