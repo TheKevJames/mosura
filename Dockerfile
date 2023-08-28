@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.2
-FROM python:3.11.4-slim-bullseye AS base
+FROM python:3.11.5-slim-bullseye AS base
 
 RUN apt-get update -qy && \
     apt-get install -qy \
