@@ -168,13 +168,13 @@ files = [
 
 [[package]]
 name = "databases"
-version = "0.7.0"
+version = "0.8.0"
 description = "Async database support for Python."
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "databases-0.7.0-py3-none-any.whl", hash = "sha256:cf5da4b8a3e3cd038c459529725ebb64931cbbb7a091102664f20ef8f6cefd0d"},
-    {file = "databases-0.7.0.tar.gz", hash = "sha256:ea2d419d3d2eb80595b7ceb8f282056f080af62efe2fb9bcd83562f93ec4b674"},
+    {file = "databases-0.8.0-py3-none-any.whl", hash = "sha256:0ceb7fd5c740d846e1f4f58c0256d780a6786841ec8e624a21f1eb1b51a9093d"},
+    {file = "databases-0.8.0.tar.gz", hash = "sha256:6544d82e9926f233d694ec29cd018403444c7fb6e863af881a8304d1ff5cfb90"},
 ]
 
 [package.dependencies]
@@ -1030,4 +1030,4 @@ anyio = ">=3.0.0,<4"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<4.0"
-content-hash = "864da591c872a2764871c2082c31279ed5e166fba068579a0c75e2290bf071db"
+content-hash = "7b744c73645c01c9e1d110f9035c28f17e99ea4b883771998e327545ee263ee7"
