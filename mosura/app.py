@@ -37,10 +37,19 @@ def log_exception(_loop: asyncio.AbstractEventLoop,
 async def startup() -> None:
     await database.database.connect()
 
-    await tasks.spawn(config.settings.jira_project)
+    app.state.tasks = await tasks.spawn(config.settings.jira_project)
     logger.info('startup(): begun polling tasks')
 
 
 @app.on_event('shutdown')
 async def shutdown() -> None:
+    logger.info('shutdown(): stopping polling tasks')
+    for task in app.state.tasks:
+        task.cancel()
+
+    try:
+        await asyncio.gather(*app.state.tasks)
+    except asyncio.CancelledError:
+        pass
+
     await database.database.disconnect()

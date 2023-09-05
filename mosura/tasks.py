@@ -114,12 +114,14 @@ async def fetch_open(project: str) -> None:
     )
 
 
-async def spawn(project: str) -> None:
+async def spawn(project: str) -> set[asyncio.Task[None]]:
     try:
         _ = config.jira_client.project(project)
     except Exception:
         logger.exception('failed to query project "%s"', project)
         raise
 
-    asyncio.create_task(fetch_closed(project), name='fetch_closed')
-    asyncio.create_task(fetch_open(project), name='fetch_open')
+    return {
+        asyncio.create_task(fetch_closed(project), name='fetch_closed'),
+        asyncio.create_task(fetch_open(project), name='fetch_open'),
+    }
