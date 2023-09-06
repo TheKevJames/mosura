@@ -44,7 +44,7 @@ class Component(Base):
     @classmethod
     async def upsert(cls, component: schemas.Component, *,
                      session: AsyncSession) -> None:
-        stmt = insert(cls).values(**component.dict())
+        stmt = insert(cls).values(**component.model_dump())
         query = stmt.on_conflict_do_nothing()
         await session.execute(query)
 
@@ -63,7 +63,7 @@ class Label(Base):
     @classmethod
     async def upsert(cls, label: schemas.Label, *,
                      session: AsyncSession) -> None:
-        stmt = insert(cls).values(**label.dict())
+        stmt = insert(cls).values(**label.model_dump())
         query = stmt.on_conflict_do_nothing()
         await session.execute(query)
 
@@ -104,7 +104,7 @@ def convert_issue_response(
         # TODO: store tzinfo in db
         startdate = (fields[0][6].replace(tzinfo=datetime.UTC)
                      if fields[0][6] else None)
-        xs.append(schemas.Issue.parse_obj({
+        xs.append(schemas.Issue.model_validate({
             'key': key,
             'summary': fields[0][1],
             'description': fields[0][2],
@@ -165,7 +165,7 @@ class Issue(Base):
     @classmethod
     async def upsert(cls, issue: schemas.IssueCreate, *,
                      session: AsyncSession) -> None:
-        stmt = insert(cls).values(**issue.dict())
+        stmt = insert(cls).values(**issue.model_dump())
         query = stmt.on_conflict_do_update(
             index_elements=['key'],
             set_={
@@ -190,7 +190,7 @@ class Task(Base):
     @classmethod
     async def upsert(cls, task: schemas.Task, *,
                      session: AsyncSession) -> None:
-        stmt = insert(cls).values(**task.dict())
+        stmt = insert(cls).values(**task.model_dump())
         query = stmt.on_conflict_do_update(
             index_elements=['key', 'variant'],
             set_={'latest': stmt.excluded.latest})
@@ -209,9 +209,7 @@ class Task(Base):
             return None
 
         # TODO: any way to store tz in sqlite?
-        print(type(result))
-        print(result)
-        return schemas.Task.parse_obj({
+        return schemas.Task.model_validate({
             'key': result.key,
             'variant': result.variant,
             'latest': result.latest.replace(tzinfo=datetime.UTC),

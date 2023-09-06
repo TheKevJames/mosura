@@ -14,6 +14,7 @@ with warnings.catch_warnings():
     import jira
 
 
+warnings.simplefilter('always')
 logger = logging.getLogger(__name__)
 
 
@@ -38,7 +39,7 @@ class LogConfig(pydantic.BaseModel):
         },
     }
 
-    @property
+    @pydantic.computed_field
     def loggers(self) -> dict[str, Any]:
         liblevel = 'INFO' if self.LOG_LEVEL == 'DEBUG' else self.LOG_LEVEL
         return {
@@ -47,12 +48,6 @@ class LogConfig(pydantic.BaseModel):
             'root': {'handlers': ['default'], 'level': self.LOG_LEVEL},
             'urllib3': {'handlers': ['default'], 'level': liblevel},
         }
-
-    def dictz(self) -> dict[str, str]:
-        # TODO: in pydantic v2, use @pydantic.computed_field on loggers
-        x = self.dict()
-        x['loggers'] = self.loggers
-        return x
 
 
 class Settings(pydantic_settings.BaseSettings):
@@ -75,7 +70,7 @@ class Settings(pydantic_settings.BaseSettings):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
-        log_config = LogConfig(LOG_LEVEL=self.mosura_log_level).dictz()
+        log_config = LogConfig(LOG_LEVEL=self.mosura_log_level).model_dump()
         logging.config.dictConfig(log_config)
 
         if not self.mosura_header_user_email:

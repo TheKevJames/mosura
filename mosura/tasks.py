@@ -100,7 +100,7 @@ async def fetch(
 
             logger.info('fetch(%s): fetched %d issues in total', variant,
                         issues['total'])
-            task = schemas.Task.parse_obj({
+            task = schemas.Task.model_validate({
                 'key': 'fetch',
                 'variant': variant,
                 'latest': datetime.datetime.now(datetime.UTC)})
