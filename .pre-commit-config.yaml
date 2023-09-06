@@ -84,13 +84,12 @@ repos:
         # Note that some libraries keep their type hints in packages named
         # `types-$lib` or `$lib-stubs`.
         additional_dependencies:
-        - databases
         - fastapi
         - httpx
         - jira
         - pydantic-settings
         - pytest
-        - sqlalchemy-stubs  # TODO: needs to be enabled as a plugin?
+        - sqlalchemy
         args:
         - --show-error-codes
         - --strict

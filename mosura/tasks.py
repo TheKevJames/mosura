@@ -7,7 +7,8 @@ from typing import Any
 from typing import cast
 
 from . import config
-from . import crud
+from . import database
+from . import models
 from . import schemas
 
 
@@ -32,68 +33,79 @@ async def fetch(
               'timeoriginalestimate']
 
     while True:
-        now = datetime.datetime.now(datetime.UTC)
-        task = await crud.read_task('fetch', variant)
-        if task and task.latest + interval > now:
-            logger.debug('fetch(%s): too soon, sleeping at least %ds', variant,
-                         (task.latest - now + interval).seconds)
-            await asyncio.sleep(random.uniform(0, 60))
-            continue
+        async with database.session() as session:
+            now = datetime.datetime.now(datetime.UTC)
+            task = await models.Task.get('fetch', variant, session=session)
+            if task and task.latest + interval > now:
+                logger.debug('fetch(%s): too soon, sleeping at least %ds',
+                             variant, (task.latest - now + interval).seconds)
+                await asyncio.sleep(random.uniform(0, 60))
+                continue
 
-        logger.info('fetch(%s): fetching data', variant)
+            logger.info('fetch(%s): fetching data', variant)
 
-        for idx in itertools.count(0, page_size):
-            issues: dict[str, Any] = cast(
-                dict[str, Any],
-                await asyncio.to_thread(
-                    config.jira_client.search_issues,
-                    jql,
-                    startAt=idx,
-                    maxResults=page_size,
-                    fields=fields,
-                    expand='renderedFields',
-                    json_result=True,
-                ),
-            )
-            logger.debug('fetch(%s): fetched %d issues, writing to localdb',
-                         variant, len(issues.get('issues', [])))
-            for issue in issues.get('issues', []):
-                # TODO: in-place component and label upserts
-                await crud.delete_issue_components(key=issue['key'])
-                for component in issue['fields']['components']:
-                    await crud.upsert_issue_component(
-                        schemas.Component(key=issue['key'],
-                                          component=component['name']))
+            for idx in itertools.count(0, page_size):
+                issues: dict[str, Any] = cast(
+                    dict[str, Any],
+                    await asyncio.to_thread(
+                        config.jira_client.search_issues,
+                        jql,
+                        startAt=idx,
+                        maxResults=page_size,
+                        fields=fields,
+                        expand='renderedFields',
+                        json_result=True,
+                    ),
+                )
+                logger.debug('fetch(%s): fetched %d issues, writing to db',
+                             variant, len(issues.get('issues', [])))
+                for issue in issues.get('issues', []):
+                    # TODO: in-place component and label upserts
+                    await models.Component.delete(issue['key'],
+                                                  session=session)
+                    for component in issue['fields']['components']:
+                        await models.Component.upsert(
+                            schemas.Component(key=issue['key'],
+                                              component=component['name']),
+                            session=session,
+                        )
 
-                await crud.delete_issue_labels(key=issue['key'])
-                for label in issue['fields']['labels']:
-                    await crud.upsert_issue_label(
-                        schemas.Label(key=issue['key'], label=label))
+                    await models.Label.delete(issue['key'], session=session)
+                    for label in issue['fields']['labels']:
+                        await models.Label.upsert(
+                            schemas.Label(key=issue['key'], label=label),
+                            session=session,
+                        )
 
-                await crud.upsert_issue(schemas.IssueCreate(
-                    assignee=(issue['fields']['assignee']
-                              or {}).get('displayName'),
-                    description=issue['renderedFields']['description'],
-                    key=issue['key'],
-                    priority=issue['fields']['priority']['name'],
-                    status=issue['fields']['status']['name'],
-                    summary=issue['fields']['summary'],
-                    startdate=datetime_or_null(
-                        issue['fields']['customfield_12161']),
-                    timeoriginalestimate=str(
-                        issue['fields'].get('timeoriginalestimate') or 0),
-                ))
+                    await models.Issue.upsert(
+                        schemas.IssueCreate(
+                            assignee=(issue['fields']['assignee']
+                                      or {}).get('displayName'),
+                            description=issue['renderedFields']['description'],
+                            key=issue['key'],
+                            priority=issue['fields']['priority']['name'],
+                            status=issue['fields']['status']['name'],
+                            summary=issue['fields']['summary'],
+                            startdate=datetime_or_null(
+                                issue['fields']['customfield_12161']),
+                            timeoriginalestimate=str(
+                                issue['fields'].get('timeoriginalestimate')
+                                or 0),
+                        ),
+                        session=session,
+                    )
 
-            if issues['total'] < idx + page_size:
-                break
+                if issues['total'] < idx + page_size:
+                    break
 
-        logger.info('fetch(%s): fetched %d issues in total', variant,
-                    issues['total'])
-        task = schemas.Task.parse_obj({
-            'key': 'fetch',
-            'variant': variant,
-            'latest': datetime.datetime.now(datetime.UTC)})
-        await crud.upsert_task(task)
+            logger.info('fetch(%s): fetched %d issues in total', variant,
+                        issues['total'])
+            task = schemas.Task.parse_obj({
+                'key': 'fetch',
+                'variant': variant,
+                'latest': datetime.datetime.now(datetime.UTC)})
+            await models.Task.upsert(task, session=session)
+            await session.commit()
 
 
 async def fetch_closed(project: str) -> None:

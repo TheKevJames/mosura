@@ -43,7 +43,7 @@ class LogConfig(pydantic.BaseModel):
         liblevel = 'INFO' if self.LOG_LEVEL == 'DEBUG' else self.LOG_LEVEL
         return {
             'aiosqlite': {'handlers': ['default'], 'level': liblevel},
-            'databases': {'handlers': ['default'], 'level': liblevel},
+            'sqlachlemy': {'handlers': ['default'], 'level': liblevel},
             'root': {'handlers': ['default'], 'level': self.LOG_LEVEL},
             'urllib3': {'handlers': ['default'], 'level': liblevel},
         }

@@ -4,7 +4,8 @@ import fastapi.templating
 import starlette
 
 from . import config
-from . import crud
+from . import database
+from . import models
 from . import schemas
 
 
@@ -36,10 +37,12 @@ async def gannt(
         request: fastapi.Request,
         quarter: str | None = None,
 ) -> starlette.responses.Response:
-    issues = [
-        issue for issue in await crud.read_issues_including_closed()
-        if config.settings.jira_label_okr in {x.label for x in issue.labels}
-    ]
+    async with database.session() as session:
+        okr_label = config.settings.jira_label_okr
+        issues = [
+            iss for iss in await models.Issue.get(closed=True, session=session)
+            if okr_label in {x.label for x in iss.labels}
+        ]
 
     q = schemas.Quarter.from_display(quarter)
     schedule = schemas.Schedule.init(issues, quarter=q)
@@ -58,7 +61,9 @@ async def gannt(
 async def list_issues(
         request: fastapi.Request,
 ) -> starlette.responses.Response:
-    issues = await crud.read_issues()
+    async with database.session() as session:
+        issues = await models.Issue.get(closed=False, session=session)
+
     meta = schemas.Meta.from_issues(issues)
     return templates.TemplateResponse(
         'issues.list.html',
@@ -73,7 +78,10 @@ async def list_my_issues(
     if not commons.user:
         raise fastapi.HTTPException(status_code=403)
 
-    issues = await crud.read_issues_for_user(commons.user)
+    async with database.session() as session:
+        issues = await models.Issue.get(assignee=commons.user, closed=False,
+                                        session=session)
+
     meta = schemas.Meta.from_issues(issues)
     return templates.TemplateResponse(
         'issues.list.html',
@@ -85,13 +93,15 @@ async def show_issue(
         request: fastapi.Request,
         key: str,
 ) -> starlette.responses.Response:
-    issue = await crud.read_issue(key)
-    if not issue:
+    async with database.session() as session:
+        issues = await models.Issue.get(key=key, closed=True, session=session)
+
+    if not issues:
         raise fastapi.HTTPException(status_code=404)
 
     return templates.TemplateResponse(
         'issues.show.html',
-        {'request': request, 'settings': config.settings, 'issue': issue})
+        {'request': request, 'settings': config.settings, 'issue': issues[0]})
 
 
 @router.get('/settings', response_class=fastapi.responses.HTMLResponse)
@@ -108,7 +118,9 @@ async def show_settings(
 async def list_triagable_issues(
         request: fastapi.Request,
 ) -> starlette.responses.Response:
-    issues = await crud.read_issues_needing_triage()
+    async with database.session() as session:
+        issues = await models.Issue.get(needs_triage=True, session=session)
+
     meta = schemas.Meta.from_issues(issues)
     return templates.TemplateResponse(
         'issues.list.html',

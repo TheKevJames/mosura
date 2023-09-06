@@ -1,14 +1,11 @@
-import databases
-import sqlalchemy
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.asyncio import async_sessionmaker
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from . import config
 
 
-DATABASE_URL = f'sqlite:///{config.settings.mosura_appdata}/mosura.db'
-
-database = databases.Database(DATABASE_URL)
-engine = sqlalchemy.create_engine(DATABASE_URL,
-                                  connect_args={'check_same_thread': False})
-
-Base = declarative_base()
+engine = create_async_engine(
+    f'sqlite+aiosqlite:///{config.settings.mosura_appdata}/mosura.db',
+    connect_args={'check_same_thread': False},
+)
+session = async_sessionmaker(engine)

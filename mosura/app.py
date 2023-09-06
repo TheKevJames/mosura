@@ -6,7 +6,6 @@ import fastapi.staticfiles
 
 from . import api
 from . import config
-from . import database
 from . import tasks
 from . import ui
 
@@ -17,8 +16,6 @@ app.include_router(api.router, prefix='/api/v0')
 app.include_router(api.router, prefix='/api/latest')
 app.mount('/static', fastapi.staticfiles.StaticFiles(directory='static'),
           name='static')
-
-database.Base.metadata.create_all(bind=database.engine)
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +32,6 @@ def log_exception(_loop: asyncio.AbstractEventLoop,
 # Events
 @app.on_event('startup')
 async def startup() -> None:
-    await database.database.connect()
-
     app.state.tasks = await tasks.spawn(config.settings.jira_project)
     logger.info('startup(): begun polling tasks')
 
@@ -51,5 +46,3 @@ async def shutdown() -> None:
         await asyncio.gather(*app.state.tasks)
     except asyncio.CancelledError:
         pass
-
-    await database.database.disconnect()
