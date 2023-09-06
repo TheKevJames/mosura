@@ -3,12 +3,12 @@
 
 {% block content %}
 <div class="ui main text container">
-  <div class="ui grid">
+  <div class="ui celled grid">
     <div class="row">
-      <div class="two wide column">
+      <div class="three wide column">
         <p>{{ issue.key }}</p>
       </div>
-      <div class="twelve wide column">
+      <div class="eleven wide column">
         <p>
           {% if issue.priority == "Low" %}
           <i class="green angle down icon" title="Low Priority"></i>
@@ -32,33 +32,37 @@
     </div>
     <div class="row">
       <div class="two wide column">
-        <p>Status: {{ issue.status }}</p>
+        <p>Status:<br />{{ issue.status }}</p>
       </div>
       <div class="two wide column">
-        <p>Assignee: {{ issue.assignee }}</p>
+        <p>Assignee:<br />{{ issue.assignee }}</p>
       </div>
       <div class="two wide column">
-        <p>Start Date: {{ issue.startdate | dateformat }}</p>
+        <p>Start Date:<br />{{ issue.startdate | dateformat }}</p>
       </div>
       <div class="two wide column">
-        <p>Time Estimate: {{ issue.timeestimate }}</p>
+        <p>Time Estimate:<br />{{ issue.timeestimate | timeformat }}</p>
       </div>
       <div class="four wide column">
         <p>Components:</p>
-        {% for c in issue.components %}
-        <p>{{ c.component }}</p>
-        {% endfor %}
+        <ul>
+          {% for c in issue.components %}
+          <li>{{ c.component }}</li>
+          {% endfor %}
+        </ul>
       </div>
       <div class="four wide column">
         <p>Labels:</p>
-        {% for l in issue.labels %}
-        <p>{{ l.label }}</p>
-        {% endfor %}
+        <ul>
+          {% for l in issue.labels %}
+          <li>{{ l.label }}</li>
+          {% endfor %}
+        </ul>
       </div>
     </div>
     <div class="row">
       <div class="twelve wide column">
-        <a href="{{ settings.jira_domain }}/browse/{{ issue.key }}">Edit</a>
+        <a href="{{ settings.jira_domain }}/browse/{{ issue.key }}">Edit in Jira</a>
       </div>
     </div>
   </div>

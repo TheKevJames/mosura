@@ -111,8 +111,7 @@ async def fetch(
 async def fetch_closed(project: str) -> None:
     await fetch(
         interval=datetime.timedelta(minutes=15),
-        jql=(f"project = '{project}' "
-             "AND status = 'Closed'"),
+        jql=(f"project = '{project}' AND status = 'Closed'"),
         variant='closed',
     )
 
@@ -120,8 +119,7 @@ async def fetch_closed(project: str) -> None:
 async def fetch_open(project: str) -> None:
     await fetch(
         interval=datetime.timedelta(minutes=5),
-        jql=(f"project = '{project}' "
-             "AND status != 'Closed'"),
+        jql=(f"project = '{project}' AND status != 'Closed'"),
         variant='open',
     )
 

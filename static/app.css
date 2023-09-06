@@ -4,3 +4,23 @@
 /* &#xa; -> linebreak in data-tooltip fields */
 [data-tooltip]::after {
   white-space: pre; }
+
+/* defaults have it using <25% of the screen */
+@media only screen and (min-width: 1200px) {
+  /*
+  .ui.container {
+    width: 1127px; }
+
+  .ui.grid.container {
+    width: calc(1127px  +  2rem) !important; }
+
+  .ui.relaxed.grid.container {
+    width: calc(1127px  +  3rem) !important; }
+
+  .ui.very.relaxed.grid.container {
+    width: calc(1127px  +  5rem) !important; }
+  */
+
+  .ui.text.container {
+    max-width: 1127px !important; }
+}

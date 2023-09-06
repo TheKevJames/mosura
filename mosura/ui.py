@@ -20,7 +20,18 @@ def dateformat(x: datetime.datetime | None) -> str:
     return x.strftime('%Y-%m-%d')
 
 
+def timeformat(x: datetime.timedelta) -> str:
+    if x.days > 0:
+        return f'{x.days} Days'
+    if x.seconds > 3600:
+        return f'{-(-x.seconds // 3600)} Hours'
+    if x.total_seconds() == 0:
+        return 'Unset'
+    return '<1 Hour'
+
+
 templates.env.filters['dateformat'] = dateformat
+templates.env.filters['timeformat'] = timeformat
 
 
 @router.get('/', response_class=fastapi.responses.HTMLResponse)
