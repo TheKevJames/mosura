@@ -1,5 +1,28 @@
 {% extends "base.html" %}
 {% block title %}{{ issue.key }}{% endblock %}
+{% block header %}
+<!-- https://cdnjs.com/libraries/semantic-ui -->
+<link href="{{ url_for('static', path='/semantic-2.5.0.dropdown.min.css') }}" rel="stylesheet">
+<script src="{{ url_for('static', path='/semantic-2.5.0.dropdown.min.js') }}"></script>
+<script>
+$(window).on('load', function() {
+  $('.ui.dropdown').dropdown();
+})
+
+function update_field(field, value) {
+  body = JSON.stringify({[field]: value});
+  console.log(`PATCHing {{ issue.key}} with ${body}`);
+
+  fetch("/api/v0/issues/{{ issue.key }}", {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: body,
+  });
+}
+</script>
+{% endblock %}
 
 {% block content %}
 <div class="ui main text container">
@@ -9,20 +32,27 @@
         <p>{{ issue.key }}</p>
       </div>
       <div class="eleven wide column">
-        <p>
-          {% if issue.priority == "Low" %}
-          <i class="green angle down icon" title="Low Priority"></i>
-          {% elif issue.priority == "Medium" %}
-          <i class="yellow minus icon" title="Medium Priority"></i>
-          {% elif issue.priority == "High" %}
-          <i class="orange angle up icon" title="High Priority"></i>
-          {% elif issue.priority == "Urgent" %}
-          <i class="red angle double up icon" title="Urgent Priority"></i>
-          {% else %}
-          <i class="question circle outline icon" title="Unknown Priority"></i>
-          {% endif %}
-          {{ issue.summary }}
-        </p>
+        <div class="ui selection inline compact dropdown">
+          <input type="hidden" name="priority" onChange="update_field(this.name, this.value);" value="{{ issue.priority.value }}">
+          <div class="default text">
+            <i class="{{ issue.priority.css_class }}" title="{{ issue.priority.value }} Priority"></i>
+          </div>
+          <div class="menu">
+            <div class="item" data-value="{{ Priority.low }}">
+              <i class="{{ Priority.low.css_class }}" title="{{ Priority.low.value }} Priority"></i>
+            </div>
+            <div class="item" data-value="{{ Priority.medium }}">
+              <i class="{{ Priority.medium.css_class }}" title="{{ Priority.medium.value }} Priority"></i>
+            </div>
+            <div class="item" data-value="{{ Priority.high }}">
+              <i class="{{ Priority.high.css_class }}" title="{{ Priority.high.value }} Priority"></i>
+            </div>
+            <div class="item" data-value="{{ Priority.urgent }}">
+              <i class="{{ Priority.urgent.css_class }}" title="{{ Priority.urgent.value }} Priority"></i>
+            </div>
+          </div>
+        </div>
+        {{ issue.summary }}
       </div>
     </div>
     <div class="row">

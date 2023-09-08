@@ -5,22 +5,20 @@
 [data-tooltip]::after {
   white-space: pre; }
 
-/* defaults have it using <25% of the screen */
+/* set text containers to the same width as non-text containers */
 @media only screen and (min-width: 1200px) {
-  /*
-  .ui.container {
-    width: 1127px; }
-
-  .ui.grid.container {
-    width: calc(1127px  +  2rem) !important; }
-
-  .ui.relaxed.grid.container {
-    width: calc(1127px  +  3rem) !important; }
-
-  .ui.very.relaxed.grid.container {
-    width: calc(1127px  +  5rem) !important; }
-  */
-
   .ui.text.container {
     max-width: 1127px !important; }
 }
+
+/* make "compact" dropdowns more compact */
+.ui.compact.dropdown,
+.ui.compact.selection.dropdown {
+  min-height: 0px; }
+
+  .ui.compact.dropdown,
+  .ui.compact.dropdown .menu > .item,
+  .ui.compact.selection.dropdown,
+  .ui.compact.selection.dropdown .menu > .item {
+    /* padding: .78571429em 2.1em .78571429em 1em; */
+    padding: 0.1em 0em !important; }

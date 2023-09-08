@@ -112,7 +112,8 @@ async def show_issue(
 
     return templates.TemplateResponse(
         'issues.show.html',
-        {'request': request, 'settings': config.settings, 'issue': issues[0]})
+        {'request': request, 'settings': config.settings, 'issue': issues[0],
+         'Priority': schemas.Priority})
 
 
 @router.get('/settings', response_class=fastapi.responses.HTMLResponse)

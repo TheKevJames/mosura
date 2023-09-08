@@ -165,7 +165,9 @@ class Issue(Base):
     @classmethod
     async def upsert(cls, issue: schemas.IssueCreate, *,
                      session: AsyncSession) -> None:
-        stmt = insert(cls).values(**issue.model_dump())
+        # N.B. set "include" explicitly to support subclasses of IssueCreate
+        stmt = insert(cls).values(**issue.model_dump(
+            include=set(schemas.IssueCreate.model_fields.keys())))
         query = stmt.on_conflict_do_update(
             index_elements=['key'],
             set_={

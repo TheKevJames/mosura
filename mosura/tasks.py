@@ -15,12 +15,6 @@ from . import schemas
 logger = logging.getLogger(__name__)
 
 
-def datetime_or_null(x: str | None) -> datetime.datetime | None:
-    if x is None:
-        return x
-    return datetime.datetime.fromisoformat(x)
-
-
 async def fetch(
         *,
         variant: str,
@@ -28,9 +22,6 @@ async def fetch(
         interval: datetime.timedelta,
 ) -> None:
     page_size = 100
-    fields = ['key', 'summary', 'description', 'status', 'assignee',
-              'priority', 'components', 'labels', 'customfield_12161',
-              'timeoriginalestimate']
 
     while True:
         async with database.session() as session:
@@ -45,21 +36,22 @@ async def fetch(
             logger.info('fetch(%s): fetching data', variant)
 
             for idx in itertools.count(0, page_size):
-                issues: dict[str, Any] = cast(
+                resp: dict[str, Any] = cast(
                     dict[str, Any],
                     await asyncio.to_thread(
                         config.jira_client.search_issues,
                         jql,
                         startAt=idx,
                         maxResults=page_size,
-                        fields=fields,
+                        fields=schemas.Issue.jira_fields(),
                         expand='renderedFields',
                         json_result=True,
                     ),
                 )
+                issues: list[dict[str, Any]] = resp.get('issues', [])
                 logger.debug('fetch(%s): fetched %d issues, writing to db',
-                             variant, len(issues.get('issues', [])))
-                for issue in issues.get('issues', []):
+                             variant, len(issues))
+                for issue in issues:
                     # TODO: in-place component and label upserts
                     await models.Component.delete(issue['key'],
                                                   session=session)
@@ -78,28 +70,15 @@ async def fetch(
                         )
 
                     await models.Issue.upsert(
-                        schemas.IssueCreate(
-                            assignee=(issue['fields']['assignee']
-                                      or {}).get('displayName'),
-                            description=issue['renderedFields']['description'],
-                            key=issue['key'],
-                            priority=issue['fields']['priority']['name'],
-                            status=issue['fields']['status']['name'],
-                            summary=issue['fields']['summary'],
-                            startdate=datetime_or_null(
-                                issue['fields']['customfield_12161']),
-                            timeoriginalestimate=str(
-                                issue['fields'].get('timeoriginalestimate')
-                                or 0),
-                        ),
+                        schemas.IssueCreate.from_jira(issue),
                         session=session,
                     )
 
-                if issues['total'] < idx + page_size:
+                if resp['total'] < idx + page_size:
                     break
 
             logger.info('fetch(%s): fetched %d issues in total', variant,
-                        issues['total'])
+                        resp['total'])
             task = schemas.Task.model_validate({
                 'key': 'fetch',
                 'variant': variant,

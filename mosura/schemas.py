@@ -1,13 +1,41 @@
 import datetime
+import enum
 import itertools
 import logging
 from collections.abc import Iterable
 from collections.abc import Iterator
+from typing import Any
+from typing import assert_never
+from typing import Self
 
+import jira
 import pydantic
 
 
 logger = logging.getLogger(__name__)
+
+
+class Priority(str, enum.Enum):
+    # TODO: un-break support for jiras with non-default priorities
+    low = 'Low'
+    medium = 'Medium'
+    high = 'High'
+    urgent = 'Urgent'
+
+    def __str__(self) -> str:
+        return self.value
+
+    @property
+    def css_class(self) -> str:  # pylint: disable=inconsistent-return-statements
+        if self == Priority.low:
+            return 'green angle down icon'
+        if self == Priority.medium:
+            return 'yellow minus icon'
+        if self == Priority.high:
+            return 'orange angle up icon'
+        if self == Priority.urgent:
+            return 'red angle double up icon'
+        assert_never(self)
 
 
 class Component(pydantic.BaseModel):
@@ -30,9 +58,35 @@ class IssueCreate(pydantic.BaseModel):
     description: str | None = None
     status: str
     assignee: str | None = None
-    priority: str
+    priority: Priority
     startdate: datetime.datetime | None = None
     timeoriginalestimate: str
+
+    @classmethod
+    def jira_fields(cls) -> list[str]:
+        return ['key', 'summary', 'description', 'status', 'assignee',
+                'priority', 'components', 'labels', 'customfield_12161',
+                'timeoriginalestimate']
+
+    @classmethod
+    def parse_datetime(cls, x: str | None) -> datetime.datetime | None:
+        if x is None:
+            return x
+        return datetime.datetime.fromisoformat(x).replace(tzinfo=datetime.UTC)
+
+    @classmethod
+    def from_jira(cls, data: dict[str, Any]) -> Self:
+        return cls(
+            assignee=(data['fields']['assignee'] or {}).get('displayName'),
+            description=data['renderedFields']['description'],
+            key=data['key'],
+            priority=data['fields']['priority']['name'],
+            status=data['fields']['status']['name'],
+            summary=data['fields']['summary'],
+            startdate=cls.parse_datetime(data['fields']['customfield_12161']),
+            timeoriginalestimate=str(data['fields'].get('timeoriginalestimate')
+                                     or 0),
+        )
 
     @property
     def timeestimate(self) -> datetime.timedelta:
@@ -62,6 +116,41 @@ class Issue(IssueCreate):
     def body(self) -> str:
         return self.description or ''
 
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, jira.Issue):
+            return super().__eq__(other)
+
+        parsed = IssueCreate.from_jira(other.raw)
+
+        mismatches: list[str] = []
+        for field in IssueCreate.model_fields:
+            check = getattr(self, field) == getattr(parsed, field)
+            if not check:
+                mismatches.append(f'{field}: {getattr(self, field)} != '
+                                  f'{getattr(parsed, field)}')
+
+        if mismatches:
+            logger.error('attempted update on out-of-sync issue %s:\n\t%s',
+                         self.key, '\n\t'.join(mismatches))
+            return False
+
+        # TODO: components_equal and labels_equal
+        return True
+
+
+class IssuePatch(pydantic.BaseModel):
+    # TODO: reminder to update Issue.__eq__ before adding support for
+    # components or labels
+    priority: Priority | None
+
+    model_config = pydantic.ConfigDict(use_enum_values=True)
+
+    def to_jira(self) -> dict[str, str | dict[str, str]]:
+        data = self.model_dump(exclude_unset=True)
+        if data.get('priority'):
+            data['priority'] = {'name': data['priority']}
+        return data
+
 
 class Task(pydantic.BaseModel):
     key: str
@@ -76,7 +165,7 @@ class Meta:
     assignees: list[str]
     components: list[str]
     labels: list[str]
-    priorities: list[str]
+    priorities: list[Priority]
     statuses: list[str]
 
     @classmethod
