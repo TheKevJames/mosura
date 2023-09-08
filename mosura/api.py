@@ -47,6 +47,7 @@ async def patch_issue(key: str, issue: schemas.IssuePatch) -> None:
             expand='renderedFields',
         )
         if cached_issue != live_issue:
+            # TODO: need UI feedback
             raise fastapi.HTTPException(
                 status_code=fastapi.status.HTTP_409_CONFLICT)
 

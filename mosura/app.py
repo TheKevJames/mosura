@@ -1,6 +1,5 @@
 import asyncio
 import logging.config
-from typing import Any
 
 import fastapi.staticfiles
 
@@ -20,13 +19,16 @@ app.mount('/static', fastapi.staticfiles.StaticFiles(directory='static'),
 logger = logging.getLogger(__name__)
 
 
-def log_exception(_loop: asyncio.AbstractEventLoop,
-                  context: dict[str, Any]) -> None:
-    if context.get('exception'):
-        logger.error(context['message'], exc_info=context['exception'])
-        return
-
-    logger.error(context['message'])
+@app.exception_handler(fastapi.exceptions.RequestValidationError)
+async def handle_validation_errors(
+        _request: fastapi.Request,
+        exc: fastapi.exceptions.RequestValidationError,
+) -> fastapi.responses.JSONResponse:
+    logger.error('could not parse payload', exc_info=exc)
+    return fastapi.responses.JSONResponse(
+        status_code=fastapi.status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content=exc.body,
+    )
 
 
 # Events

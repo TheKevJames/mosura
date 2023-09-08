@@ -141,7 +141,8 @@ class Issue(IssueCreate):
 class IssuePatch(pydantic.BaseModel):
     # TODO: reminder to update Issue.__eq__ before adding support for
     # components or labels
-    priority: Priority | None
+    priority: Priority | None = None
+    summary: str | None = None
 
     model_config = pydantic.ConfigDict(use_enum_values=True)
 

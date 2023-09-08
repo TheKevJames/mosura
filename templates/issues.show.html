@@ -29,9 +29,9 @@ function update_field(field, value) {
   <div class="ui celled grid">
     <div class="row">
       <div class="three wide column">
-        <p>{{ issue.key }}</p>
+        <p style="padding: 0.2em 0;">{{ issue.key }}</p>
       </div>
-      <div class="eleven wide column">
+      <div class="thirteen wide column">
         <div class="ui selection inline compact dropdown">
           <input type="hidden" name="priority" onChange="update_field(this.name, this.value);" value="{{ issue.priority.value }}">
           <div class="default text">
@@ -52,7 +52,10 @@ function update_field(field, value) {
             </div>
           </div>
         </div>
-        {{ issue.summary }}
+
+        <div class="ui compact input" style="width: calc(100% - 3em);">
+          <input type="text" name="summary" onChange="update_field(this.name, this.value);" value="{{ issue.summary }}">
+        </div>
       </div>
     </div>
     <div class="row">
