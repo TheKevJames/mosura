@@ -3,6 +3,7 @@ import datetime
 import pytest
 
 from mosura.schemas import IssueCreate
+from mosura.schemas import Priority
 from mosura.schemas import Quarter
 
 
@@ -14,7 +15,7 @@ from mosura.schemas import Quarter
      ('427500', datetime.timedelta(days=18, hours=6, minutes=45))])
 def test_issue_timeestimate(original: str,
                             expected: datetime.timedelta) -> None:
-    x = IssueCreate(key='x', summary='x', status='x', priority='x',
+    x = IssueCreate(key='x', summary='x', status='x', priority=Priority.low,
                     timeoriginalestimate=original, description=None,
                     assignee=None, startdate=None)
     assert x.timeestimate == expected
