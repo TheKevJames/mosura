@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.2
+# syntax=docker/dockerfile:1.6
 FROM python:3.12.0-slim-bullseye AS base
 
 RUN apt-get update -qy && \
