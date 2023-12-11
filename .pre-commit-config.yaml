@@ -35,7 +35,7 @@ repos:
     -   id: name-tests-test
     -   id: requirements-txt-fixer
 -   repo: https://github.com/PyCQA/pylint
-    rev: v3.0.1
+    rev: v3.0.3
     hooks:
     # TODO: pylint-import-modules support for pylint v3 (or alternative linter)
     -   id: pylint
@@ -169,7 +169,7 @@ repos:
 
 # json
 - repo: https://github.com/python-jsonschema/check-jsonschema
-  rev: 0.27.2
+  rev: 0.27.3
   hooks:
     - id: check-github-workflows
     - id: check-renovate
