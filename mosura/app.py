@@ -1,5 +1,7 @@
 import asyncio
+import contextlib
 import logging.config
+from collections.abc import AsyncIterator
 
 import fastapi.staticfiles
 
@@ -9,14 +11,32 @@ from . import tasks
 from . import ui
 
 
-app = fastapi.FastAPI()
+logger = logging.getLogger(__name__)
+
+
+@contextlib.asynccontextmanager
+async def lifespan(_app: fastapi.FastAPI) -> AsyncIterator[None]:
+    _app.state.tasks = await tasks.spawn(config.settings.jira_project)
+    logger.info('startup(): begun polling tasks')
+
+    yield
+
+    logger.info('shutdown(): stopping polling tasks')
+    for task in _app.state.tasks:
+        task.cancel()
+
+    try:
+        await asyncio.gather(*_app.state.tasks)
+    except asyncio.CancelledError:
+        pass
+
+
+app = fastapi.FastAPI(lifespan=lifespan)
 app.include_router(ui.router)
 app.include_router(api.router, prefix='/api/v0')
 app.include_router(api.router, prefix='/api/latest')
 app.mount('/static', fastapi.staticfiles.StaticFiles(directory='static'),
           name='static')
-
-logger = logging.getLogger(__name__)
 
 
 @app.exception_handler(fastapi.exceptions.RequestValidationError)
@@ -29,22 +49,3 @@ async def handle_validation_errors(
         status_code=fastapi.status.HTTP_422_UNPROCESSABLE_ENTITY,
         content=exc.body,
     )
-
-
-# Events
-@app.on_event('startup')
-async def startup() -> None:
-    app.state.tasks = await tasks.spawn(config.settings.jira_project)
-    logger.info('startup(): begun polling tasks')
-
-
-@app.on_event('shutdown')
-async def shutdown() -> None:
-    logger.info('shutdown(): stopping polling tasks')
-    for task in app.state.tasks:
-        task.cancel()
-
-    try:
-        await asyncio.gather(*app.state.tasks)
-    except asyncio.CancelledError:
-        pass
