@@ -39,8 +39,7 @@ workflows:
             parameters:
               registry: ['docker.io', 'quay.io']
           pre-steps:
-            - setup_remote_docker:
-                version: 20.10.6
+            - setup_remote_docker
             - run: echo "$DOCKER_PASS" | docker login docker.io --username "$DOCKER_USER" --password-stdin
             - run: echo "$QUAY_PASS" | docker login quay.io --username "$QUAY_USER" --password-stdin
       - docker-readme-build
