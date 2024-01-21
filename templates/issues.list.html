@@ -17,14 +17,24 @@ $(window).on('load', function() {
 })
 
 function update_filter(field, value) {
-  let selected = new Set(value.split(','));
+  let selected = new Set(value.split(","));
 
   $('tbody tr').each(function(i) {
-    // TODO: fix this for list fields
-    if (selected.has(this.children[field].innerText)) {
-      this.style.display = '';
+    if (field == 5 || field == 6) {
+      // list fields
+      let data = new Set(this.children[field].innerText.split("\n").map((x) => x.trim()).filter((x) => x));
+      let intersection = new Set([...selected].filter(x => data.has(x)));
+      if (intersection.size !== 0) {
+        this.style.display = '';
+      } else {
+        this.style.display = 'none';
+      }
     } else {
-      this.style.display = 'none';
+      if (selected.has(this.children[field].innerText)) {
+        this.style.display = '';
+      } else {
+        this.style.display = 'none';
+      }
     }
   })
 };
