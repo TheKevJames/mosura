@@ -5,16 +5,11 @@ from typing import Any
 from typing import Self
 
 import fastapi
+import jira
 import pydantic
 import pydantic_settings
 
-with warnings.catch_warnings():
-    # TODO: fixable?
-    warnings.simplefilter('ignore', DeprecationWarning)
-    import jira
 
-
-warnings.simplefilter('always')
 logger = logging.getLogger(__name__)
 
 
@@ -90,7 +85,10 @@ class Jira(jira.JIRA):
 
 # TODO: rather than all this import-time crap, can I use app context of some
 # sort? Maybe Dependencies?
-settings = Settings()
+with warnings.catch_warnings():
+    # don't warn on secrets_dir beein missing
+    warnings.simplefilter('ignore', UserWarning)
+    settings = Settings()
 jira_client = Jira.from_settings(settings)
 
 
