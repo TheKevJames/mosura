@@ -38,9 +38,7 @@ templates.env.filters['timeformat'] = timeformat
 async def home(
         request: fastapi.Request,
 ) -> starlette.responses.Response:
-    return templates.TemplateResponse(
-        'home.html',
-        {'request': request})
+    return templates.TemplateResponse(request, 'home.html')
 
 
 @router.get('/gannt', response_class=fastapi.responses.HTMLResponse)
@@ -62,10 +60,9 @@ async def gannt(
               if x not in schedule.raw
               and not q.uncontained(x)]
 
-    return templates.TemplateResponse(
-        'gannt.html',
-        {'request': request, 'issues': issues, 'schedule': schedule,
-         'settings': config.settings})
+    context = {'issues': issues, 'schedule': schedule,
+               'settings': config.settings}
+    return templates.TemplateResponse(request, 'gannt.html', context)
 
 
 @router.get('/issues', response_class=fastapi.responses.HTMLResponse)
@@ -76,9 +73,8 @@ async def list_issues(
         issues = await models.Issue.get(closed=False, session=session)
 
     meta = schemas.Meta.from_issues(issues)
-    return templates.TemplateResponse(
-        'issues.list.html',
-        {'request': request, 'issues': issues, 'meta': meta})
+    context = {'issues': issues, 'meta': meta}
+    return templates.TemplateResponse(request, 'issues.list.html', context)
 
 
 @router.get('/mine', response_class=fastapi.responses.HTMLResponse)
@@ -94,9 +90,8 @@ async def list_my_issues(
                                         session=session)
 
     meta = schemas.Meta.from_issues(issues)
-    return templates.TemplateResponse(
-        'issues.list.html',
-        {'request': request, 'issues': issues, 'meta': meta})
+    context = {'issues': issues, 'meta': meta}
+    return templates.TemplateResponse(request, 'issues.list.html', context)
 
 
 @router.get('/issues/{key}', response_class=fastapi.responses.HTMLResponse)
@@ -110,10 +105,9 @@ async def show_issue(
     if not issues:
         raise fastapi.HTTPException(status_code=404)
 
-    return templates.TemplateResponse(
-        'issues.show.html',
-        {'request': request, 'settings': config.settings, 'issue': issues[0],
-         'Priority': schemas.Priority})
+    context = {'settings': config.settings, 'issue': issues[0],
+               'Priority': schemas.Priority}
+    return templates.TemplateResponse(request, 'issues.show.html', context)
 
 
 @router.get('/settings', response_class=fastapi.responses.HTMLResponse)
@@ -121,9 +115,8 @@ async def show_settings(
         request: fastapi.Request,
         commons: config.CommonsDep,
 ) -> starlette.responses.Response:
-    return templates.TemplateResponse(
-        'settings.html',
-        {'request': request, 'settings': config.settings, 'commons': commons})
+    context = {'settings': config.settings, 'commons': commons}
+    return templates.TemplateResponse(request, 'settings.html', context)
 
 
 @router.get('/triage', response_class=fastapi.responses.HTMLResponse)
@@ -134,6 +127,5 @@ async def list_triagable_issues(
         issues = await models.Issue.get(needs_triage=True, session=session)
 
     meta = schemas.Meta.from_issues(issues)
-    return templates.TemplateResponse(
-        'issues.list.html',
-        {'request': request, 'issues': issues, 'meta': meta})
+    context = {'issues': issues, 'meta': meta}
+    return templates.TemplateResponse(request, 'issues.list.html', context)
