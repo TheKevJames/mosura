@@ -3,7 +3,6 @@ import enum
 import itertools
 import logging
 from collections.abc import Iterable
-from collections.abc import Iterator
 from typing import Any
 from typing import assert_never
 from typing import Self
@@ -59,7 +58,7 @@ class IssueCreate(pydantic.BaseModel):
     status: str
     assignee: str | None = None
     priority: Priority
-    startdate: datetime.datetime | None = None
+    startdate: datetime.date | None = None
     timeoriginalestimate: str
 
     @classmethod
@@ -69,10 +68,11 @@ class IssueCreate(pydantic.BaseModel):
                 'timeoriginalestimate']
 
     @classmethod
-    def parse_datetime(cls, x: str | None) -> datetime.datetime | None:
+    def parse_date(cls, x: str | None) -> datetime.date | None:
         if x is None:
             return x
-        return datetime.datetime.fromisoformat(x).replace(tzinfo=datetime.UTC)
+        return datetime.datetime.fromisoformat(x).replace(
+            tzinfo=datetime.UTC).date()
 
     @classmethod
     def from_jira(cls, data: dict[str, Any]) -> Self:
@@ -83,7 +83,7 @@ class IssueCreate(pydantic.BaseModel):
             priority=data['fields']['priority']['name'],
             status=data['fields']['status']['name'],
             summary=data['fields']['summary'],
-            startdate=cls.parse_datetime(data['fields']['customfield_12161']),
+            startdate=cls.parse_date(data['fields']['customfield_12161']),
             timeoriginalestimate=str(data['fields'].get('timeoriginalestimate')
                                      or 0),
         )
@@ -100,13 +100,14 @@ class IssueCreate(pydantic.BaseModel):
         return datetime.timedelta(days=days, seconds=seconds)
 
     @property
-    def enddate(self) -> datetime.datetime | None:
+    def enddate(self) -> datetime.date | None:
         if self.startdate is None:
             return None
         return self.startdate + self.timeestimate
 
 
 class Issue(IssueCreate):
+    # TODO: implement __hash__, use sets for perf throughout
     components: list[Component]
     labels: list[Label]
 
@@ -179,198 +180,150 @@ class Meta:
         return cls(assignees, components, labels, priorities, statuses)
 
 
-@pydantic.dataclasses.dataclass
-class Quarter:
-    year: int
-    startmonth: int
-    display: str
-    padding: int
+Aligned = list[list[tuple[int, Issue | None]]]
 
-    @classmethod
-    def init(cls, date: datetime.datetime | None = None,
-             padding: int = 7) -> 'Quarter':
-        date = date or datetime.datetime.now(datetime.UTC)
-        year = date.year if date.month > 1 else date.year - 1
 
-        quarter = ((date.month - 2) // 3 + 1) or 4
-        startmonth = {1: 2, 2: 5, 3: 8, 4: 11}[quarter]
+def getassignee(x: Issue) -> str:
+    return x.assignee or 'Unassigned'
 
-        display = f'{year}Q{quarter}'
-        return cls(year, startmonth, display, padding)
 
-    @classmethod
-    def from_display(cls, display: str | None, padding: int = 7) -> 'Quarter':
-        if not display:
-            return Quarter.init(padding=padding)
+def getsummary(x: Issue) -> str:
+    return x.summary
 
-        year, quarter = display.split('Q', maxsplit=1)
-        month = int(quarter) * 3
 
-        date = datetime.datetime(year=int(year), month=month, day=1,
-                                 tzinfo=datetime.UTC)
-        return Quarter.init(date=date, padding=padding)
-
-    @property
-    def _start(self) -> datetime.datetime:
-        x = datetime.datetime(year=self.year, month=self.startmonth, day=1,
-                              tzinfo=datetime.UTC)
-        if x.isoweekday() != 1:
-            x += datetime.timedelta(days=8 - x.isoweekday())
-        x -= datetime.timedelta(days=self.padding)
-        return x
-
-    @property
-    def _end(self) -> datetime.datetime:
-        endmonth = ((self.startmonth + 3) % 12) or 12
-        x = datetime.datetime(year=self.year, month=endmonth,
-                              day=self.padding, tzinfo=datetime.UTC)
-        return x
-
-    @property
-    def boxes(self) -> Iterator[datetime.datetime]:
-        curr = self._start
-        while curr < self._end:
-            yield curr
-            curr += datetime.timedelta(days=7)
-
-    @property
-    def headers(self) -> Iterator[tuple[int, bool, datetime.datetime]]:
-        boxes = list(self.boxes)
-        padding = {boxes[0].month, boxes[-1].month}
-        for box, group in itertools.groupby(boxes, lambda x: x.month):
-            xs = list(group)
-            yield len(xs), box in padding, xs[0]
-
-    def contains(self, x: Issue) -> bool:
-        startdate = x.startdate
-        if not startdate:
-            return False
-
-        enddate = x.enddate
-        if not enddate:
-            return False
-
-        return enddate > self._start and startdate < self._end
-
-    def display_offset(self, offset: int) -> str:
-        year, quarter = (int(x) for x in self.display.split('Q', maxsplit=1))
-
-        year += (abs(offset) // offset) * (abs(offset) // 4)
-        quarter += offset
-        return f'{year}Q{quarter}'
-
-    def pointer(
-            self,
-            date: datetime.datetime = datetime.datetime.now(datetime.UTC),
-    ) -> Iterator[bool]:
-        for box in self.boxes:
-            if box <= date < box + datetime.timedelta(days=7):
-                yield True
-                continue
-            yield False
-
-    def uncontained(self, x: Issue) -> bool:
-        startdate = x.startdate
-        if not startdate:
-            return False
-
-        enddate = x.enddate
-        if not enddate:
-            return False
-
-        return startdate > self._end or enddate < self._start
+def sortdate(x: Issue) -> datetime.date:
+    return x.startdate or datetime.date.min
 
 
 @pydantic.dataclasses.dataclass
-class Schedule:
-    quarter: Quarter
-    unaligned: list[tuple[int, int, Issue]]
-    aligned: dict[str, list[tuple[int, Issue | None]]]
-    raw: list[Issue]
+class Timeline:
+    aligned: dict[str, Aligned]
+    triage: list[Issue]
+    monday: datetime.date
+    boxes: list[tuple[datetime.date, bool]]
 
     @classmethod
-    def init(cls, issues: list[Issue],
-             quarter: Quarter | None = None) -> 'Schedule':
-        self = cls(quarter or Quarter.init(), [], {}, [])
+    def from_issues(
+            cls,
+            issues: list[Issue],
+            *,
+            okr_label: str | None = None,
+            target: datetime.date | None = None,
+            weeks_before: int = 3,
+            weeks_after: int = 10,
+    ) -> 'Timeline':
+        aligned: dict[str, Aligned] = {}
+        triage: list[Issue] = []
+        monday, boxes = cls.get_boxes(target, weeks_before, weeks_after)
 
-        in_quarter = [x for x in issues
-                      if self.quarter.contains(x)
-                      and x.assignee]
-        invalid = [x for x in issues if x not in in_quarter]
+        groups = itertools.groupby(sorted(issues, key=getassignee),
+                                   getassignee)
+        for assignee, candidates in groups:
+            aligning, triaging = cls.partition_issues(
+                candidates,
+                boxes[0][0],
+                okr_label,
+            )
+            aligned[assignee] = cls.align_issues(
+                sorted(aligning, key=sortdate),
+                boxes[0][0],
+                boxes[-1][0] + datetime.timedelta(days=7),
+            )
+            triage.extend(sorted(triaging, key=getsummary))
 
-        boxes = list(self.quarter.boxes)
-        self._build_aligned(in_quarter, boxes)
-
-        for issue in invalid[::-1]:
-            data = self._get_unaligned_data(boxes, issue)
-            if not data:
-                invalid.remove(issue)
-                continue
-
-            self.unaligned.append(data)
-
-        self.raw = list(in_quarter) + invalid
-        return self
-
-    def _build_aligned(self, issues: Iterable[Issue],
-                       boxes: list[datetime.datetime]) -> None:
-        def grouper(x: Issue) -> str:
-            return x.assignee or ''
-
-        grouped = {k: list(v) for k, v in itertools.groupby(
-            sorted(issues, key=grouper), grouper)}
-        self.aligned = {k: [] for k in grouped}
-
-        for assignee, assigned in grouped.items():
-            xs = [x for x in assigned
-                  if x.startdate and x.startdate < boxes[0]]
-            if xs:
-                x = xs.pop()
-                assert x.enddate, 'enddate missing for aligned data'
-                fills = -(-(x.enddate - boxes[0]).days // 7)
-                self.aligned[assignee].append((fills, x))
-                self._handle_overlap(xs, 0)
-
-            idx = 1
-            while idx < len(boxes):
-                box = boxes[idx]
-                xs = [x for x in assigned
-                      if x.startdate
-                      if box <= x.startdate
-                      and x.startdate < box + datetime.timedelta(days=7)]
-                if not xs:
-                    self.aligned[assignee].append((1, None))
-                    idx += 1
-                    continue
-
-                x = xs.pop()
-                fills = -(-x.timeestimate.days // 7)
-                self.aligned[assignee].append((fills, x))
-                self._handle_overlap(xs, idx)
-                idx += fills
-
-    def _handle_overlap(self, xs: list[Issue], idx: int) -> None:
-        """Handle overlapping Issues by marking 'em as unaligned."""
-        for x in xs:
-            fill = -(-x.timeestimate.days // 7)
-            self.unaligned.append((idx, fill, x))
+        return cls(aligned, triage, monday, boxes)
 
     @staticmethod
-    def _get_unaligned_data(boxes: list[datetime.datetime],
-                            x: Issue) -> tuple[int, int, Issue] | None:
-        if x.startdate:
-            for idx, box in enumerate(boxes):
-                if (box <= x.startdate
-                        and (x.startdate < box + datetime.timedelta(days=7))):
+    def partition_issues(
+            issues: Iterable[Issue],
+            start_date: datetime.date,
+            okr_label: str | None,
+    ) -> tuple[list[Issue], list[Issue]]:
+        aligning: list[Issue] = []
+        triage: list[Issue] = []
+
+        for x in issues:
+            is_okr = okr_label and okr_label in {x.label for x in x.labels}
+            if not x.assignee and not is_okr:
+                # only track unassigned issues if they are OKRs
+                continue
+
+            if x.status != 'Closed' and not (x.startdate and x.enddate):
+                triage.append(x)
+            if x.enddate and x.enddate >= start_date:
+                aligning.append(x)
+
+        return aligning, triage
+
+    @staticmethod
+    def get_boxes(
+            target: datetime.date | None,
+            weeks_before: int,
+            weeks_after: int,
+    ) -> tuple[datetime.date, list[tuple[datetime.date, bool]]]:
+        now = target or datetime.datetime.now(datetime.UTC).date()
+        monday = now - datetime.timedelta(days=now.weekday())
+
+        weeks = weeks_before + 1 + weeks_after
+        start = monday - datetime.timedelta(days=7 * weeks_before)
+        boxes = [(start + datetime.timedelta(days=7 * week),
+                  week >= weeks_before)
+                 for week in range(weeks)]
+
+        return monday, boxes
+
+    @classmethod
+    def align_issues(
+            cls,
+            issues: list[Issue],
+            start: datetime.date,
+            end: datetime.date,
+    ) -> Aligned:
+        """
+        Aligns issues into rows of non-overlapping spans.
+
+        Packs optimally when issues is sorted by start date.
+        """
+        assigned: Aligned = []
+        for x in issues:
+            assert x.startdate, 'cannot align issues without startdate'
+            assert x.enddate, 'cannot align issues without enddate'
+
+            if x.startdate < start:
+                # event started before current view, only render overlaps
+                fills = -(-(x.enddate - start).days // 7)
+                target = start
+            else:
+                fills = -(-x.timeestimate.days // 7)
+                target = x.startdate
+
+            # event ends after current view, only render overlaps
+            fills -= max(0, -(-(x.enddate - end).days) // 7)
+
+            first_empty: datetime.date
+            row: list[tuple[int, Issue | None]]
+            for row in assigned:
+                filled = sum(x[0] for x in row)
+                first_empty = start + datetime.timedelta(days=7 * filled)
+                if first_empty <= target:
                     break
             else:
-                return None
-        else:
-            idx = 1
+                row = []
+                assigned.append(row)
+                first_empty = start
 
-        if x.timeestimate:
-            fills = -(-x.timeestimate.days // 7)
-        else:
-            fills = len(boxes) - 2
+            gap = (target - first_empty).days // 7
+            if gap:
+                row.append((gap, None))
 
-        return (idx, fills, x)
+            row.append((fills, x))
+
+        return assigned
+
+    @property
+    def next_month(self) -> str:
+        return (self.monday + datetime.timedelta(days=28)).isoformat()
+
+    @property
+    def prev_month(self) -> str:
+        return (self.monday - datetime.timedelta(days=28)).isoformat()

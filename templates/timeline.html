@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Timeline{% endblock %}
+{% block header %}
+<script>
+function onclick_navigate(e, key) {
+  var target = '_self';
+  if (e.ctrlKey || e.metaKey) {
+    target = '_blank';
+  }
+  window.open('/issues/' + key, target=target);
+};
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="ui main container">
+  <div>
+    <h1>
+      <a href="?date={{ timeline.prev_month }}">
+        <i class="icon angle left"></i>
+      </a>
+      {{ timeline.monday }}
+      <a href="?date={{ timeline.next_month }}">
+        <i class="icon angle right"></i>
+      </a>
+    </h1>
+
+    <!-- FIXME -->
+    <div class="ui icon" data-tooltip="Usage:&#xa;1. Label relevant tickets as {{ settings.jira_label_okr }}&#xa;2. Assign owners/start times/time estimations&#xa;3. Resolve conflicts" data-position="top left">
+      <i class="question circle icon"></i>
+    </div>
+  </div>
+
+  <table class="ui celled fixed unstackable structured table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        {% for header, enabled in timeline.boxes %}
+        <th {% if not enabled %}style="color:gray;"{% endif %}>
+          {{ header | dayformat }}
+        </th>
+        {% endfor %}
+    </thead>
+    <tbody>
+      <tr><td></td></tr>
+
+      {% for assignee, rows in timeline.aligned.items() %}
+        {% for assigned in rows %}
+        <tr>
+          <!-- TODO: rowspan the name -->
+          <td>{{ assignee }}</td>
+          {% for span, issue in assigned %}
+            {% if issue %}
+            <td colspan="{{ span }}" title="{{ issue.key}}: {{ issue.summary }}" class="ui message
+              {% if issue.status == "Closed" %}green
+              {% elif issue.status in ("In Progress", "Code Review") %}yellow
+              {% elif issue.status == "Needs Triage" %}red
+              {% endif %}
+            ">
+              <a href="/issues/{{ issue.key }}">{{ issue.summary }}</a>
+            {% else %}
+            <td colspan="{{ span }}">
+            {% endif %}
+            </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if timeline.triage %}
+  <div class="ui divider"></div>
+
+  <h3>Incomplete Scheduling Data</h3>
+
+  <!-- TODO: either make this a list, or make it a full "All Issues" style table -->
+  <table class="ui celled fixed unstackable structured table">
+    <thead>
+      <tr>
+        <th>Assignee</th>
+        <th>Start Date</th>
+        <th>Time Estimate</th>
+        <th colspan="5">Issue</th>
+    </thead>
+    <tbody>
+      {% for issue in timeline.triage %}
+      <tr>
+        <td>{{ issue.assignee or "Unassigned" }}</td>
+        <td>{{ issue.startdate | dateformat }}</td>
+        <td>{{ issue.timeestimate.days / 7 }} Weeks</td>
+        <td colspan="5" title="{{ issue.key}}: {{ issue.summary }}" class="ui message
+          {% if issue.status == "Closed" %}green
+          {% elif issue.status in ("In Progress", "Code Review") %}yellow
+          {% elif issue.status == "Needs Triage" %}red
+          {% endif %}
+        ">
+          <a href="/issues/{{ issue.key }}">{{ issue.summary }}</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+{% endblock %}

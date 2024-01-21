@@ -64,9 +64,8 @@ fields:
 * ``status``: the current status of the ticket
 
   * if you use a ``Needs Triage`` value, it will get highlighted as requiring
-    attention in the issue list and coloured red in the Gannt chart
-  * ``In Progress`` or ``Code Review`` will get coloured yellow in the Gannt
-    chart
+    attention in the issue list and coloured red in the timeline
+  * ``In Progress`` or ``Code Review`` will get coloured yellow in the timeline
   * ``Closed`` will be red on the chart and will not be visible anywhere else
 
 * ``priority``: the determined priority of the ticket
@@ -80,14 +79,11 @@ fields:
 
 * ``customfield_12161``: a.k.a. ``Start Date``; if anyone is aware of a builtin
   version of this, I'd love to switch over
-
-  * if a ticket's start date is within the current quarter and it also has a
-    time estimate, it will get drawn onto the Gannt chart
-
 * ``Original estimate``: the time estimate for the ticket
 
-  * if a ticket has this set along with a start date, it will get drawn onto
-    the Gannt chart
+  * if a ticket has a start time and a time estimate, and that timespan is
+    close to the current date (between a couple weeks in the past and a couple
+    months in the future), it will get drawn onto the timeline
 
 * ``components``: arbitrary list of components
 
@@ -99,8 +95,7 @@ fields:
   * if a ticket has no listed labels, it will get highlighted as requiring
     attention
   * if the label matches your configured "OKR Label" setting (default:
-    ``okr``), include it in the shortlist of "issues that need scheduling" on
-    the Gannt page
+    ``okr``), ensure it appears on the timeline page
 
 We also assume that you are interested in quarterly planning, using the
 financial quarter model starting on February, eg. Q1 starts on February 1st and

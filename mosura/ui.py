@@ -20,6 +20,12 @@ def dateformat(x: datetime.datetime | None) -> str:
     return x.strftime('%Y-%m-%d')
 
 
+def dayformat(x: datetime.datetime | None) -> str:
+    if x is None:
+        return ''
+    return x.strftime('%b %-d')
+
+
 def timeformat(x: datetime.timedelta) -> str:
     if x.days > 0:
         return f'{x.days} Days'
@@ -30,7 +36,9 @@ def timeformat(x: datetime.timedelta) -> str:
     return '<1 Hour'
 
 
+# TODO: issue color template?
 templates.env.filters['dateformat'] = dateformat
+templates.env.filters['dayformat'] = dayformat
 templates.env.filters['timeformat'] = timeformat
 
 
@@ -39,30 +47,6 @@ async def home(
         request: fastapi.Request,
 ) -> starlette.responses.Response:
     return templates.TemplateResponse(request, 'home.html')
-
-
-@router.get('/gannt', response_class=fastapi.responses.HTMLResponse)
-async def gannt(
-        request: fastapi.Request,
-        quarter: str | None = None,
-) -> starlette.responses.Response:
-    async with database.session() as session:
-        okr_label = config.settings.jira_label_okr
-        issues = [
-            iss for iss in await models.Issue.get(closed=True, session=session)
-            if okr_label in {x.label for x in iss.labels}
-        ]
-
-    q = schemas.Quarter.from_display(quarter)
-    schedule = schemas.Schedule.init(issues, quarter=q)
-
-    issues = [x for x in issues
-              if x not in schedule.raw
-              and not q.uncontained(x)]
-
-    context = {'issues': issues, 'schedule': schedule,
-               'settings': config.settings}
-    return templates.TemplateResponse(request, 'gannt.html', context)
 
 
 @router.get('/issues', response_class=fastapi.responses.HTMLResponse)
@@ -117,6 +101,28 @@ async def show_settings(
 ) -> starlette.responses.Response:
     context = {'settings': config.settings, 'commons': commons}
     return templates.TemplateResponse(request, 'settings.html', context)
+
+
+@router.get('/timeline', response_class=fastapi.responses.HTMLResponse)
+async def show_timeline(
+        request: fastapi.Request,
+        date: str | None = None,
+) -> starlette.responses.Response:
+    async with database.session() as session:
+        # TODO: for perf, move some filters out of Timeline.from_issues() and
+        # into this SQL command.
+        issues = await models.Issue.get(closed=True, session=session)
+
+    target = (datetime.date.fromisoformat(date) if date
+              else datetime.datetime.now(datetime.UTC).date())
+    timeline = schemas.Timeline.from_issues(
+        issues,
+        okr_label=config.settings.jira_label_okr,
+        target=target,
+    )
+
+    context = {'timeline': timeline, 'settings': config.settings}
+    return templates.TemplateResponse(request, 'timeline.html', context)
 
 
 @router.get('/triage', response_class=fastapi.responses.HTMLResponse)
