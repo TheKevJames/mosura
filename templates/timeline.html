@@ -24,11 +24,6 @@ function onclick_navigate(e, key) {
         <i class="icon angle right"></i>
       </a>
     </h1>
-
-    <!-- FIXME -->
-    <div class="ui icon" data-tooltip="Usage:&#xa;1. Label relevant tickets as {{ settings.jira_label_okr }}&#xa;2. Assign owners/start times/time estimations&#xa;3. Resolve conflicts" data-position="top left">
-      <i class="question circle icon"></i>
-    </div>
   </div>
 
   <table class="ui celled fixed unstackable structured table">
@@ -43,7 +38,6 @@ function onclick_navigate(e, key) {
     </thead>
     <tbody>
       <tr><td></td></tr>
-
       {% for assignee, rows in timeline.aligned.items() %}
         {% for assigned in rows %}
         <tr>
@@ -68,6 +62,13 @@ function onclick_navigate(e, key) {
       {% endfor %}
     </tbody>
   </table>
+
+  <div class="ui divider"></div>
+
+  <div>
+    <p>Any ticket with an assigned start date and time estimate will appear above. Tweak those values in Jira to change them here.</p>
+    <p>Tickets below are ones you should probably schedule, either because they are assigned but are missing a start date / time estimate or because they are unassigned but have been labelled with <code>{{ settings.jira_label_okr }}</code>.</p>
+  </div>
 
   {% if timeline.triage %}
   <div class="ui divider"></div>

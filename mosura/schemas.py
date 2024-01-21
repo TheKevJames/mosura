@@ -76,6 +76,7 @@ class IssueCreate(pydantic.BaseModel):
 
     @classmethod
     def from_jira(cls, data: dict[str, Any]) -> Self:
+        # TODO: handle relative links in description, eg. for <img src="/rest
         return cls(
             assignee=(data['fields']['assignee'] or {}).get('displayName'),
             description=data['renderedFields']['description'],
@@ -172,7 +173,7 @@ class Meta:
 
     @classmethod
     def from_issues(cls, xs: list[Issue]) -> 'Meta':
-        assignees = sorted({i.assignee for i in xs if i.assignee})
+        assignees = sorted({i.assignee for i in xs if i.assignee}) + ['None']
         components = sorted({c.component for i in xs for c in i.components})
         labels = sorted({lb.label for i in xs for lb in i.labels})
         priorities = sorted({i.priority for i in xs})

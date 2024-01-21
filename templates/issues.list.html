@@ -20,6 +20,7 @@ function update_filter(field, value) {
   let selected = new Set(value.split(','));
 
   $('tbody tr').each(function(i) {
+    // TODO: fix this for list fields
     if (selected.has(this.children[field].innerText)) {
       this.style.display = '';
     } else {
@@ -52,6 +53,7 @@ function onclick_navigate(e, key) {
       {% for x in meta.assignees %}
       <div class="item" data-value="{{ x }}">{{ x }}</div>
       {% endfor %}
+      <!-- <div class="item" data-value="None">None</div> -->
       </div>
     </div>
   </div>
