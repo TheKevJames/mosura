@@ -221,7 +221,8 @@ class Quarter:
 
     @property
     def _end(self) -> datetime.datetime:
-        x = datetime.datetime(year=self.year, month=self.startmonth + 3,
+        endmonth = ((self.startmonth + 3) % 12) or 12
+        x = datetime.datetime(year=self.year, month=endmonth,
                               day=self.padding, tzinfo=datetime.UTC)
         return x
 
