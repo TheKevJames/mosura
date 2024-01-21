@@ -16,5 +16,5 @@ def test_issue_timeestimate(original: str,
                             expected: datetime.timedelta) -> None:
     x = IssueCreate(key='x', summary='x', status='x', priority=Priority.low,
                     timeoriginalestimate=original, description=None,
-                    assignee=None, startdate=None)
+                    assignee=None, startdate=None, votes=0)
     assert x.timeestimate == expected
