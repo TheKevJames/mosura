@@ -48,6 +48,15 @@ Can also be run locally for development purposes:
     poetry install --sync
     poetry run uvicorn mosura.app:app --reload
 
+In development mode, there's a few extra env vars you may want to set:
+
+.. code-block:: console
+
+    export PYTHONDEVMODE=1
+    export PYTHONWARNINGS=error
+    export MOSURA_POLL_INTERVAL_OPEN=1
+    export MOSURA_POLL_INTERVAL_CLOSED=10
+
 Workflow Assumptions
 --------------------
 
