@@ -7,6 +7,8 @@ import fastapi.staticfiles
 
 from . import api
 from . import config
+from . import database
+from . import models
 from . import tasks
 from . import ui
 
@@ -16,6 +18,10 @@ logger = logging.getLogger(__name__)
 
 @contextlib.asynccontextmanager
 async def lifespan(_app: fastapi.FastAPI) -> AsyncIterator[None]:
+    async with database.engine.begin() as conn:
+        await conn.run_sync(models.Base.metadata.create_all)
+    logger.info('startup(): initialized db')
+
     _app.state.tasks = await tasks.spawn(config.settings.jira_project)
     logger.info('startup(): begun polling tasks')
 
