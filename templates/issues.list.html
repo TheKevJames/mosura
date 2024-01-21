@@ -166,6 +166,7 @@ function onclick_navigate(e, key) {
         <i class="filter icon" onClick="$('#filter-labels').modal('show');"></i>
         Labels
       </th>
+      <th>Votes</th>
     </thead>
 
     <tbody>
@@ -187,6 +188,7 @@ function onclick_navigate(e, key) {
         {% for l in issue.labels %}
           <p>{{ l.label }}</p>
         {% endfor %}
+        <td data-label="Votes">{{ issue.votes }}</td>
         </td>
       </tr>
     {% endfor %}

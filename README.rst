@@ -97,8 +97,6 @@ fields:
   * if the label matches your configured "OKR Label" setting (default:
     ``okr``), ensure it appears on the timeline page
 
-We also assume that you are interested in quarterly planning, using the
-financial quarter model starting on February, eg. Q1 starts on February 1st and
-the quarter's year is the one that Q4 will fall in (so 2022-02-01 is 2023Q1).
+* ``votes``: the collection of user votes on the issue
 
 .. _create a Jira API token: https://id.atlassian.com/manage-profile/security/api-tokens

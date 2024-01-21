@@ -28,10 +28,11 @@ function update_field(field, value) {
 <div class="ui main text container">
   <div class="ui celled grid">
     <div class="row">
-      <div class="three wide column">
+      <div class="two wide column">
         <p style="padding: 0.2em 0;">{{ issue.key }}</p>
       </div>
-      <div class="thirteen wide column">
+
+      <div class="one wide column">
         <div class="ui selection inline compact dropdown">
           <input type="hidden" name="priority" onChange="update_field(this.name, this.value);" value="{{ issue.priority.value }}">
           <div class="default text">
@@ -52,32 +53,36 @@ function update_field(field, value) {
             </div>
           </div>
         </div>
+      </div>
 
+      <div class="thirteen wide column">
         <div class="ui compact input" style="width: calc(100% - 3em);">
           <input type="text" name="summary" onChange="update_field(this.name, this.value);" value="{{ issue.summary }}">
         </div>
       </div>
     </div>
+
     <div class="row">
       <div class="sixteen wide column">
         {{ issue.body | safe }}
       </div>
     </div>
+
     <div class="row">
       <div class="two wide column">
-        <p>Status:<br />{{ issue.status }}</p>
+        <div><h4>Status</h4></div>
+        <div>{{ issue.status }}</div>
       </div>
       <div class="two wide column">
-        <p>Assignee:<br />{{ issue.assignee }}</p>
+        <div><h4>Assignee</h4></div>
+        <div>{{ issue.assignee }}</div>
       </div>
       <div class="two wide column">
-        <p>Start Date:<br />{{ issue.startdate | dateformat }}</p>
-      </div>
-      <div class="two wide column">
-        <p>Time Estimate:<br />{{ issue.timeestimate | timeformat }}</p>
+        <div><h4>Start Date</h4></div>
+        <div>{{ issue.startdate | dateformat }}</div>
       </div>
       <div class="four wide column">
-        <p>Components:</p>
+        <div><h4>Components</h4></div>
         <ul>
           {% for c in issue.components %}
           <li>{{ c.component }}</li>
@@ -85,7 +90,7 @@ function update_field(field, value) {
         </ul>
       </div>
       <div class="four wide column">
-        <p>Labels:</p>
+        <div><h4>Labels</h4></div>
         <ul>
           {% for l in issue.labels %}
           <li>{{ l.label }}</li>
@@ -93,6 +98,24 @@ function update_field(field, value) {
         </ul>
       </div>
     </div>
+
+    <div class="row">
+      <div class="two wide column">
+        <div><h4>Votes</h4></div>
+        <div>{{ issue.votes }}</div>
+      </div>
+      <div class="two wide column">
+      </div>
+      <div class="two wide column">
+        <div><h4>Time Estimate</h4></div>
+        <div>{{ issue.timeestimate | timeformat }}</div>
+      </div>
+      <div class="four wide column">
+      </div>
+      <div class="four wide column">
+      </div>
+    </div>
+
     <div class="row">
       <div class="twelve wide column">
         <a href="{{ settings.jira_domain }}/browse/{{ issue.key }}">Edit in Jira</a>

@@ -70,7 +70,7 @@ class Label(Base):
 
 IssueRow = Row[tuple[str, str, str | None, str, str | None, str,
                      datetime.datetime | None, str,
-                     list[Component], list[Label]]]
+                     list[Component], list[Label], int]]
 
 
 # TODO: nuke the convert_* methods, see dataclass?
@@ -85,14 +85,14 @@ def convert_component_response(
         key: str,
         results: Sequence[IssueRow],
 ) -> list[dict[str, str]]:
-    return convert_field_response(key, results, idx=8, name='component')
+    return convert_field_response(key, results, idx=9, name='component')
 
 
 def convert_label_response(
         key: str,
         results: Sequence[IssueRow],
 ) -> list[dict[str, str]]:
-    return convert_field_response(key, results, idx=9, name='label')
+    return convert_field_response(key, results, idx=10, name='label')
 
 
 def convert_issue_response(
@@ -113,6 +113,7 @@ def convert_issue_response(
             'priority': fields[0][5],
             'startdate': startdate,
             'timeoriginalestimate': fields[0][7],
+            'votes': fields[0][8],
             'components': convert_component_response(key, fields),
             'labels': convert_label_response(key, fields),
         }))
@@ -131,6 +132,7 @@ class Issue(Base):
     priority: Mapped[str]
     startdate: Mapped[datetime.datetime | None]
     timeoriginalestimate: Mapped[str]
+    votes: Mapped[int]
 
     components: Mapped[list[Component]] = relationship()
     labels: Mapped[list[Label]] = relationship()
@@ -178,6 +180,7 @@ class Issue(Base):
                 'summary': stmt.excluded.summary,
                 'startdate': stmt.excluded.startdate,
                 'timeoriginalestimate': stmt.excluded.timeoriginalestimate,
+                'votes': stmt.excluded.votes,
             })
         await session.execute(query)
 

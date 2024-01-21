@@ -16,7 +16,7 @@ templates = fastapi.templating.Jinja2Templates(directory='templates')
 
 def dateformat(x: datetime.datetime | None) -> str:
     if x is None:
-        return ''
+        return 'None'
     return x.strftime('%Y-%m-%d')
 
 

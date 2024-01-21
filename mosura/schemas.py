@@ -60,12 +60,13 @@ class IssueCreate(pydantic.BaseModel):
     priority: Priority
     startdate: datetime.date | None = None
     timeoriginalestimate: str
+    votes: int
 
     @classmethod
     def jira_fields(cls) -> list[str]:
         return ['key', 'summary', 'description', 'status', 'assignee',
                 'priority', 'components', 'labels', 'customfield_12161',
-                'timeoriginalestimate']
+                'timeoriginalestimate', 'votes']
 
     @classmethod
     def parse_date(cls, x: str | None) -> datetime.date | None:
@@ -87,6 +88,7 @@ class IssueCreate(pydantic.BaseModel):
             startdate=cls.parse_date(data['fields']['customfield_12161']),
             timeoriginalestimate=str(data['fields'].get('timeoriginalestimate')
                                      or 0),
+            votes=data['fields']['votes']['votes'],
         )
 
     @property
