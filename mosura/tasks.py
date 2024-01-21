@@ -22,6 +22,8 @@ async def fetch(
         interval: datetime.timedelta,
 ) -> None:
     page_size = 100
+    logger.info('fetch(%s): initialized with interval %ds', variant,
+                interval.seconds)
 
     while True:
         async with database.session() as session:
@@ -89,7 +91,8 @@ async def fetch(
 
 async def fetch_closed(project: str) -> None:
     await fetch(
-        interval=datetime.timedelta(minutes=15),
+        interval=datetime.timedelta(
+            minutes=config.settings.mosura_poll_interval_closed),
         jql=(f"project = '{project}' AND status = 'Closed'"),
         variant='closed',
     )
@@ -97,7 +100,8 @@ async def fetch_closed(project: str) -> None:
 
 async def fetch_open(project: str) -> None:
     await fetch(
-        interval=datetime.timedelta(minutes=5),
+        interval=datetime.timedelta(
+            minutes=config.settings.mosura_poll_interval_open),
         jql=(f"project = '{project}' AND status != 'Closed'"),
         variant='open',
     )
