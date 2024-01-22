@@ -22,16 +22,20 @@ async def fetch(
         interval: datetime.timedelta,
 ) -> None:
     page_size = 100
-    logger.info('fetch(%s): initialized with interval %ds', variant,
-                interval.seconds)
+    logger.info(
+        'fetch(%s): initialized with interval %ds', variant,
+        interval.seconds,
+    )
 
     while True:
         async with database.session() as session:
             now = datetime.datetime.now(datetime.UTC)
             task = await models.Task.get('fetch', variant, session=session)
             if task and task.latest + interval > now:
-                logger.debug('fetch(%s): too soon, sleeping at least %ds',
-                             variant, (task.latest - now + interval).seconds)
+                logger.debug(
+                    'fetch(%s): too soon, sleeping at least %ds',
+                    variant, (task.latest - now + interval).seconds,
+                )
                 await asyncio.sleep(random.uniform(0, 60))
                 continue
 
@@ -51,16 +55,22 @@ async def fetch(
                     ),
                 )
                 issues: list[dict[str, Any]] = resp.get('issues', [])
-                logger.debug('fetch(%s): fetched %d issues, writing to db',
-                             variant, len(issues))
+                logger.debug(
+                    'fetch(%s): fetched %d issues, writing to db',
+                    variant, len(issues),
+                )
                 for issue in issues:
                     # TODO: in-place component and label upserts
-                    await models.Component.delete(issue['key'],
-                                                  session=session)
+                    await models.Component.delete(
+                        issue['key'],
+                        session=session,
+                    )
                     for component in issue['fields']['components']:
                         await models.Component.upsert(
-                            schemas.Component(key=issue['key'],
-                                              component=component['name']),
+                            schemas.Component(
+                                key=issue['key'],
+                                component=component['name'],
+                            ),
                             session=session,
                         )
 
@@ -79,12 +89,15 @@ async def fetch(
                 if resp['total'] < idx + page_size:
                     break
 
-            logger.info('fetch(%s): fetched %d issues in total', variant,
-                        resp['total'])
+            logger.info(
+                'fetch(%s): fetched %d issues in total', variant,
+                resp['total'],
+            )
             task = schemas.Task.model_validate({
                 'key': 'fetch',
                 'variant': variant,
-                'latest': datetime.datetime.now(datetime.UTC)})
+                'latest': datetime.datetime.now(datetime.UTC),
+            })
             await models.Task.upsert(task, session=session)
             await session.commit()
 
@@ -92,7 +105,8 @@ async def fetch(
 async def fetch_closed(project: str) -> None:
     await fetch(
         interval=datetime.timedelta(
-            minutes=config.settings.mosura_poll_interval_closed),
+            minutes=config.settings.mosura_poll_interval_closed,
+        ),
         jql=(f"project = '{project}' AND status = 'Closed'"),
         variant='closed',
     )
@@ -101,7 +115,8 @@ async def fetch_closed(project: str) -> None:
 async def fetch_open(project: str) -> None:
     await fetch(
         interval=datetime.timedelta(
-            minutes=config.settings.mosura_poll_interval_open),
+            minutes=config.settings.mosura_poll_interval_open,
+        ),
         jql=(f"project = '{project}' AND status != 'Closed'"),
         variant='open',
     )

@@ -26,7 +26,8 @@ async def read_issue(key: str) -> schemas.Issue:
 
     if not issues:
         raise fastapi.HTTPException(
-            status_code=fastapi.status.HTTP_404_NOT_FOUND)
+            status_code=fastapi.status.HTTP_404_NOT_FOUND,
+        )
 
     return issues[0]
 
@@ -37,7 +38,8 @@ async def patch_issue(key: str, issue: schemas.IssuePatch) -> None:
         issues = await models.Issue.get(key=key, closed=True, session=session)
         if not issues:
             raise fastapi.HTTPException(
-                status_code=fastapi.status.HTTP_404_NOT_FOUND)
+                status_code=fastapi.status.HTTP_404_NOT_FOUND,
+            )
 
         cached_issue = issues[0]
         # TODO: debug the type issue
@@ -49,14 +51,17 @@ async def patch_issue(key: str, issue: schemas.IssuePatch) -> None:
         if cached_issue != live_issue:
             # TODO: need UI feedback
             raise fastapi.HTTPException(
-                status_code=fastapi.status.HTTP_409_CONFLICT)
+                status_code=fastapi.status.HTTP_409_CONFLICT,
+            )
 
         new_data = issue.model_dump(exclude_unset=True)
         logger.info('updating %s with %r', cached_issue.key, new_data)
 
         await asyncio.to_thread(live_issue.update, fields=issue.to_jira())
-        await models.Issue.upsert(cached_issue.model_copy(update=new_data),
-                                  session=session)
+        await models.Issue.upsert(
+            cached_issue.model_copy(update=new_data),
+            session=session,
+        )
         await session.commit()
 
 

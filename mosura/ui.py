@@ -70,8 +70,10 @@ async def list_my_issues(
         raise fastapi.HTTPException(status_code=403)
 
     async with database.session() as session:
-        issues = await models.Issue.get(assignee=commons.user, closed=False,
-                                        session=session)
+        issues = await models.Issue.get(
+            assignee=commons.user, closed=False,
+            session=session,
+        )
 
     meta = schemas.Meta.from_issues(issues)
     context = {'issues': issues, 'meta': meta}
@@ -89,8 +91,10 @@ async def show_issue(
     if not issues:
         raise fastapi.HTTPException(status_code=404)
 
-    context = {'settings': config.settings, 'issue': issues[0],
-               'Priority': schemas.Priority}
+    context = {
+        'settings': config.settings, 'issue': issues[0],
+        'Priority': schemas.Priority,
+    }
     return templates.TemplateResponse(request, 'issues.show.html', context)
 
 
@@ -113,8 +117,10 @@ async def show_timeline(
         # into this SQL command.
         issues = await models.Issue.get(closed=True, session=session)
 
-    target = (datetime.date.fromisoformat(date) if date
-              else datetime.datetime.now(datetime.UTC).date())
+    target = (
+        datetime.date.fromisoformat(date) if date
+        else datetime.datetime.now(datetime.UTC).date()
+    )
     timeline = schemas.Timeline.from_issues(
         issues,
         okr_label=config.settings.jira_label_okr,

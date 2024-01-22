@@ -32,21 +32,25 @@
                 sortedMap = [];
 
             var unsortedValues = cells.map(function(idx, cell) {
-                if (sortBy)
+                if (sortBy) {
                     return (typeof sortBy === 'function') ? sortBy($(th), $(cell), self) : sortBy;
+                }
                 return ($(this).data().sortValue != null ? $(this).data().sortValue : $(this).text());
             });
-            if (unsortedValues.length === 0) return;
+            if (unsortedValues.length === 0) {
+                return;
+            }
 
             //click on a different column
             if (this.index !== th.index()) {
                 this.direction = 'asc';
                 this.index = th.index();
             }
-            else if (direction !== 'asc' && direction !== 'desc')
+            else if (direction !== 'asc' && direction !== 'desc') {
                 this.direction = this.direction === 'asc' ? 'desc' : 'asc';
-            else
+            } else {
                 this.direction = direction;
+            }
 
             direction = this.direction == 'asc' ? 1 : -1;
 
@@ -59,7 +63,7 @@
             // `tablesort:start` callback. Also avoids locking up the browser too much.
             setTimeout(function() {
                 self.$sortCells.removeClass(self.settings.asc + ' ' + self.settings.desc);
-                for (var i = 0, length = unsortedValues.length; i < length; i++)
+                for (var i = 0, length = unsortedValues.length; i < length; i += 1)
                 {
                     sortedMap.push({
                         index: i,

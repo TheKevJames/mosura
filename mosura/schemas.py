@@ -64,16 +64,19 @@ class IssueCreate(pydantic.BaseModel):
 
     @classmethod
     def jira_fields(cls) -> list[str]:
-        return ['key', 'summary', 'description', 'status', 'assignee',
-                'priority', 'components', 'labels', 'customfield_12161',
-                'timeoriginalestimate', 'votes']
+        return [
+            'key', 'summary', 'description', 'status', 'assignee',
+            'priority', 'components', 'labels', 'customfield_12161',
+            'timeoriginalestimate', 'votes',
+        ]
 
     @classmethod
     def parse_date(cls, x: str | None) -> datetime.date | None:
         if x is None:
             return x
         return datetime.datetime.fromisoformat(x).replace(
-            tzinfo=datetime.UTC).date()
+            tzinfo=datetime.UTC,
+        ).date()
 
     @classmethod
     def from_jira(cls, data: dict[str, Any]) -> Self:
@@ -86,8 +89,10 @@ class IssueCreate(pydantic.BaseModel):
             status=data['fields']['status']['name'],
             summary=data['fields']['summary'],
             startdate=cls.parse_date(data['fields']['customfield_12161']),
-            timeoriginalestimate=str(data['fields'].get('timeoriginalestimate')
-                                     or 0),
+            timeoriginalestimate=str(
+                data['fields'].get('timeoriginalestimate')
+                or 0,
+            ),
             votes=data['fields']['votes']['votes'],
         )
 
@@ -130,12 +135,16 @@ class Issue(IssueCreate):
         for field in IssueCreate.model_fields:
             check = getattr(self, field) == getattr(parsed, field)
             if not check:
-                mismatches.append(f'{field}: {getattr(self, field)} != '
-                                  f'{getattr(parsed, field)}')
+                mismatches.append(
+                    f'{field}: {getattr(self, field)} != '
+                    f'{getattr(parsed, field)}',
+                )
 
         if mismatches:
-            logger.error('attempted update on out-of-sync issue %s:\n\t%s',
-                         self.key, '\n\t'.join(mismatches))
+            logger.error(
+                'attempted update on out-of-sync issue %s:\n\t%s',
+                self.key, '\n\t'.join(mismatches),
+            )
             return False
 
         # TODO: components_equal and labels_equal
@@ -219,8 +228,10 @@ class Timeline:
         triage: list[Issue] = []
         monday, boxes = cls.get_boxes(target, weeks_before, weeks_after)
 
-        groups = itertools.groupby(sorted(issues, key=getassignee),
-                                   getassignee)
+        groups = itertools.groupby(
+            sorted(issues, key=getassignee),
+            getassignee,
+        )
         for assignee, candidates in groups:
             aligning, triaging = cls.partition_issues(
                 candidates,
@@ -269,9 +280,11 @@ class Timeline:
 
         weeks = weeks_before + 1 + weeks_after
         start = monday - datetime.timedelta(days=7 * weeks_before)
-        boxes = [(start + datetime.timedelta(days=7 * week),
-                  week >= weeks_before)
-                 for week in range(weeks)]
+        boxes = [(
+            start + datetime.timedelta(days=7 * week),
+            week >= weeks_before,
+        )
+            for week in range(weeks)]
 
         return monday, boxes
 
