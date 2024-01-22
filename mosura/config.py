@@ -71,16 +71,20 @@ class Settings(pydantic_settings.BaseSettings):
         logging.config.dictConfig(log_config)
 
         if not self.mosura_header_user_email:
-            logger.warning('MOSURA_HEADER_USER_EMAIL is not set, running in '
-                           'insecure mode as user %s', self.mosura_user)
+            logger.warning(
+                'MOSURA_HEADER_USER_EMAIL is not set, running in '
+                'insecure mode as user %s', self.mosura_user,
+            )
 
 
 class Jira(jira.JIRA):
     @classmethod
     def from_settings(cls, s: Settings) -> Self:
         auth = (s.jira_auth_user, s.jira_auth_token.get_secret_value())
-        return cls(s.jira_domain, basic_auth=auth, max_retries=0,
-                   validate=True)
+        return cls(
+            s.jira_domain, basic_auth=auth, max_retries=0,
+            validate=True,
+        )
 
 
 # TODO: rather than all this import-time crap, can I use app context of some

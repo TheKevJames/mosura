@@ -1,3 +1,4 @@
+/* jshint esversion: 8 */
 const fs = require('fs');
 
 var dockerHubAPI = require('docker-hub-api');

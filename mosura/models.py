@@ -22,8 +22,12 @@ from . import schemas
 
 strpk = Annotated[str, mapped_column(primary_key=True)]
 strpkindex = Annotated[str, mapped_column(primary_key=True, index=True)]
-strfk = Annotated[str, mapped_column(ForeignKey('issues.key'),
-                                     primary_key=True)]
+strfk = Annotated[
+    str, mapped_column(
+        ForeignKey('issues.key'),
+        primary_key=True,
+    ),
+]
 
 
 class Base(AsyncAttrs, DeclarativeBase, MappedAsDataclass):
@@ -42,11 +46,12 @@ class Component(Base):
         await session.execute(query)
 
     @classmethod
-    async def upsert(cls, component: schemas.Component, *,
-                     session: AsyncSession) -> None:
+    async def upsert(
+        cls, component: schemas.Component, *,
+        session: AsyncSession,
+    ) -> None:
         stmt = insert(cls).values(**component.model_dump())
-        query = stmt.on_conflict_do_nothing()
-        await session.execute(query)
+        await session.execute(stmt.on_conflict_do_nothing())
 
 
 class Label(Base):
@@ -61,21 +66,28 @@ class Label(Base):
         await session.execute(query)
 
     @classmethod
-    async def upsert(cls, label: schemas.Label, *,
-                     session: AsyncSession) -> None:
+    async def upsert(
+        cls, label: schemas.Label, *,
+        session: AsyncSession,
+    ) -> None:
         stmt = insert(cls).values(**label.model_dump())
-        query = stmt.on_conflict_do_nothing()
-        await session.execute(query)
+        await session.execute(stmt.on_conflict_do_nothing())
 
 
-IssueRow = Row[tuple[str, str, str | None, str, str | None, str,
-                     datetime.datetime | None, str,
-                     list[Component], list[Label], int]]
+IssueRow = Row[
+    tuple[
+        str, str, str | None, str, str | None, str,
+        datetime.datetime | None, str,
+        list[Component], list[Label], int,
+    ]
+]
 
 
 # TODO: nuke the convert_* methods, see dataclass?
-def convert_field_response(key: str, results: Sequence[IssueRow], *,
-                           idx: int, name: str) -> list[dict[str, str]]:
+def convert_field_response(
+    key: str, results: Sequence[IssueRow], *,
+    idx: int, name: str,
+) -> list[dict[str, str]]:
     deduped = {x for x in {x[idx] for x in results} if x}
     ordered = sorted(deduped)
     return [{'key': key, name: x} for x in ordered]
@@ -102,21 +114,25 @@ def convert_issue_response(
     for key, group in itertools.groupby(results, operator.attrgetter('key')):
         fields = list(group)
         # TODO: store tzinfo in db
-        startdate = (fields[0][6].replace(tzinfo=datetime.UTC)
-                     if fields[0][6] else None)
-        xs.append(schemas.Issue.model_validate({
-            'key': key,
-            'summary': fields[0][1],
-            'description': fields[0][2],
-            'status': fields[0][3],
-            'assignee': fields[0][4],
-            'priority': fields[0][5],
-            'startdate': startdate,
-            'timeoriginalestimate': fields[0][7],
-            'votes': fields[0][8],
-            'components': convert_component_response(key, fields),
-            'labels': convert_label_response(key, fields),
-        }))
+        startdate = (
+            fields[0][6].replace(tzinfo=datetime.UTC)
+            if fields[0][6] else None
+        )
+        xs.append(
+            schemas.Issue.model_validate({
+                'key': key,
+                'summary': fields[0][1],
+                'description': fields[0][2],
+                'status': fields[0][3],
+                'assignee': fields[0][4],
+                'priority': fields[0][5],
+                'startdate': startdate,
+                'timeoriginalestimate': fields[0][7],
+                'votes': fields[0][8],
+                'components': convert_component_response(key, fields),
+                'labels': convert_label_response(key, fields),
+            }),
+        )
 
     return xs
 
@@ -138,9 +154,11 @@ class Issue(Base):
     labels: Mapped[list[Label]] = relationship()
 
     @classmethod
-    async def get(cls, *, key: str | None = None, assignee: str | None = None,
-                  closed: bool = False, needs_triage: bool = False,
-                  session: AsyncSession) -> list[schemas.Issue]:
+    async def get(
+        cls, *, key: str | None = None, assignee: str | None = None,
+        closed: bool = False, needs_triage: bool = False,
+        session: AsyncSession,
+    ) -> list[schemas.Issue]:
         query = (
             select(cls.__table__, Component.component, Label.label)
             .join(Component.__table__, cls.key == Component.key, isouter=True)
@@ -158,18 +176,25 @@ class Issue(Base):
         if needs_triage:
             # TODO: make this configurable
             # TODO: merge this into sql query
-            issues = [iss for iss in issues
-                      if iss.status == 'Needs Triage'
-                      or not iss.components
-                      or not iss.labels]
+            issues = [
+                iss for iss in issues
+                if iss.status == 'Needs Triage'
+                or not iss.components
+                or not iss.labels
+            ]
         return issues
 
     @classmethod
-    async def upsert(cls, issue: schemas.IssueCreate, *,
-                     session: AsyncSession) -> None:
+    async def upsert(
+        cls, issue: schemas.IssueCreate, *,
+        session: AsyncSession,
+    ) -> None:
         # N.B. set "include" explicitly to support subclasses of IssueCreate
-        stmt = insert(cls).values(**issue.model_dump(
-            include=set(schemas.IssueCreate.model_fields.keys())))
+        stmt = insert(cls).values(
+            **issue.model_dump(
+                include=set(schemas.IssueCreate.model_fields.keys()),
+            ),
+        )
         query = stmt.on_conflict_do_update(
             index_elements=['key'],
             set_={
@@ -181,7 +206,8 @@ class Issue(Base):
                 'startdate': stmt.excluded.startdate,
                 'timeoriginalestimate': stmt.excluded.timeoriginalestimate,
                 'votes': stmt.excluded.votes,
-            })
+            },
+        )
         await session.execute(query)
 
 
@@ -193,17 +219,22 @@ class Task(Base):
     latest: Mapped[datetime.datetime | None]
 
     @classmethod
-    async def upsert(cls, task: schemas.Task, *,
-                     session: AsyncSession) -> None:
+    async def upsert(
+        cls, task: schemas.Task, *,
+        session: AsyncSession,
+    ) -> None:
         stmt = insert(cls).values(**task.model_dump())
         query = stmt.on_conflict_do_update(
             index_elements=['key', 'variant'],
-            set_={'latest': stmt.excluded.latest})
+            set_={'latest': stmt.excluded.latest},
+        )
         await session.execute(query)
 
     @classmethod
-    async def get(cls, key: str, variant: str, *,
-                  session: AsyncSession) -> schemas.Task | None:
+    async def get(
+        cls, key: str, variant: str, *,
+        session: AsyncSession,
+    ) -> schemas.Task | None:
         query = (
             select(cls.__table__)
             .where(cls.key == key)
