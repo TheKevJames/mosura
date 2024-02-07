@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.6
-FROM python:3.12.1-slim-bullseye AS base
+FROM python:3.12.2-slim-bullseye AS base
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG CURL_VERSION=7.74.0-1.3+deb11u11
