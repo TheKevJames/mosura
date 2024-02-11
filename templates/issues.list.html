@@ -11,7 +11,6 @@ $(window).on('load', function() {
   $('.ui.dropdown').dropdown();
   $('table').tablesort();
   $('table').data('tablesort').settings.compare = function(a, b) {
-    // TODO: support ordered sort for statuses and priorities
     // support numeric string sort
     return a.localeCompare(b, undefined, {numeric: true});
   }
@@ -179,11 +178,11 @@ function onclick_navigate(e, key) {
       <tr onclick="onclick_navigate(event, '{{ issue.key }}');">
         <td data-label="Key">{{ issue.key }}</td>
         <td data-label="Summary">{{ issue.summary }}</td>
-        <td data-label="Status" {% if issue.status == "Needs Triage" %}class="warning"{% endif %}>
+        <td data-label="Status" {% if issue.status == "Needs Triage" %}class="warning"{% endif %} data-sort-value="{{ issue.status_sort_value }}">
           {{ issue.status }}
         </td>
         <td data-label="Assignee">{{ issue.assignee }}</td>
-        <td data-label="Priority">{{ issue.priority }}</td>
+        <td data-label="Priority" data-sort-value="{{ issue.priority.sort_value }}">{{ issue.priority }}</td>
         <td data-label="Components" {% if not issue.components %}class="warning"{% endif %}>
         {% for c in issue.components %}
           <p>{{ c.component }}</p>

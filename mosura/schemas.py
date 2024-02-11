@@ -36,6 +36,18 @@ class Priority(str, enum.Enum):
             return 'red angle double up icon'
         assert_never(self)
 
+    @property
+    def sort_value(self) -> str:  # pylint: disable=inconsistent-return-statements
+        if self == Priority.low:
+            return 'pri0'
+        if self == Priority.medium:
+            return 'pri1'
+        if self == Priority.high:
+            return 'pri2'
+        if self == Priority.urgent:
+            return 'pri3'
+        assert_never(self)
+
 
 class Component(pydantic.BaseModel):
     key: str
@@ -97,6 +109,12 @@ class IssueCreate(pydantic.BaseModel):
         )
 
     @property
+    def enddate(self) -> datetime.date | None:
+        if self.startdate is None:
+            return None
+        return self.startdate + self.timeestimate
+
+    @property
     def timeestimate(self) -> datetime.timedelta:
         seconds_per_day = 60 * 60 * 8
         days_per_week = 5
@@ -108,10 +126,18 @@ class IssueCreate(pydantic.BaseModel):
         return datetime.timedelta(days=days, seconds=seconds)
 
     @property
-    def enddate(self) -> datetime.date | None:
-        if self.startdate is None:
-            return None
-        return self.startdate + self.timeestimate
+    def status_sort_value(self) -> str:
+        if self.status == 'Needs Triage':
+            return 'stat0'
+        if self.status == 'Backlog':
+            return 'stat1'
+        if self.status == 'In Progress':
+            return 'stat2'
+        if self.status == 'Code Review':
+            return 'stat3'
+        if self.status == 'Closed':
+            return 'stat4'
+        return 'stat9'
 
 
 class Issue(IssueCreate):
