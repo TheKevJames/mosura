@@ -9,7 +9,12 @@
 <script>
 $(window).on('load', function() {
   $('.ui.dropdown').dropdown();
-  $('table').tablesort()
+  $('table').tablesort();
+  $('table').data('tablesort').settings.compare = function(a, b) {
+    // TODO: support ordered sort for statuses and priorities
+    // support numeric string sort
+    return a.localeCompare(b, undefined, {numeric: true});
+  }
 
   $('input.filter').each(function() {
     update_filter(this.name, this.value);

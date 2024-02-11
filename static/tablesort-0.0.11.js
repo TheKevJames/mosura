@@ -111,16 +111,13 @@
         asc: 'sorted ascending',
         desc: 'sorted descending',
         compare: function(a, b) {
-            // MOD: support numeric string sort
-            // TODO: consider ordered sort for statuses & priorities
-            return a.localeCompare(b,  undefined, {numeric: true});
-            // if (a > b) {
-            //     return 1;
-            // } else if (a < b) {
-            //     return -1;
-            // } else {
-            //     return 0;
-            // }
+            if (a > b) {
+                return 1;
+            } else if (a < b) {
+                return -1;
+            } else {
+                return 0;
+            }
         }
     };
 
