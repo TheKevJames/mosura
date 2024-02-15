@@ -55,8 +55,8 @@ class Settings(pydantic_settings.BaseSettings):
     mosura_header_user_email: str | None = None
     mosura_log_level: str = 'DEBUG'
     mosura_port: int = 8080
-    mosura_poll_interval_closed: int = 15
-    mosura_poll_interval_open: int = 5
+    mosura_poll_interval_closed: int = 15 * 60
+    mosura_poll_interval_open: int = 5 * 60
     mosura_user: str | None = None
 
     # support docker compose secrets by default

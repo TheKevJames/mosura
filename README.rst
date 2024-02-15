@@ -54,8 +54,8 @@ In development mode, there's a few extra env vars you may want to set:
 
     export PYTHONDEVMODE=1
     export PYTHONWARNINGS=error
-    export MOSURA_POLL_INTERVAL_OPEN=1
-    export MOSURA_POLL_INTERVAL_CLOSED=10
+    export MOSURA_POLL_INTERVAL_OPEN=60
+    export MOSURA_POLL_INTERVAL_CLOSED=600
 
 Workflow Assumptions
 --------------------

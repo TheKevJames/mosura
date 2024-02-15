@@ -105,7 +105,7 @@ async def fetch(
 async def fetch_closed(project: str) -> None:
     await fetch(
         interval=datetime.timedelta(
-            minutes=config.settings.mosura_poll_interval_closed,
+            seconds=config.settings.mosura_poll_interval_closed,
         ),
         jql=(f"project = '{project}' AND status = 'Closed'"),
         variant='closed',
@@ -115,7 +115,7 @@ async def fetch_closed(project: str) -> None:
 async def fetch_open(project: str) -> None:
     await fetch(
         interval=datetime.timedelta(
-            minutes=config.settings.mosura_poll_interval_open,
+            seconds=config.settings.mosura_poll_interval_open,
         ),
         jql=(f"project = '{project}' AND status != 'Closed'"),
         variant='open',
