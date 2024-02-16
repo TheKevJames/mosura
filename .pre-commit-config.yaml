@@ -68,7 +68,7 @@ repos:
           - -d ungrouped-imports  # conflicts with reorder-python-imports
           - -d wrong-import-order  # conflicts with reorder-python-imports
   - repo: https://github.com/Lucas-C/pre-commit-hooks
-    rev: v1.5.4
+    rev: v1.5.5
     hooks:
       - id: remove-crlf
       - id: remove-tabs
@@ -123,6 +123,16 @@ repos:
         - flake8-commas==2.1.0
         - flake8-comprehensions==3.14.0
         - flake8-typing-imports==1.15.0
+  - repo: https://github.com/guilatrova/tryceratops
+    rev: v2.3.2
+    hooks:
+      - id: tryceratops
+        args:
+          - --autofix
+          - -iTRY003
+          - -iTRY100
+          - -iTRY101
+          - -iTRY301
   - repo: https://github.com/hhatto/autopep8
     rev: v2.0.4
     hooks:
