@@ -290,7 +290,7 @@ class Timeline:
 
             if x.status != 'Closed' and not (x.startdate and x.enddate):
                 triage.append(x)
-            if x.enddate and x.enddate >= start_date:
+            if x.enddate and x.enddate > start_date:
                 aligning.append(x)
 
         return aligning, triage
@@ -306,11 +306,13 @@ class Timeline:
 
         weeks = weeks_before + 1 + weeks_after
         start = monday - datetime.timedelta(days=7 * weeks_before)
-        boxes = [(
-            start + datetime.timedelta(days=7 * week),
-            week >= weeks_before,
-        )
-            for week in range(weeks)]
+        boxes = [
+            (
+                start + datetime.timedelta(days=7 * week),
+                week >= weeks_before,
+            )
+            for week in range(weeks)
+        ]
 
         return monday, boxes
 
