@@ -262,6 +262,7 @@ class Timeline:
             aligning, triaging = cls.partition_issues(
                 candidates,
                 boxes[0][0],
+                boxes[-1][0] + datetime.timedelta(days=7),
                 okr_label,
             )
             aligned[assignee] = cls.align_issues(
@@ -277,6 +278,7 @@ class Timeline:
     def partition_issues(
             issues: Iterable[Issue],
             start_date: datetime.date,
+            end_date: datetime.date,
             okr_label: str | None,
     ) -> tuple[list[Issue], list[Issue]]:
         aligning: list[Issue] = []
@@ -290,6 +292,9 @@ class Timeline:
 
             if x.status != 'Closed' and not (x.startdate and x.enddate):
                 triage.append(x)
+            if x.startdate and x.startdate >= end_date:
+                # don't render future events
+                continue
             if x.enddate and x.enddate > start_date:
                 aligning.append(x)
 
