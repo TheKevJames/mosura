@@ -19,6 +19,7 @@ async def fetch(
         *,
         variant: str,
         jql: str,
+        lock: asyncio.Lock,
         interval: datetime.timedelta,
 ) -> None:
     page_size = 100
@@ -28,19 +29,20 @@ async def fetch(
     )
 
     while True:
-        async with database.session() as session:
+        async with lock, database.session() as session:
             now = datetime.datetime.now(datetime.UTC)
             task = await models.Task.get('fetch', variant, session=session)
-            if task and task.latest + interval > now:
-                logger.debug(
-                    'fetch(%s): too soon, sleeping at least %ds',
-                    variant, (task.latest - now + interval).seconds,
-                )
-                await asyncio.sleep(random.uniform(0, 60))
-                continue
 
+        if task and task.latest + interval > now:
+            logger.debug(
+                'fetch(%s): too soon, sleeping at least %ds',
+                variant, (task.latest - now + interval).seconds,
+            )
+            await asyncio.sleep(random.uniform(0, 60))
+            continue
+
+        async with lock, database.session() as session:
             logger.info('fetch(%s): fetching data', variant)
-
             for idx in itertools.count(0, page_size):
                 resp: dict[str, Any] = cast(
                     dict[str, Any],
@@ -55,6 +57,7 @@ async def fetch(
                     ),
                 )
                 issues: list[dict[str, Any]] = resp.get('issues', [])
+
                 logger.debug(
                     'fetch(%s): fetched %d issues, writing to db',
                     variant, len(issues),
@@ -102,22 +105,24 @@ async def fetch(
             await session.commit()
 
 
-async def fetch_closed(project: str) -> None:
+async def fetch_closed(project: str, lock: asyncio.Lock) -> None:
     await fetch(
         interval=datetime.timedelta(
             seconds=config.settings.mosura_poll_interval_closed,
         ),
         jql=(f"project = '{project}' AND status = 'Closed'"),
+        lock=lock,
         variant='closed',
     )
 
 
-async def fetch_open(project: str) -> None:
+async def fetch_open(project: str, lock: asyncio.Lock) -> None:
     await fetch(
         interval=datetime.timedelta(
             seconds=config.settings.mosura_poll_interval_open,
         ),
         jql=(f"project = '{project}' AND status != 'Closed'"),
+        lock=lock,
         variant='open',
     )
 
@@ -129,7 +134,9 @@ async def spawn(project: str) -> set[asyncio.Task[None]]:
         logger.exception('failed to query project "%s"', project)
         raise
 
+    # TODO: shouldn't this be built into sqlalchemy?
+    lock = asyncio.Lock()
     return {
-        asyncio.create_task(fetch_closed(project), name='fetch_closed'),
-        asyncio.create_task(fetch_open(project), name='fetch_open'),
+        asyncio.create_task(fetch_closed(project, lock), name='fetch_closed'),
+        asyncio.create_task(fetch_open(project, lock), name='fetch_open'),
     }
