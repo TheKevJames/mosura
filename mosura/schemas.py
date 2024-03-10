@@ -96,6 +96,7 @@ class IssueCreate(pydantic.BaseModel):
         status = data['fields']['status']['name']
         status = {
             'To Do': 'Backlog',
+            'Done': 'Closed',
         }.get(status, status)
 
         # TODO: handle relative links in description, eg. for <img src="/rest

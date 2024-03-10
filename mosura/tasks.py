@@ -110,7 +110,7 @@ async def fetch_closed(
         project: str,
         users: list[str] | None = None,
 ) -> None:
-    jql = f'project = "{project}" AND status = "Closed"'
+    jql = f'project = "{project}" AND status IN ("Closed", "Done")'
     if users:
         assignees = ','.join(f'"{x}"' for x in users)
         jql += f' AND assignee IN ({assignees})'
@@ -129,7 +129,7 @@ async def fetch_open(
         project: str,
         users: list[str] | None = None,
 ) -> None:
-    jql = f'project = "{project}" AND status != "Closed"'
+    jql = f'project = "{project}" AND status NOT IN ("Closed", "Done")'
     if users:
         assignees = ','.join(f'"{x}"' for x in users)
         jql += f' AND assignee IN ({assignees})'
