@@ -16,24 +16,44 @@ from . import ui
 logger = logging.getLogger(__name__)
 
 
+def load_users() -> list[str]:
+    if not config.settings.jira_team:
+        return []
+
+    # https://github.com/pycontribs/jira/issues/1761
+    project = config.settings.jira_project
+    team = config.settings.jira_team
+    base = (
+        f'{{server}}/gateway/api/public/teams/v1/org/{project}/teams/{team}'
+        '/{path}'
+    )
+    resp = config.jira_client._get_json(  # pylint: disable=protected-access
+        'members', {'first': 40}, base, use_post=True,
+    )
+    return [x['accountId'] for x in resp.get('results', [])]
+
+
 @contextlib.asynccontextmanager
-async def lifespan(_app: fastapi.FastAPI) -> AsyncIterator[None]:
+async def lifespan(app_: fastapi.FastAPI) -> AsyncIterator[None]:
     async with database.engine.begin() as conn:
         await conn.run_sync(models.Base.metadata.create_all)
     logger.info('startup(): initialized db')
 
+    users = load_users()
+    logger.info('startup(): loaded %d users', len(users))
+
     # TODO: catch errors in these tasks immediately and crash/retry
-    _app.state.tasks = await tasks.spawn(config.settings.jira_project)
+    app_.state.tasks = await tasks.spawn(users)
     logger.info('startup(): begun polling tasks')
 
     yield
 
     logger.info('shutdown(): stopping polling tasks')
-    for task in _app.state.tasks:
+    for task in app_.state.tasks:
         task.cancel()
 
     try:
-        await asyncio.gather(*_app.state.tasks)
+        await asyncio.gather(*app_.state.tasks)
     except asyncio.CancelledError:
         pass
 

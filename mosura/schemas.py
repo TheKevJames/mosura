@@ -92,13 +92,19 @@ class IssueCreate(pydantic.BaseModel):
 
     @classmethod
     def from_jira(cls, data: dict[str, Any]) -> Self:
+        # normalizations
+        status = data['fields']['status']['name']
+        status = {
+            'To Do': 'Backlog',
+        }.get(status, status)
+
         # TODO: handle relative links in description, eg. for <img src="/rest
         return cls(
             assignee=(data['fields']['assignee'] or {}).get('displayName'),
             description=data['renderedFields']['description'],
             key=data['key'],
             priority=data['fields']['priority']['name'],
-            status=data['fields']['status']['name'],
+            status=status,
             summary=data['fields']['summary'],
             startdate=cls.parse_date(data['fields']['customfield_12161']),
             timeoriginalestimate=str(

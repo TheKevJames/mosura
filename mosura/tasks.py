@@ -105,38 +105,79 @@ async def fetch(
             await session.commit()
 
 
-async def fetch_closed(project: str, lock: asyncio.Lock) -> None:
+async def fetch_closed(
+        lock: asyncio.Lock,
+        project: str,
+        users: list[str] | None = None,
+) -> None:
+    jql = f'project = "{project}" AND status = "Closed"'
+    if users:
+        assignees = ','.join(f'"{x}"' for x in users)
+        jql += f' AND assignee IN ({assignees})'
     await fetch(
         interval=datetime.timedelta(
             seconds=config.settings.mosura_poll_interval_closed,
         ),
-        jql=(f"project = '{project}' AND status = 'Closed'"),
+        jql=jql,
         lock=lock,
-        variant='closed',
+        variant=f'{project}/closed',
     )
 
 
-async def fetch_open(project: str, lock: asyncio.Lock) -> None:
+async def fetch_open(
+        lock: asyncio.Lock,
+        project: str,
+        users: list[str] | None = None,
+) -> None:
+    jql = f'project = "{project}" AND status != "Closed"'
+    if users:
+        assignees = ','.join(f'"{x}"' for x in users)
+        jql += f' AND assignee IN ({assignees})'
+        print(jql)
     await fetch(
         interval=datetime.timedelta(
             seconds=config.settings.mosura_poll_interval_open,
         ),
-        jql=(f"project = '{project}' AND status != 'Closed'"),
+        jql=jql,
         lock=lock,
-        variant='open',
+        variant=f'{project}/open',
     )
 
 
-async def spawn(project: str) -> set[asyncio.Task[None]]:
-    try:
-        _ = config.jira_client.project(project)
-    except Exception:
-        logger.exception('failed to query project "%s"', project)
-        raise
+async def spawn(users: list[str]) -> set[asyncio.Task[None]]:
+    projects = config.settings.jira_projects
+    for project in projects:
+        try:
+            _ = config.jira_client.project(project)
+        except Exception:
+            logger.exception('failed to query project "%s"', project)
+            raise
 
     # TODO: shouldn't this be built into sqlalchemy?
     lock = asyncio.Lock()
-    return {
-        asyncio.create_task(fetch_closed(project, lock), name='fetch_closed'),
-        asyncio.create_task(fetch_open(project, lock), name='fetch_open'),
+
+    tasks = {
+        asyncio.create_task(
+            fetch_closed(lock, projects[0]),
+            name=f'fetch_closed_{projects[0]}',
+        ),
+        asyncio.create_task(
+            fetch_open(lock, projects[0]),
+            name=f'fetch_open_{projects[0]}',
+        ),
     }
+    tasks.update({
+        asyncio.create_task(
+            fetch_open(lock, p, users),
+            name=f'fetch_closed_{p}',
+        )
+        for p in projects[1:]
+    })
+    tasks.update({
+        asyncio.create_task(
+            fetch_closed(lock, p, users),
+            name=f'fetch_closed_{p}',
+        )
+        for p in projects[1:]
+    })
+    return tasks

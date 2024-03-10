@@ -17,6 +17,28 @@
       Watching project: {{ settings.jira_project }}
     </div>
     <div class="ui segment">
+      Polling interval (open tickets): {{ settings.mosura_poll_interval_open }}s
+    </div>
+    <div class="ui segment">
+      Polling interval (closed tickets): {{ settings.mosura_poll_interval_closed }}s
+    </div>
+    {% if settings.jira_team %}
+    <div class="ui segment">
+      Following team: {{ settings.jira_team }}
+    </div>
+    <div class="ui segment">
+      Allowlisted additional projects for team members:
+      <ul>
+      {% for project in settings.jira_other_projects.split(',') %}
+        <li>{{ project }}</li>
+      {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="ui segments">
+    <div class="ui segment">
       Configuring OKRs from label: {{ settings.jira_label_okr }}
     </div>
     <div class="ui segment">

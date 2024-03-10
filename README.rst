@@ -26,14 +26,16 @@ Best run via docker/podman/etc:
         --name=mosura \
         -p 8080:8080 \
         -v /path/to/appdata:/data \
-        -e JIRA_DOMAIN=https://myinstance.atlassian.net \
-        -e JIRA_AUTH_USER=myuser@example.com \
         -e JIRA_AUTH_TOKEN=mytoken123456 \
-        -e JIRA_PROJECT=MOS \  # TODO: comma-separated list
+        -e JIRA_AUTH_USER=myuser@example.com \
+        -e JIRA_DOMAIN=https://myinstance.atlassian.net \
         -e JIRA_LABEL_OKR=okr \  # (optional, default: okr)
+        -e JIRA_PROJECT=MOS \
+        -e JIRA_TEAM='1234-5678' \  # (optional, id)
+        -e JIRA_OTHER_PROJECTS='ASDF,FDSA' \  # (optional, comma-separated)
         -e MOSURA_APPDATA=/data \  # (optional, default: .)
-        -e MOSURA_PORT=8080 \  # (optional, default: 8080)
         -e MOSURA_HEADER_USER_EMAIL=X-Token-User-Email \
+        -e MOSURA_PORT=8080 \  # (optional, default: 8080)
         --restart unless-stopped \
         quay.io/thekevjames/mosura:latest
 

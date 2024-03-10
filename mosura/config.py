@@ -50,19 +50,34 @@ class Settings(pydantic_settings.BaseSettings):
     jira_auth_user: str
     jira_domain: str
     jira_label_okr: str = 'okr'
+    jira_other_projects: str | None = None
     jira_project: str
+    jira_team: str | None = None
     mosura_appdata: str = '.'
     mosura_header_user_email: str | None = None
     mosura_log_level: str = 'DEBUG'
     mosura_port: int = 8080
-    mosura_poll_interval_closed: int = 15 * 60
-    mosura_poll_interval_open: int = 5 * 60
+    mosura_poll_interval_closed: int = 60 * 60
+    mosura_poll_interval_open: int = 1 * 60
     mosura_user: str | None = None
 
     # support docker compose secrets by default
     model_config = pydantic_settings.SettingsConfigDict(
         secrets_dir='/run/secrets',
     )
+
+    @pydantic.model_validator(mode='after')
+    def check_team_and_other_projects(self) -> 'Settings':
+        team = self.jira_team
+        projects = self.jira_other_projects
+        if team is projects is None:
+            return self
+        if team is not None and projects is not None:
+            return self
+
+        raise ValueError(
+            'must specify both/neither of jira_team and jira_other_projects',
+        )
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -75,6 +90,13 @@ class Settings(pydantic_settings.BaseSettings):
                 'MOSURA_HEADER_USER_EMAIL is not set, running in '
                 'insecure mode as user %s', self.mosura_user,
             )
+
+    @property
+    def jira_projects(self) -> list[str]:
+        xs = [self.jira_project]
+        if not self.jira_other_projects:
+            return xs
+        return xs + self.jira_other_projects.split(',')
 
 
 class Jira(jira.JIRA):
