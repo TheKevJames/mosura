@@ -2,7 +2,6 @@ import asyncio
 import datetime
 import itertools
 import logging
-import random
 from typing import Any
 from typing import cast
 
@@ -34,11 +33,9 @@ async def fetch(
             task = await models.Task.get('fetch', variant, session=session)
 
         if task and task.latest + interval > now:
-            logger.debug(
-                'fetch(%s): too soon, sleeping at least %ds',
-                variant, (task.latest - now + interval).seconds,
-            )
-            await asyncio.sleep(random.uniform(0, 60))
+            sleep = (task.latest - now + interval).seconds
+            logger.debug('fetch(%s): too soon, sleeping %ds', variant, sleep)
+            await asyncio.sleep(sleep)
             continue
 
         async with lock, database.session() as session:
