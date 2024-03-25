@@ -430,13 +430,13 @@ i18n = ["Babel (>=2.7)"]
 
 [[package]]
 name = "jira"
-version = "3.6.0"
+version = "3.8.0"
 description = "Python library for interacting with JIRA via REST APIs."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "jira-3.6.0-py3-none-any.whl", hash = "sha256:08b28388ee498542ebb6b05db87e6c46c37535c268717ccc23c84b377ea309fb"},
-    {file = "jira-3.6.0.tar.gz", hash = "sha256:4c67497fe8dc2f60f1c4f7b33479f059c928bec3db9dcb5cd7b6a09b6ecc0942"},
+    {file = "jira-3.8.0-py3-none-any.whl", hash = "sha256:12190dc84dad00b8a6c0341f7e8a254b0f38785afdec022bd5941e1184a5a3fb"},
+    {file = "jira-3.8.0.tar.gz", hash = "sha256:63719c529a570aaa01c3373dbb5a104dab70381c5be447f6c27f997302fa335a"},
 ]
 
 [package.dependencies]
@@ -1094,4 +1094,4 @@ test = ["Cython (>=0.29.36,<0.30.0)", "aiohttp (==3.9.0b0)", "aiohttp (>=3.8.1)"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<4.0"
-content-hash = "a8601f9a9a39678e31e034b1c2028d732bf44ee26fee61285fab9b9d6f88cdd9"
+content-hash = "886c2844b2adcb99b6731c3fa4b29a23fb02ec7adfdd67e186577850663e09cd"
