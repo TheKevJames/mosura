@@ -130,7 +130,6 @@ async def fetch_open(
     if users:
         assignees = ','.join(f'"{x}"' for x in users)
         jql += f' AND assignee IN ({assignees})'
-        print(jql)
     await fetch(
         interval=datetime.timedelta(
             seconds=config.settings.mosura_poll_interval_open,

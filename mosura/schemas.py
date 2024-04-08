@@ -78,8 +78,8 @@ class IssueCreate(pydantic.BaseModel):
     def jira_fields(cls) -> list[str]:
         return [
             'key', 'summary', 'description', 'status', 'assignee',
-            'priority', 'components', 'labels', 'customfield_12161',
-            'timeoriginalestimate', 'votes',
+            'priority', 'components', 'labels', 'customfield_12133',
+            'customfield_12161', 'timeoriginalestimate', 'votes',
         ]
 
     @classmethod
@@ -99,6 +99,12 @@ class IssueCreate(pydantic.BaseModel):
             'Done': 'Closed',
         }.get(status, status)
 
+        # TODO: make this less stupid
+        startdate = (
+            data['fields']['customfield_12161']
+            or data['fields']['customfield_12133']
+        )
+
         # TODO: handle relative links in description, eg. for <img src="/rest
         return cls(
             assignee=(data['fields']['assignee'] or {}).get('displayName'),
@@ -107,7 +113,7 @@ class IssueCreate(pydantic.BaseModel):
             priority=data['fields']['priority']['name'],
             status=status,
             summary=data['fields']['summary'],
-            startdate=cls.parse_date(data['fields']['customfield_12161']),
+            startdate=cls.parse_date(startdate),
             timeoriginalestimate=str(
                 data['fields'].get('timeoriginalestimate')
                 or 0,
