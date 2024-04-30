@@ -2,6 +2,13 @@ version: 2.1
 
 orbs:
   docker: talkiq/docker@3
+  linter: talkiq/linter@4
+
+executors:
+  python:
+    docker:
+      - image: python:3.11.9
+    resource_class: medium
 
 jobs:
   docker-readme-build:
@@ -32,6 +39,8 @@ jobs:
 workflows:
   run-jobs:
     jobs:
+      - linter/pre-commit:
+          executor: python
       # TODO: pytest
       - docker/publish:
           image: thekevjames/mosura  # TODO: fix orb (force lowercase username)
@@ -42,7 +51,11 @@ workflows:
             - setup_remote_docker
             - run: echo "$DOCKER_PASS" | docker login docker.io --username "$DOCKER_USER" --password-stdin
             - run: echo "$QUAY_PASS" | docker login quay.io --username "$QUAY_USER" --password-stdin
-      - docker-readme-build
+          requires:
+            - linter/pre-commit
+      - docker-readme-build:
+          requires:
+            - linter/pre-commit
       - docker-readme-publish:
           requires:
             - docker/publish
