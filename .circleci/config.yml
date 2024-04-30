@@ -51,11 +51,7 @@ workflows:
             - setup_remote_docker
             - run: echo "$DOCKER_PASS" | docker login docker.io --username "$DOCKER_USER" --password-stdin
             - run: echo "$QUAY_PASS" | docker login quay.io --username "$QUAY_USER" --password-stdin
-          requires:
-            - linter/pre-commit
-      - docker-readme-build:
-          requires:
-            - linter/pre-commit
+      - docker-readme-build
       - docker-readme-publish:
           requires:
             - docker/publish
