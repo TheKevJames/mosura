@@ -77,9 +77,19 @@ class IssueCreate(pydantic.BaseModel):
     @classmethod
     def jira_fields(cls) -> list[str]:
         return [
-            'key', 'summary', 'description', 'status', 'assignee',
-            'priority', 'components', 'labels', 'customfield_12133',
-            'customfield_12161', 'timeoriginalestimate', 'votes',
+            'assignee',
+            'components',
+            'customfield_12133',
+            'customfield_12161',
+            'description',
+            'duedate',
+            'key',
+            'labels',
+            'priority',
+            'status',
+            'summary',
+            'timeoriginalestimate',
+            'votes',
         ]
 
     @classmethod
@@ -100,10 +110,20 @@ class IssueCreate(pydantic.BaseModel):
         }.get(status, status)
 
         # TODO: make this less stupid
-        startdate = (
-            data['fields']['customfield_12161']
-            or data['fields']['customfield_12133']
+        # TODO: two-way sync to keep these in sync?
+        startdate = cls.parse_date(
+            data['fields']['customfield_12133']  # Start Date (cal)
+            or data['fields']['customfield_12161'],  # Start Date (issue)
         )
+        duedate = cls.parse_date(data['fields']['duedate'])  # End Date (cal)
+        if duedate is not None and startdate is not None:
+            seconds_per_day = 60 * 60 * 8
+            # data is exclusive ranges, but calendar visually appears
+            # inclusive, so add one to make the diagrams match
+            days = (duedate - startdate).days + 1
+            timeestimate = str(days * seconds_per_day)
+        else:
+            timeestimate = str(data['fields'].get('timeoriginalestimate') or 0)
 
         # TODO: handle relative links in description, eg. for <img src="/rest
         return cls(
@@ -113,11 +133,8 @@ class IssueCreate(pydantic.BaseModel):
             priority=data['fields']['priority']['name'],
             status=status,
             summary=data['fields']['summary'],
-            startdate=cls.parse_date(startdate),
-            timeoriginalestimate=str(
-                data['fields'].get('timeoriginalestimate')
-                or 0,
-            ),
+            startdate=startdate,
+            timeoriginalestimate=timeestimate,
             votes=data['fields']['votes']['votes'],
         )
 

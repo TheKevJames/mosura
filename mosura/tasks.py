@@ -33,7 +33,8 @@ async def fetch(
             task = await models.Task.get('fetch', variant, session=session)
 
         if task and task.latest + interval > now:
-            sleep = (task.latest - now + interval).seconds
+            # add a second to avoid race conditions on idle instances
+            sleep = (task.latest - now + interval).seconds + 1
             logger.debug('fetch(%s): too soon, sleeping %ds', variant, sleep)
             await asyncio.sleep(sleep)
             continue
