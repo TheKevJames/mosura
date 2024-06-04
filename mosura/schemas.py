@@ -368,16 +368,10 @@ class Timeline:
             assert x.startdate, 'cannot align issues without startdate'
             assert x.enddate, 'cannot align issues without enddate'
 
-            if x.startdate < start:
-                # event started before current view, only render overlaps
-                fills = -(-(x.enddate - start).days // 7)
-                target = start
-            else:
-                fills = -(-x.timeestimate.days // 7)
-                target = x.startdate
-
-            # event ends after current view, only render overlaps
-            fills -= max(0, -(-(x.enddate - end).days) // 7)
+            # clamp rendering to current view
+            target = max(x.startdate, start)
+            enddate = min(x.enddate, end)
+            fills = -(-(enddate - target).days // 7)
 
             first_empty: datetime.date
             row: list[tuple[int, Issue | None]]
