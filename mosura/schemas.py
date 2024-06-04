@@ -71,7 +71,7 @@ class IssueCreate(pydantic.BaseModel):
     assignee: str | None = None
     priority: Priority
     startdate: datetime.date | None = None
-    timeoriginalestimate: str
+    timeestimate: datetime.timedelta
     votes: int
 
     @classmethod
@@ -101,6 +101,19 @@ class IssueCreate(pydantic.BaseModel):
         ).date()
 
     @classmethod
+    def parse_timeestimate(cls, total_seconds: str) -> datetime.timedelta:
+        # the timeoriginalestimate field lets you type, eg. "3w", but then
+        # encodes that time as the number of seconds... assuming a 40 day work
+        # week
+        seconds_per_day = 60 * 60 * 8
+        days_per_week = 5
+
+        days = int(total_seconds) // seconds_per_day
+        days += (days // days_per_week) * 2
+        seconds = int(total_seconds) % seconds_per_day
+        return datetime.timedelta(days=days, seconds=seconds)
+
+    @classmethod
     def from_jira(cls, data: dict[str, Any]) -> Self:
         # normalizations
         status = data['fields']['status']['name']
@@ -117,13 +130,11 @@ class IssueCreate(pydantic.BaseModel):
         )
         duedate = cls.parse_date(data['fields']['duedate'])  # End Date (cal)
         if duedate is not None and startdate is not None:
-            seconds_per_day = 60 * 60 * 8
-            # data is exclusive ranges, but calendar visually appears
-            # inclusive, so add one to make the diagrams match
-            days = (duedate - startdate).days + 1
-            timeestimate = str(days * seconds_per_day)
+            timeestimate = duedate - startdate
         else:
-            timeestimate = str(data['fields'].get('timeoriginalestimate') or 0)
+            timeestimate = cls.parse_timeestimate(
+                data['fields'].get('timeoriginalestimate') or '0',
+            )
 
         # TODO: handle relative links in description, eg. for <img src="/rest
         return cls(
@@ -134,7 +145,7 @@ class IssueCreate(pydantic.BaseModel):
             status=status,
             summary=data['fields']['summary'],
             startdate=startdate,
-            timeoriginalestimate=timeestimate,
+            timeestimate=timeestimate,
             votes=data['fields']['votes']['votes'],
         )
 
@@ -143,17 +154,6 @@ class IssueCreate(pydantic.BaseModel):
         if self.startdate is None:
             return None
         return self.startdate + self.timeestimate
-
-    @property
-    def timeestimate(self) -> datetime.timedelta:
-        seconds_per_day = 60 * 60 * 8
-        days_per_week = 5
-
-        total_seconds = int(self.timeoriginalestimate)
-        days = total_seconds // seconds_per_day
-        days += (days // days_per_week) * 2
-        seconds = total_seconds % seconds_per_day
-        return datetime.timedelta(days=days, seconds=seconds)
 
     @property
     def status_sort_value(self) -> str:

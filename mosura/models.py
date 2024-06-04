@@ -127,7 +127,7 @@ def convert_issue_response(
                 'assignee': fields[0][4],
                 'priority': fields[0][5],
                 'startdate': startdate,
-                'timeoriginalestimate': fields[0][7],
+                'timeestimate': fields[0][7],
                 'votes': fields[0][8],
                 'components': convert_component_response(key, fields),
                 'labels': convert_label_response(key, fields),
@@ -147,7 +147,7 @@ class Issue(Base):
     assignee: Mapped[str | None]
     priority: Mapped[str]
     startdate: Mapped[datetime.datetime | None]
-    timeoriginalestimate: Mapped[str]
+    timeestimate: Mapped[datetime.timedelta]
     votes: Mapped[int]
 
     components: Mapped[list[Component]] = relationship()
@@ -204,7 +204,7 @@ class Issue(Base):
                 'status': stmt.excluded.status,
                 'summary': stmt.excluded.summary,
                 'startdate': stmt.excluded.startdate,
-                'timeoriginalestimate': stmt.excluded.timeoriginalestimate,
+                'timeestimate': stmt.excluded.timeestimate,
                 'votes': stmt.excluded.votes,
             },
         )
