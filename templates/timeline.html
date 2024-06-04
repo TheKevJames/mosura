@@ -29,7 +29,7 @@ function onclick_navigate(e, key) {
   <table class="ui celled fixed unstackable structured table">
     <thead>
       <tr>
-        <th>Name</th>
+        <th class="two wide">Name</th>
         {% for header, enabled in timeline.boxes %}
         <th {% if not enabled %}style="color:gray;"{% endif %}>
           {{ header | dayformat }}
@@ -42,7 +42,7 @@ function onclick_navigate(e, key) {
         {% for assigned in rows %}
         <tr>
           <!-- TODO: rowspan the name -->
-          <td>{{ assignee }}</td>
+          <td class="two wide">{{ assignee }}</td>
           {% for span, issue in assigned %}
             {% if issue %}
             <td colspan="{{ span }}" title="{{ issue.key}}: {{ issue.summary }}" class="ui message
