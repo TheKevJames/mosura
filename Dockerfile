@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.7
+# syntax=docker/dockerfile:1.8
 FROM python:3.12.4-slim-bullseye AS base
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
