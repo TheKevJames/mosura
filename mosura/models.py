@@ -189,6 +189,10 @@ class Issue(Base):
         cls, issue: schemas.IssueCreate, *,
         session: AsyncSession,
     ) -> None:
+        # TODO: fix upserts, then aviod the deletion here
+        deletion = delete(cls).where(cls.key == issue.key)
+        await session.execute(deletion)
+
         # N.B. set "include" explicitly to support subclasses of IssueCreate
         stmt = insert(cls).values(
             **issue.model_dump(
