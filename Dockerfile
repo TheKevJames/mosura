@@ -1,9 +1,17 @@
-# syntax=docker/dockerfile:1.8
+# syntax=docker/dockerfile:1
+
+# renovate: datasource=repology depName=debian_11/curl versioning=loose
+ARG CURL_VERSION=7.74.0-1.3+deb11u12
+# renovate: datasource=pypi depName=poetry
+ARG POETRY_VERSION=1.7.1
+
+
 FROM python:3.12.4-slim-bullseye AS base
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-ARG CURL_VERSION=7.74.0-1.3+deb11u11
-ARG POETRY_VERSION=1.7.1
+
+ARG CURL_VERSION
+ARG POETRY_VERSION
 RUN --mount=type=cache,target=/var/cache/apt \
     --mount=type=cache,target=/var/lib/apt \
     apt-get update -qy && \
