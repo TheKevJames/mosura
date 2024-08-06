@@ -197,13 +197,13 @@ files = [
 
 [[package]]
 name = "fastapi-slim"
-version = "0.111.1"
+version = "0.112.0"
 description = "FastAPI framework, high performance, easy to learn, fast to code, ready for production"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "fastapi_slim-0.111.1-py3-none-any.whl", hash = "sha256:ac29948dcbf84cc78d68ed2c4df4e695ac265cf53c339e5794008476e9befbbb"},
-    {file = "fastapi_slim-0.111.1.tar.gz", hash = "sha256:f799a60658f56c49fe3842eb534730fabe1168731c0b407b98a042c8d57be39d"},
+    {file = "fastapi_slim-0.112.0-py3-none-any.whl", hash = "sha256:7663edfbb5036d641aa45b4f5dad341cf78d98885216e78743a8cdd39a38883e"},
+    {file = "fastapi_slim-0.112.0.tar.gz", hash = "sha256:2420f700b7dc2d1a6d02c7230f7aa2ae9fa0320d8d481094062ff717659c0843"},
 ]
 
 [package.dependencies]
@@ -212,8 +212,8 @@ starlette = ">=0.37.2,<0.38.0"
 typing-extensions = ">=4.8.0"
 
 [package.extras]
-all = ["email_validator (>=2.0.0)", "fastapi-cli (>=0.0.2)", "httpx (>=0.23.0)", "itsdangerous (>=1.1.0)", "jinja2 (>=2.11.2)", "orjson (>=3.2.1)", "pydantic-extra-types (>=2.0.0)", "pydantic-settings (>=2.0.0)", "python-multipart (>=0.0.7)", "pyyaml (>=5.3.1)", "ujson (>=4.0.1,!=4.0.2,!=4.1.0,!=4.2.0,!=4.3.0,!=5.0.0,!=5.1.0)", "uvicorn[standard] (>=0.12.0)"]
-standard = ["email_validator (>=2.0.0)", "fastapi-cli (>=0.0.2)", "httpx (>=0.23.0)", "jinja2 (>=2.11.2)", "python-multipart (>=0.0.7)", "uvicorn[standard] (>=0.12.0)"]
+all = ["email_validator (>=2.0.0)", "fastapi-cli[standard] (>=0.0.5)", "httpx (>=0.23.0)", "itsdangerous (>=1.1.0)", "jinja2 (>=2.11.2)", "orjson (>=3.2.1)", "pydantic-extra-types (>=2.0.0)", "pydantic-settings (>=2.0.0)", "python-multipart (>=0.0.7)", "pyyaml (>=5.3.1)", "ujson (>=4.0.1,!=4.0.2,!=4.1.0,!=4.2.0,!=4.3.0,!=5.0.0,!=5.1.0)", "uvicorn[standard] (>=0.12.0)"]
+standard = ["email_validator (>=2.0.0)", "fastapi-cli[standard] (>=0.0.5)", "httpx (>=0.23.0)", "jinja2 (>=2.11.2)", "python-multipart (>=0.0.7)", "uvicorn[standard] (>=0.12.0)"]
 
 [[package]]
 name = "greenlet"
@@ -1121,4 +1121,4 @@ test = ["Cython (>=0.29.36,<0.30.0)", "aiohttp (==3.9.0b0)", "aiohttp (>=3.8.1)"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<4.0"
-content-hash = "66e5294993f60ca683b08ef282c6e16fa2ce558f4dc26c50883d298501f34991"
+content-hash = "beb09fd5f4054d7cd40bd6d4b0e689b21472d2f03b6b0f3b72f2a972e9e6f5df"
