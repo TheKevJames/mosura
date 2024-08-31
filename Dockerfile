@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # renovate: datasource=repology depName=debian_11/curl versioning=loose
-ARG CURL_VERSION=7.74.0-1.3+deb11u12
+ARG CURL_VERSION=7.74.0-1.3+deb11u13
 # renovate: datasource=pypi depName=poetry
 ARG POETRY_VERSION=1.8.3
 
