@@ -110,6 +110,10 @@ async def fetch_closed(
 ) -> None:
     jql = f'project = "{project}" AND status IN ("Closed", "Done")'
     if users:
+        # TODO: this filter means we stop getting updates for a ticket if it
+        # gets reassigned away from a tracked user. Perhaps we could search the
+        # assignee history? Or do an extra sync for any tickets in our DB but
+        # not recently included in a fetch_ task?
         assignees = ','.join(f'"{x}"' for x in users)
         jql += f' AND assignee IN ({assignees})'
     await fetch(
