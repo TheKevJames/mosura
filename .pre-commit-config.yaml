@@ -8,7 +8,7 @@ default_install_hook_types:
   - pre-commit
 
 default_language_version:
-    python: python3.12
+    python: python3.13
 
 repos:
   - repo: https://github.com/compilerla/conventional-pre-commit
@@ -53,6 +53,7 @@ repos:
           - --max-complexity=10
           - --max-line-length=79
           - --max-module-lines=500
+          - --max-positional-arguments=10
           - --max-args=10
           - --score=n
           # TODO: narrow these down
@@ -99,12 +100,18 @@ repos:
         # Note that some libraries keep their type hints in packages named
         # `types-$lib` or `$lib-stubs`.
         additional_dependencies:
-          - fastapi>=0.109.0
-          - httpx
-          - jira
-          - pydantic-settings
-          - pytest
-          - sqlalchemy
+          # renovate: datasource=pypi depName=fastapi
+          - fastapi==0.115.5
+          # renovate: datasource=pypi depName=httpx
+          - httpx==0.27.2
+          # renovate: datasource=pypi depName=jira
+          - jira==3.8.0
+          # renovate: datasource=pypi depName=pydantic-settings
+          - pydantic-settings==2.6.1
+          # renovate: datasource=pypi depName=pytest
+          - pytest==8.3.3
+          # renovate: datasource=pypi depName=sqlalchemy
+          - sqlalchemy==2.0.36
         args:
           - --show-error-codes
           - --strict
@@ -209,6 +216,7 @@ repos:
   - repo: https://github.com/python-jsonschema/check-jsonschema
     rev: 0.29.4
     hooks:
+      - id: check-circle-ci
       - id: check-github-workflows
       - id: check-renovate
         additional_dependencies:
@@ -254,10 +262,6 @@ repos:
       - id: terraform_validate
 
 # shell
-  - repo: https://github.com/lovesegfault/beautysh
-    rev: v6.2.1
-    hooks:
-      - id: beautysh
   - repo: https://github.com/openstack/bashate
     rev: 2.1.1
     hooks:
