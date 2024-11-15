@@ -5,36 +5,74 @@ orbs:
   linter: talkiq/linter@4
 
 executors:
+  docker:
+    docker:
+      - image: docker:25.0.5-git
+    resource_class: medium
+  pandoc:
+    docker:
+      - image: pandoc/core:3.5.0
+    resource_class: medium
   python:
     docker:
       - image: python:3.13.0
     resource_class: medium
 
+commands:
+  docker-publish-image:
+    steps:
+      - run: echo "$DOCKER_PASS" | docker login docker.io --username "$DOCKER_USER" --password-stdin
+      - run: echo "$QUAY_PASS" | docker login quay.io --username "$QUAY_USER" --password-stdin
+      - run: docker tag "mosura:${CIRCLE_SHA1:0:10}" "thekevjames/mosura:${CIRCLE_SHA1:0:10}"
+      - run: docker tag "mosura:${CIRCLE_SHA1:0:10}" "quay.io/thekevjames/mosura:${CIRCLE_SHA1:0:10}"
+      - when:
+          condition:
+            equal: [ "master", <<pipeline.git.branch>> ]
+          steps:
+            - run: docker tag "mosura:${CIRCLE_SHA1:0:10}" "thekevjames/mosura:latest"
+            - run: docker tag "mosura:${CIRCLE_SHA1:0:10}" "quay.io/thekevjames/mosura:latest"
+      - run: docker push "thekevjames/mosura" -a
+      - run: docker push "quay.io/thekevjames/mosura" -a
+
+  docker-publish-readme:
+    parameters:
+      version:
+        # TODO: renovate
+        default: v1.9.0
+        type: string
+    steps:
+      - run: apk add --no-cache --no-progress curl
+      - run: mkdir -p "${HOME}/.docker/cli-plugins"
+      - run: curl -Lo "${HOME}/.docker/cli-plugins/docker-pushrm" "https://github.com/christian-korneck/docker-pushrm/releases/download/<<parameters.version>>/docker-pushrm_linux_amd64"
+      - run: chmod +x "${HOME}/.docker/cli-plugins/docker-pushrm"
+      - attach_workspace:
+          at: /meta
+      - run: docker pushrm "thekevjames/mosura" --file=/meta/README.md
+      - run: docker pushrm "quay.io/thekevjames/mosura" --file=/meta/README.md
+
+
 jobs:
-  docker-readme-build:
-    docker:
-      - image: pandoc/core:3.5.0
+  docker-workflow:
+    executor: docker
+    steps:
+      - checkout
+      - setup_remote_docker
+      - docker/build:
+          local_image_name: "mosura:${CIRCLE_SHA1:0:10}"
+      - docker-publish-image
+      - docker-publish-readme
+
+  docker-build-readme:
+    executor: pandoc
     steps:
       - run: apk add --no-cache --no-progress ca-certificates openssl
-      - run: mkdir -p /tmp
+      - run: mkdir -p /meta
       - checkout
-      - run: pandoc -o/tmp/README.md README.rst
+      - run: pandoc -o/meta/README.md README.rst
       - persist_to_workspace:
-          root: /tmp
+          root: /meta
           paths:
             - README.md
-
-  # TODO: this should be doable with curl or python...
-  docker-readme-publish:
-    docker:
-      - image: node:23.1.0-alpine
-    steps:
-      - run: apk add --no-cache --no-progress ca-certificates openssl
-      - checkout
-      - run: npm install docker-hub-api
-      - attach_workspace:
-          at: /tmp
-      - run: node ./docker-update-readme.js thekevjames mosura
 
 workflows:
   run-jobs:
@@ -42,17 +80,9 @@ workflows:
       - linter/pre-commit:
           executor: python
       # TODO: pytest
-      - docker/publish:
-          image: thekevjames/mosura  # TODO: fix orb (force lowercase username)
-          matrix:
-            parameters:
-              registry: ['docker.io', 'quay.io']
-          pre-steps:
-            - setup_remote_docker
-            - run: echo "$DOCKER_PASS" | docker login docker.io --username "$DOCKER_USER" --password-stdin
-            - run: echo "$QUAY_PASS" | docker login quay.io --username "$QUAY_USER" --password-stdin
-      - docker-readme-build
-      - docker-readme-publish:
+      - docker-build-readme:
           requires:
-            - docker/publish
-            - docker-readme-build
+            - linter/pre-commit
+      - docker-workflow:
+          requires:
+            - docker-build-readme
