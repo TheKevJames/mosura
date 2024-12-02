@@ -8,5 +8,8 @@ from mosura.app import app
 
 @pytest.fixture(scope='function')
 async def client() -> AsyncIterator[httpx.AsyncClient]:
-    async with httpx.AsyncClient(app=app, base_url='http://test') as c:
+    async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url='http://test',
+    ) as c:
         yield c
