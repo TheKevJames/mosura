@@ -103,7 +103,7 @@ repos:
           # renovate: datasource=pypi depName=fastapi
           - fastapi==0.115.6
           # renovate: datasource=pypi depName=httpx
-          - httpx==0.28.0
+          - httpx==0.28.1
           # renovate: datasource=pypi depName=jira
           - jira==3.8.0
           # renovate: datasource=pypi depName=pydantic-settings
