@@ -3,7 +3,7 @@
 # renovate: datasource=repology depName=debian_11/curl versioning=loose
 ARG CURL_VERSION=7.74.0-1.3+deb11u14
 # renovate: datasource=pypi depName=poetry
-ARG POETRY_VERSION=1.8.5
+ARG POETRY_VERSION=2.0.1
 
 
 FROM python:3.13.1-slim-bullseye AS base
@@ -25,7 +25,7 @@ RUN poetry config virtualenvs.create false
 WORKDIR /app
 COPY pyproject.toml poetry.lock ./
 RUN --mount=type=cache,target=/root/.cache \
-    poetry install --no-root --no-dev
+    poetry install --no-root --only main
 
 COPY mosura ./mosura
 COPY static ./static

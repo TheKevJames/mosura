@@ -1,23 +1,35 @@
-[tool.poetry]
+[project]
 name = "mosura"
 version = "0.1.0"
 description = "task management system"
+requires-python = ">=3.11,<4.0"
+license = { text = "MIT" }
 
+authors = [
+    { name = "Kevin James", email = "mosura@thekev.in" },
+]
+
+dependencies = [
+    "fastapi==0.115.6",
+    "httptools==0.6.4",
+    "jinja2==3.1.5",
+    "jira==3.8.0",
+    "pydantic==2.10.5",
+    "pydantic-settings==2.7.1",
+    "sqlalchemy[aiosqlite]==2.0.37",
+    "uvicorn==0.34.0",
+    "uvloop==0.21.0",
+]
+
+[project.urls]
 repository = "https://github.com/TheKevJames/mosura"
-authors = ["Kevin James <mosura@thekev.in>"]
-license = "MIT"
+
+[tool.poetry]
+requires-poetry = ">=2.0"
+package-mode = true
 
 [tool.poetry.dependencies]
 python = ">=3.11,<4.0"
-fastapi = "0.115.6"
-httptools = "0.6.4"
-jinja2 = "3.1.5"
-jira = "3.8.0"
-pydantic = "2.10.5"
-pydantic-settings = "2.7.1"
-sqlalchemy = { version = "2.0.37", extras = ["aiosqlite"] }
-uvicorn = "0.34.0"
-uvloop = "0.21.0"
 
 [tool.poetry.group.dev.dependencies]
 httpx = "0.28.1"
