@@ -101,7 +101,7 @@ repos:
         # `types-$lib` or `$lib-stubs`.
         additional_dependencies:
           # renovate: datasource=pypi depName=fastapi
-          - fastapi==0.115.9
+          - fastapi==0.115.11
           # renovate: datasource=pypi depName=httpx
           - httpx==0.28.1
           # renovate: datasource=pypi depName=jira
@@ -109,7 +109,7 @@ repos:
           # renovate: datasource=pypi depName=pydantic-settings
           - pydantic-settings==2.8.1
           # renovate: datasource=pypi depName=pytest
-          - pytest==8.3.4
+          - pytest==8.3.5
           # renovate: datasource=pypi depName=sqlalchemy
           - sqlalchemy==2.0.38
         args:
