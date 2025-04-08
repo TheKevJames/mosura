@@ -107,7 +107,7 @@ repos:
           # renovate: datasource=pypi depName=jira
           - jira==3.8.0
           # renovate: datasource=pypi depName=pydantic
-          - pydantic==2.11.2
+          - pydantic==2.11.3
           # renovate: datasource=pypi depName=pydantic-settings
           - pydantic-settings==2.8.1
           # renovate: datasource=pypi depName=pytest
