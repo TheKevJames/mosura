@@ -106,12 +106,14 @@ repos:
           - httpx==0.28.1
           # renovate: datasource=pypi depName=jira
           - jira==3.8.0
+          # renovate: datasource=pypi depName=pydantic
+          - pydantic==2.11.2
           # renovate: datasource=pypi depName=pydantic-settings
           - pydantic-settings==2.8.1
           # renovate: datasource=pypi depName=pytest
           - pytest==8.3.5
           # renovate: datasource=pypi depName=sqlalchemy
-          - sqlalchemy==2.0.39
+          - sqlalchemy==2.0.40
         args:
           - --show-error-codes
           - --strict
