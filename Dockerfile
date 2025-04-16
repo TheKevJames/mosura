@@ -6,7 +6,7 @@ ARG CURL_VERSION=7.74.0-1.3+deb11u14
 ARG POETRY_VERSION=2.1.2
 
 
-FROM python:3.13.2-slim-bullseye AS base
+FROM python:3.13.3-slim-bullseye AS base
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
