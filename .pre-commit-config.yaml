@@ -177,6 +177,9 @@ repos:
         args:
           - --python-version
           - '3.11'
+        additional_dependencies:
+          # renovate: datasource=pypi depName=pydantic
+          - pydantic==2.11.3
   - repo: local
     hooks:
       - id: poetry-check
