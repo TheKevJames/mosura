@@ -109,7 +109,7 @@ repos:
           # renovate: datasource=pypi depName=pydantic
           - pydantic==2.11.3
           # renovate: datasource=pypi depName=pydantic-settings
-          - pydantic-settings==2.8.1
+          - pydantic-settings==2.9.1
           # renovate: datasource=pypi depName=pytest
           - pytest==8.3.5
           # renovate: datasource=pypi depName=sqlalchemy
