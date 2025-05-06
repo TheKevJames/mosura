@@ -107,7 +107,7 @@ repos:
           # renovate: datasource=pypi depName=jira
           - jira==3.8.0
           # renovate: datasource=pypi depName=pydantic
-          - pydantic==2.11.3
+          - pydantic==2.11.4
           # renovate: datasource=pypi depName=pydantic-settings
           - pydantic-settings==2.9.1
           # renovate: datasource=pypi depName=pytest
@@ -179,7 +179,7 @@ repos:
           - '3.11'
         additional_dependencies:
           # renovate: datasource=pypi depName=pydantic
-          - pydantic==2.11.3
+          - pydantic==2.11.4
   - repo: local
     hooks:
       - id: poetry-check
