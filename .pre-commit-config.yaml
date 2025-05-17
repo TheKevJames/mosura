@@ -113,7 +113,7 @@ repos:
           # renovate: datasource=pypi depName=pytest
           - pytest==8.3.5
           # renovate: datasource=pypi depName=sqlalchemy
-          - sqlalchemy==2.0.40
+          - sqlalchemy==2.0.41
         args:
           - --show-error-codes
           - --strict
