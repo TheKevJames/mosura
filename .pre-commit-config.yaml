@@ -170,7 +170,7 @@ repos:
           - '3.11'
         language: python
         additional_dependencies:
-          - pydantic==2.11.4
+          - pydantic==2.11.5
   - repo: local
     hooks:
       - id: poetry-check
