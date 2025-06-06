@@ -33,7 +33,7 @@ python = ">=3.11,<4.0"
 
 [tool.poetry.group.dev.dependencies]
 httpx = "0.28.1"
-pytest = "8.3.5"
+pytest = "8.4.0"
 pytest-asyncio = "1.0.0"
 
 [tool.mypy]
