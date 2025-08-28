@@ -101,7 +101,7 @@ repos:
         # Note that some libraries keep their type hints in packages named
         # `types-$lib` or `$lib-stubs`.
         additional_dependencies:
-          - fastapi==0.115.14
+          - fastapi==0.116.1
           - httpx==0.28.1
           - jira==3.10.5
           - pydantic==2.11.7
