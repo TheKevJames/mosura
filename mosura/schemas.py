@@ -131,7 +131,7 @@ class IssueCreate(pydantic.BaseModel):
         # TODO: two-way sync to keep these in sync?
         startdate = cls.parse_date(
             data['fields']['customfield_12133']  # Start Date (cal)
-            or data['fields']['customfield_12161'],  # Start Date (issue)
+            or data['fields'].get('customfield_12161'),  # Start Date (issue)
         )
         duedate = cls.parse_date(data['fields']['duedate'])  # End Date (cal)
         if duedate is not None and startdate is not None:
