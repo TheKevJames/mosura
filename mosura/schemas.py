@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 class Priority(str, enum.Enum):
     # TODO: un-break support for jiras with non-default priorities
+    unknown = 'No priority'
     low = 'Low'
     medium = 'Medium'
     high = 'High'
@@ -26,6 +27,8 @@ class Priority(str, enum.Enum):
 
     @property
     def css_class(self) -> str:  # pylint: disable=inconsistent-return-statements
+        if self == Priority.unknown:
+            return 'grey question circle icon'
         if self == Priority.low:
             return 'green angle down icon'
         if self == Priority.medium:
@@ -38,14 +41,16 @@ class Priority(str, enum.Enum):
 
     @property
     def sort_value(self) -> str:  # pylint: disable=inconsistent-return-statements
-        if self == Priority.low:
+        if self == Priority.unknown:
             return 'pri0'
-        if self == Priority.medium:
+        if self == Priority.low:
             return 'pri1'
-        if self == Priority.high:
+        if self == Priority.medium:
             return 'pri2'
-        if self == Priority.urgent:
+        if self == Priority.high:
             return 'pri3'
+        if self == Priority.urgent:
+            return 'pri4'
         assert_never(self)
 
 

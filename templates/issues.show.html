@@ -39,6 +39,9 @@ function update_field(field, value) {
             <i class="{{ issue.priority.css_class }}" title="{{ issue.priority.value }} Priority"></i>
           </div>
           <div class="menu">
+            <div class="item" data-value="{{ Priority.unknown }}">
+              <i class="{{ Priority.unknown.css_class }}" title="{{ Priority.unknown.value }} Priority"></i>
+            </div>
             <div class="item" data-value="{{ Priority.low }}">
               <i class="{{ Priority.low.css_class }}" title="{{ Priority.low.value }} Priority"></i>
             </div>
