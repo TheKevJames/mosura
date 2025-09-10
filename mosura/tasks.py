@@ -21,6 +21,7 @@ async def fetch(
         lock: asyncio.Lock,
         interval: datetime.timedelta,
 ) -> None:
+    # pylint: disable=too-many-locals
     page_size = 100
     logger.info(
         'fetch(%s): initialized with interval %ds', variant,
@@ -41,6 +42,7 @@ async def fetch(
 
         async with lock, database.session() as session:
             logger.info('fetch(%s): fetching data', variant)
+            total_fetched = 0
             for idx in itertools.count(0, page_size):
                 resp: dict[str, Any] = cast(
                     dict[str, Any],
@@ -55,6 +57,7 @@ async def fetch(
                     ),
                 )
                 issues: list[dict[str, Any]] = resp.get('issues', [])
+                total_fetched += len(issues)
 
                 logger.debug(
                     'fetch(%s): fetched %d issues, writing to db',
@@ -87,12 +90,14 @@ async def fetch(
                         session=session,
                     )
 
-                if resp['total'] < idx + page_size:
+                # N.B. resp['total'] is not provided for all responses, so we
+                # need to count things ourselves.
+                if len(issues) < page_size or resp.get('isLast') is True:
                     break
 
             logger.info(
                 'fetch(%s): fetched %d issues in total', variant,
-                resp['total'],
+                total_fetched,
             )
             task = schemas.Task.model_validate({
                 'key': 'fetch',
@@ -169,15 +174,15 @@ async def spawn(users: list[str]) -> set[asyncio.Task[None]]:
     }
     tasks.update({
         asyncio.create_task(
-            fetch_open(lock, p, users),
+            fetch_closed(lock, p, users),
             name=f'fetch_closed_{p}',
         )
         for p in projects[1:]
     })
     tasks.update({
         asyncio.create_task(
-            fetch_closed(lock, p, users),
-            name=f'fetch_closed_{p}',
+            fetch_open(lock, p, users),
+            name=f'fetch_open_{p}',
         )
         for p in projects[1:]
     })
