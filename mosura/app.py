@@ -1,6 +1,8 @@
 import asyncio
 import contextlib
 import logging.config
+import os
+import signal
 from collections.abc import AsyncIterator
 
 import fastapi.staticfiles
@@ -22,6 +24,7 @@ def _log_task_exception(task: asyncio.Task[None]) -> None:
         if exc is not None:
             name = task.get_name()
             logger.error('background task crashed: %s', name, exc_info=exc)
+            os.kill(os.getpid(), signal.SIGTERM)
 
 
 def load_users() -> list[str]:
