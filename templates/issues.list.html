@@ -193,8 +193,8 @@ function onclick_navigate(e, key) {
         {% for l in issue.labels %}
           <p>{{ l.label }}</p>
         {% endfor %}
-        <td data-label="Votes">{{ issue.votes }}</td>
         </td>
+        <td data-label="Votes">{{ issue.votes }}</td>
       </tr>
     {% endfor %}
     </tbody>
