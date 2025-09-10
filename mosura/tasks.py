@@ -1,6 +1,5 @@
 import asyncio
 import datetime
-import itertools
 import logging
 from typing import Any
 from typing import cast
@@ -43,13 +42,14 @@ async def fetch(
         async with lock, database.session() as session:
             logger.info('fetch(%s): fetching data', variant)
             total_fetched = 0
-            for idx in itertools.count(0, page_size):
+            page_token: str | None = None
+            while True:
                 resp: dict[str, Any] = cast(
                     dict[str, Any],
                     await asyncio.to_thread(
-                        config.jira_client.search_issues,
+                        config.jira_client.enhanced_search_issues,
                         jql,
-                        startAt=idx,
+                        nextPageToken=page_token,
                         maxResults=page_size,
                         fields=schemas.Issue.jira_fields(),
                         expand='renderedFields',
@@ -94,6 +94,7 @@ async def fetch(
                 # need to count things ourselves.
                 if len(issues) < page_size or resp.get('isLast') is True:
                     break
+                page_token = resp.get('nextPageToken')
 
             logger.info(
                 'fetch(%s): fetched %d issues in total', variant,
