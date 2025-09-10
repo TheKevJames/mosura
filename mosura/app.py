@@ -16,6 +16,14 @@ from . import ui
 logger = logging.getLogger(__name__)
 
 
+def _log_task_exception(task: asyncio.Task[None]) -> None:
+    with contextlib.suppress(asyncio.CancelledError):
+        exc = task.exception()
+        if exc is not None:
+            name = task.get_name()
+            logger.error('background task crashed: %s', name, exc_info=exc)
+
+
 def load_users() -> list[str]:
     if not config.settings.jira_team:
         return []
@@ -44,6 +52,11 @@ async def lifespan(app_: fastapi.FastAPI) -> AsyncIterator[None]:
 
     # TODO: catch errors in these tasks immediately and crash/retry
     app_.state.tasks = await tasks.spawn(users)
+    for t in app_.state.tasks:
+        t.add_done_callback(_log_task_exception)
+        if t.done():
+            _log_task_exception(t)
+
     logger.info('startup(): begun polling tasks')
 
     yield
@@ -52,10 +65,7 @@ async def lifespan(app_: fastapi.FastAPI) -> AsyncIterator[None]:
     for task in app_.state.tasks:
         task.cancel()
 
-    try:
-        await asyncio.gather(*app_.state.tasks)
-    except asyncio.CancelledError:
-        pass
+    await asyncio.gather(*app_.state.tasks, return_exceptions=True)
 
 
 app = fastapi.FastAPI(lifespan=lifespan)
