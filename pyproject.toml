@@ -34,7 +34,7 @@ python = ">=3.11,<4.0"
 [tool.poetry.group.dev.dependencies]
 httpx = "0.28.1"
 pytest = "8.4.2"
-pytest-asyncio = "1.1.0"
+pytest-asyncio = "1.1.1"
 
 [tool.mypy]
 plugins = [
