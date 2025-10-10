@@ -107,7 +107,7 @@ repos:
           - pydantic==2.12.0
           - pydantic-settings==2.11.0
           - pytest==8.4.2
-          - sqlalchemy==2.0.43
+          - sqlalchemy==2.0.44
         args:
           - --show-error-codes
           - --strict
