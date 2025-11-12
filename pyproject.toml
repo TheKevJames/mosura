@@ -45,8 +45,8 @@ plugins = [
 module = 'uvicorn.*'
 ignore_missing_imports = true
 
-[tool.pytest.ini_options]
-addopts = "-Werror"
+[tool.pytest]
+addopts = ["-Werror"]
 asyncio_mode = "auto"
 
 [build-system]
