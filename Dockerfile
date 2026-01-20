@@ -3,7 +3,7 @@
 # renovate: datasource=repology depName=debian_11/curl versioning=loose
 ARG CURL_VERSION=7.74.0-1.3+deb11u16
 # renovate: datasource=pypi depName=poetry
-ARG POETRY_VERSION=2.3.0
+ARG POETRY_VERSION=2.3.1
 
 
 FROM python:3.13.6-slim-bullseye AS base
