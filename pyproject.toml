@@ -16,7 +16,7 @@ dependencies = [
     "jira==3.10.5",
     "pydantic==2.12.5",
     "pydantic-settings==2.12.0",
-    "sqlalchemy[aiosqlite]==2.0.45",
+    "sqlalchemy[aiosqlite]==2.0.46",
     "uvicorn==0.40.0",
     "uvloop==0.22.1",
 ]
