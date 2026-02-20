@@ -12,8 +12,8 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 ARG CURL_VERSION
 ARG POETRY_VERSION
-RUN --mount=type=cache,target=/var/cache/apt \
-    --mount=type=cache,target=/var/lib/apt \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
     apt-get update -qy && \
     apt-get install -qy --no-install-recommends \
         "curl=${CURL_VERSION}" && \
