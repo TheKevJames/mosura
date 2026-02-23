@@ -37,8 +37,6 @@ commands:
   docker-publish-readme:
     parameters:
       version:
-        # TODO: renovate
-        default: v1.9.0
         type: string
     steps:
       - run: apk add --no-cache --no-progress curl
@@ -60,7 +58,9 @@ jobs:
       - docker/build:
           local_image_name: "mosura:${CIRCLE_SHA1:0:10}"
       - docker-publish-image
-      - docker-publish-readme
+      - docker-publish-readme:
+          # renovate: datasource=github-release depName=christian-korneck/docker-pushrm versioning=semver
+          version: v1.9.0
 
   docker-build-readme:
     executor: pandoc
