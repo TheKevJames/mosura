@@ -3,6 +3,7 @@ version: 2.1
 orbs:
   docker: talkiq/docker@4.1.2
   linter: talkiq/linter@4.0.0
+  poetry: talkiq/poetry@4.1.0
 
 executors:
   docker:
@@ -79,7 +80,10 @@ workflows:
     jobs:
       - linter/pre-commit:
           executor: python
-      # TODO: pytest
+      - poetry/run:
+          executor: python
+          commands:
+            - run: poetry run pytest
       - docker-build-readme:
           requires:
             - linter/pre-commit
