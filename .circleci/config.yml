@@ -81,6 +81,7 @@ workflows:
       - linter/pre-commit:
           executor: python
       - poetry/run:
+          name: test
           executor: python
           commands:
             - run: poetry run pytest

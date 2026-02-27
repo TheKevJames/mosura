@@ -35,6 +35,7 @@ python = ">=3.11,<4.0"
 httpx = "0.28.1"
 pytest = "9.0.2"
 pytest-asyncio = "1.3.0"
+pytest-env = "1.1.5"
 
 [tool.mypy]
 plugins = [
@@ -48,6 +49,12 @@ ignore_missing_imports = true
 [tool.pytest]
 addopts = ["-Werror"]
 asyncio_mode = "auto"
+
+[tool.pytest_env]
+JIRA_AUTH_TOKEN = "missing"
+JIRA_AUTH_USER = "missing"
+JIRA_DOMAIN = "missing"
+JIRA_PROJECT = "missing"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
