@@ -27,18 +27,20 @@ def _log_task_exception(task: asyncio.Task[None]) -> None:
             os.kill(os.getpid(), signal.SIGTERM)
 
 
-def load_users() -> list[str]:
-    if not config.settings.jira_team:
+def load_users(app_: fastapi.FastAPI) -> list[str]:
+    settings = app_.state.settings
+    jira_client = app_.state.jira_client
+    if not settings.jira_team:
         return []
 
     # https://github.com/pycontribs/jira/issues/1761
-    project = config.settings.jira_project
-    team = config.settings.jira_team
+    project = settings.jira_project
+    team = settings.jira_team
     base = (
         f'{{server}}/gateway/api/public/teams/v1/org/{project}/teams/{team}'
         '/{path}'
     )
-    resp = config.jira_client._get_json(  # pylint: disable=protected-access
+    resp = jira_client._get_json(  # pylint: disable=protected-access
         'members', {'first': 40}, base, use_post=True,
     )
     return [x['accountId'] for x in resp.get('results', [])]
@@ -46,15 +48,21 @@ def load_users() -> list[str]:
 
 @contextlib.asynccontextmanager
 async def lifespan(app_: fastapi.FastAPI) -> AsyncIterator[None]:
-    async with database.engine.begin() as conn:
+    app_.state.settings = config.load_settings()
+    app_.state.jira_client = config.Jira.from_settings(app_.state.settings)
+
+    app_.state.engine = database.build_engine(app_.state.settings)
+    app_.state.sessionmaker = database.build_sessionmaker(app_.state.engine)
+
+    async with app_.state.engine.begin() as conn:
         await conn.run_sync(models.Base.metadata.create_all)
     logger.info('startup(): initialized db')
 
-    users = load_users()
+    users = load_users(app_)
     logger.info('startup(): loaded %d users', len(users))
 
     # TODO: catch errors in these tasks immediately and crash/retry
-    app_.state.tasks = await tasks.spawn(users)
+    app_.state.tasks = await tasks.spawn(app_, users)
     for t in app_.state.tasks:
         t.add_done_callback(_log_task_exception)
         if t.done():
@@ -69,6 +77,8 @@ async def lifespan(app_: fastapi.FastAPI) -> AsyncIterator[None]:
         task.cancel()
 
     await asyncio.gather(*app_.state.tasks, return_exceptions=True)
+
+    await app_.state.engine.dispose()
 
 
 app = fastapi.FastAPI(lifespan=lifespan)

@@ -53,7 +53,7 @@ async def home(
 async def list_issues(
         request: fastapi.Request,
 ) -> starlette.responses.Response:
-    async with database.session() as session:
+    async with database.session_from_app(request.app) as session:
         issues = await models.Issue.get(closed=False, session=session)
 
     meta = schemas.Meta.from_issues(issues)
@@ -69,7 +69,7 @@ async def list_my_issues(
     if not commons.user:
         raise fastapi.HTTPException(status_code=403)
 
-    async with database.session() as session:
+    async with database.session_from_app(request.app) as session:
         issues = await models.Issue.get(
             assignee=commons.user, closed=False,
             session=session,
@@ -85,14 +85,14 @@ async def show_issue(
         request: fastapi.Request,
         key: str,
 ) -> starlette.responses.Response:
-    async with database.session() as session:
+    async with database.session_from_app(request.app) as session:
         issues = await models.Issue.get(key=key, closed=True, session=session)
 
     if not issues:
         raise fastapi.HTTPException(status_code=404)
 
     context = {
-        'settings': config.settings, 'issue': issues[0],
+        'settings': request.app.state.settings, 'issue': issues[0],
         'Priority': schemas.Priority,
     }
     return templates.TemplateResponse(request, 'issues.show.html', context)
@@ -103,7 +103,7 @@ async def show_settings(
         request: fastapi.Request,
         commons: config.CommonsDep,
 ) -> starlette.responses.Response:
-    context = {'settings': config.settings, 'commons': commons}
+    context = {'settings': request.app.state.settings, 'commons': commons}
     return templates.TemplateResponse(request, 'settings.html', context)
 
 
@@ -112,7 +112,7 @@ async def show_timeline(
         request: fastapi.Request,
         date: str | None = None,
 ) -> starlette.responses.Response:
-    async with database.session() as session:
+    async with database.session_from_app(request.app) as session:
         # TODO: for perf, move some filters out of Timeline.from_issues() and
         # into this SQL command.
         issues = await models.Issue.get(closed=True, session=session)
@@ -123,11 +123,11 @@ async def show_timeline(
     )
     timeline = schemas.Timeline.from_issues(
         issues,
-        okr_label=config.settings.jira_label_okr,
+        okr_label=request.app.state.settings.jira_label_okr,
         target=target,
     )
 
-    context = {'timeline': timeline, 'settings': config.settings}
+    context = {'timeline': timeline, 'settings': request.app.state.settings}
     return templates.TemplateResponse(request, 'timeline.html', context)
 
 
@@ -135,7 +135,7 @@ async def show_timeline(
 async def list_triagable_issues(
         request: fastapi.Request,
 ) -> starlette.responses.Response:
-    async with database.session() as session:
+    async with database.session_from_app(request.app) as session:
         issues = await models.Issue.get(needs_triage=True, session=session)
 
     meta = schemas.Meta.from_issues(issues)

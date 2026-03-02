@@ -4,7 +4,8 @@ import logging
 from typing import Any
 from typing import cast
 
-from . import config
+import fastapi
+
 from . import database
 from . import models
 from . import schemas
@@ -15,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 async def fetch(
         *,
+        app: fastapi.FastAPI,
         variant: str,
         jql: str,
         lock: asyncio.Lock,
@@ -22,13 +24,14 @@ async def fetch(
 ) -> None:
     # pylint: disable=too-many-locals
     page_size = 100
+    jira_client = app.state.jira_client
     logger.info(
         'fetch(%s): initialized with interval %ds', variant,
         interval.seconds,
     )
 
     while True:
-        async with lock, database.session() as session:
+        async with lock, database.session_from_app(app) as session:
             now = datetime.datetime.now(datetime.UTC)
             task = await models.Task.get('fetch', variant, session=session)
 
@@ -39,7 +42,7 @@ async def fetch(
             await asyncio.sleep(sleep)
             continue
 
-        async with lock, database.session() as session:
+        async with lock, database.session_from_app(app) as session:
             logger.info('fetch(%s): fetching data', variant)
             total_fetched = 0
             page_token: str | None = None
@@ -47,7 +50,7 @@ async def fetch(
                 resp: dict[str, Any] = cast(
                     dict[str, Any],
                     await asyncio.to_thread(
-                        config.jira_client.enhanced_search_issues,
+                        jira_client.enhanced_search_issues,
                         jql,
                         nextPageToken=page_token,
                         maxResults=page_size,
@@ -110,6 +113,7 @@ async def fetch(
 
 
 async def fetch_closed(
+        app: fastapi.FastAPI,
         lock: asyncio.Lock,
         project: str,
         users: list[str] | None = None,
@@ -123,8 +127,9 @@ async def fetch_closed(
         assignees = ','.join(f'"{x}"' for x in users)
         jql += f' AND assignee IN ({assignees})'
     await fetch(
+        app=app,
         interval=datetime.timedelta(
-            seconds=config.settings.mosura_poll_interval_closed,
+            seconds=app.state.settings.mosura_poll_interval_closed,
         ),
         jql=jql,
         lock=lock,
@@ -133,6 +138,7 @@ async def fetch_closed(
 
 
 async def fetch_open(
+        app: fastapi.FastAPI,
         lock: asyncio.Lock,
         project: str,
         users: list[str] | None = None,
@@ -142,8 +148,9 @@ async def fetch_open(
         assignees = ','.join(f'"{x}"' for x in users)
         jql += f' AND assignee IN ({assignees})'
     await fetch(
+        app=app,
         interval=datetime.timedelta(
-            seconds=config.settings.mosura_poll_interval_open,
+            seconds=app.state.settings.mosura_poll_interval_open,
         ),
         jql=jql,
         lock=lock,
@@ -151,11 +158,14 @@ async def fetch_open(
     )
 
 
-async def spawn(users: list[str]) -> set[asyncio.Task[None]]:
-    projects = config.settings.jira_projects
+async def spawn(
+    app: fastapi.FastAPI,
+    users: list[str],
+) -> set[asyncio.Task[None]]:
+    projects = app.state.settings.jira_projects
     for project in projects:
         try:
-            _ = config.jira_client.project(project)
+            _ = app.state.jira_client.project(project)
         except Exception:
             logger.exception('failed to query project "%s"', project)
             raise
@@ -165,24 +175,24 @@ async def spawn(users: list[str]) -> set[asyncio.Task[None]]:
 
     tasks = {
         asyncio.create_task(
-            fetch_closed(lock, projects[0]),
+            fetch_closed(app, lock, projects[0]),
             name=f'fetch_closed_{projects[0]}',
         ),
         asyncio.create_task(
-            fetch_open(lock, projects[0]),
+            fetch_open(app, lock, projects[0]),
             name=f'fetch_open_{projects[0]}',
         ),
     }
     tasks.update({
         asyncio.create_task(
-            fetch_closed(lock, p, users),
+            fetch_closed(app, lock, p, users),
             name=f'fetch_closed_{p}',
         )
         for p in projects[1:]
     })
     tasks.update({
         asyncio.create_task(
-            fetch_open(lock, p, users),
+            fetch_open(app, lock, p, users),
             name=f'fetch_open_{p}',
         )
         for p in projects[1:]

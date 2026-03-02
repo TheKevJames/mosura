@@ -109,13 +109,11 @@ class Jira(jira.JIRA):
         )
 
 
-# TODO: rather than all this import-time crap, can I use app context of some
-# sort? Maybe Dependencies?
-with warnings.catch_warnings():
-    # don't warn on secrets_dir beein missing
-    warnings.simplefilter('ignore', UserWarning)
-    settings = Settings()
-jira_client = Jira.from_settings(settings)
+def load_settings() -> Settings:
+    with warnings.catch_warnings():
+        # don't warn on secrets_dir being missing
+        warnings.simplefilter('ignore', UserWarning)
+        return Settings()
 
 
 class CommonParameters:
@@ -123,14 +121,16 @@ class CommonParameters:
     user: str | None
 
     def __init__(self, request: fastapi.Request) -> None:
+        settings = request.app.state.settings
+        jira_client = request.app.state.jira_client
+
         if settings.mosura_header_user_email:
             self.email = request.headers.get(settings.mosura_header_user_email)
         else:
             self.email = settings.mosura_user
 
         users = jira_client.search_users(query=self.email)
-        if users:
-            self.user = str(users.pop())
+        self.user = str(users.pop()) if users else None
 
 
 CommonsDep = Annotated[CommonParameters, fastapi.Depends()]
