@@ -327,6 +327,50 @@ async def test_issue_upsert_updates_existing_issue(
     assert len(rows.scalars().all()) == 1
 
 
+async def test_setting_get_returns_none_for_missing_key(
+    db_session: sqlalchemy.ext.asyncio.AsyncSession,
+) -> None:
+    result = await models.Setting.get('nonexistent', session=db_session)
+    assert result is None
+
+
+async def test_setting_upsert_inserts_new_and_updates_existing(
+    db_session: sqlalchemy.ext.asyncio.AsyncSession,
+) -> None:
+    await models.Setting.upsert(
+        'custom_jql', 'project = MOS', session=db_session,
+    )
+    await db_session.commit()
+
+    result = await models.Setting.get('custom_jql', session=db_session)
+    assert result == 'project = MOS'
+
+    await models.Setting.upsert(
+        'custom_jql', 'project = MOS AND status != Closed', session=db_session,
+    )
+    await db_session.commit()
+
+    result = await models.Setting.get('custom_jql', session=db_session)
+    assert result == 'project = MOS AND status != Closed'
+
+
+async def test_setting_delete_removes_key_and_is_idempotent(
+    db_session: sqlalchemy.ext.asyncio.AsyncSession,
+) -> None:
+    await models.Setting.upsert('temp', 'value', session=db_session)
+    await db_session.commit()
+
+    await models.Setting.delete('temp', session=db_session)
+    await db_session.commit()
+
+    result = await models.Setting.get('temp', session=db_session)
+    assert result is None
+
+    # idempotent: deleting a missing key does not raise
+    await models.Setting.delete('temp', session=db_session)
+    await db_session.commit()
+
+
 async def test_task_get_returns_utc_and_none_for_missing(
     db_session: sqlalchemy.ext.asyncio.AsyncSession,
 ) -> None:

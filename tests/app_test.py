@@ -106,7 +106,6 @@ async def test_lifespan_starts_background_tasks(
     app = fastapi.FastAPI()
     settings = types.SimpleNamespace(
         jira_tracked_user='account-123',
-        mosura_custom_jql='labels = triage',
     )
     jira_client = types.SimpleNamespace()
 

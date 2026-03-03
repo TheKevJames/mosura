@@ -227,6 +227,10 @@ class IssuePatch(pydantic.BaseModel):
         return data
 
 
+class SettingValue(pydantic.BaseModel):
+    value: str
+
+
 class Task(pydantic.BaseModel):
     key: str
     variant: str

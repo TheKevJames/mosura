@@ -99,7 +99,12 @@ async def show_issue(
 async def show_settings(
         request: fastapi.Request,
 ) -> starlette.responses.Response:
-    context = {'settings': request.app.state.settings}
+    async with database.session_from_app(request.app) as session:
+        custom_jql = await models.Setting.get('custom_jql', session=session)
+    context = {
+        'settings': request.app.state.settings,
+        'custom_jql': custom_jql,
+    }
     return templates.TemplateResponse(request, 'settings.html', context)
 
 

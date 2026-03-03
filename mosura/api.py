@@ -1,7 +1,9 @@
 import asyncio
 import logging
+from typing import Any
 
 import fastapi
+import jira
 
 from . import database
 from . import models
@@ -74,6 +76,56 @@ async def patch_issue(
             session=session,
         )
         await session.commit()
+
+
+@router.get('/settings')
+async def read_settings(
+        request: fastapi.Request,
+) -> dict[str, str | None]:
+    async with database.session_from_app(request.app) as session:
+        value = await models.Setting.get('custom_jql', session=session)
+    return {'custom_jql': value}
+
+
+@router.patch('/settings')
+async def patch_settings(
+        request: fastapi.Request,
+        body: dict[str, Any],
+) -> dict[str, Any]:
+    custom_jql: str | None = body.get('custom_jql')
+
+    if not custom_jql:
+        async with database.session_from_app(request.app) as session:
+            await models.Setting.delete('custom_jql', session=session)
+            await session.commit()
+        request.app.state.sync_event.set()
+        return {'status': 'ok', 'custom_jql': None, 'issue_count': 0}
+
+    try:
+        result: dict[str, Any] = await asyncio.to_thread(
+            request.app.state.jira_client.enhanced_search_issues,
+            custom_jql,
+            maxResults=1,
+            json_result=True,
+        )
+    except jira.JIRAError as exc:
+        raise fastapi.HTTPException(
+            status_code=422,
+            detail=exc.text,
+        ) from exc
+
+    async with database.session_from_app(request.app) as session:
+        await models.Setting.upsert(
+            'custom_jql', custom_jql, session=session,
+        )
+        await session.commit()
+
+    request.app.state.sync_event.set()
+    return {
+        'status': 'ok',
+        'custom_jql': custom_jql,
+        'issue_count': result.get('total', 0),
+    }
 
 
 @router.get('/ping', status_code=fastapi.status.HTTP_204_NO_CONTENT)

@@ -203,3 +203,155 @@ async def test_patch_issue_success(  # pylint: disable=too-many-locals
     assert updated_issue.priority == schemas.Priority.high
 
     api_session.commit.assert_awaited_once()
+
+
+async def test_get_settings_returns_null_when_no_setting(
+    client: httpx.AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+    api_session: types.SimpleNamespace,
+) -> None:
+    get_mock = unittest.mock.AsyncMock(return_value=None)
+    monkeypatch.setattr(models.Setting, 'get', get_mock)
+
+    response = await client.get('/api/v0/settings')
+    print('GET settings (empty):', response.status_code, response.text)
+
+    assert response.status_code == 200
+    assert response.json() == {'custom_jql': None}
+    get_mock.assert_awaited_once_with('custom_jql', session=api_session)
+
+
+async def test_get_settings_returns_current_value(
+    client: httpx.AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+    api_session: types.SimpleNamespace,
+) -> None:
+    get_mock = unittest.mock.AsyncMock(return_value='project = MOS')
+    monkeypatch.setattr(models.Setting, 'get', get_mock)
+
+    response = await client.get('/api/v0/settings')
+    print('GET settings (value):', response.status_code, response.text)
+
+    assert response.status_code == 200
+    assert response.json() == {'custom_jql': 'project = MOS'}
+    get_mock.assert_awaited_once_with('custom_jql', session=api_session)
+
+
+async def test_patch_settings_valid_jql_persists_and_returns_count(
+    client: httpx.AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+    api_session: types.SimpleNamespace,
+) -> None:
+    upsert_mock = unittest.mock.AsyncMock()
+    monkeypatch.setattr(models.Setting, 'upsert', upsert_mock)
+
+    sync_event = unittest.mock.Mock()
+    mosura.app.app.state.sync_event = sync_event
+    mosura.app.app.state.jira_client = types.SimpleNamespace(
+        enhanced_search_issues=unittest.mock.Mock(
+            return_value={'total': 42, 'issues': [{'key': 'MOS-1'}]},
+        ),
+    )
+
+    response = await client.patch(
+        '/api/v0/settings',
+        json={'custom_jql': 'project = MOS'},
+    )
+    print('PATCH settings (valid):', response.status_code, response.text)
+
+    assert response.status_code == 200
+    assert response.json() == {
+        'status': 'ok',
+        'custom_jql': 'project = MOS',
+        'issue_count': 42,
+    }
+    upsert_mock.assert_awaited_once_with(
+        'custom_jql', 'project = MOS', session=api_session,
+    )
+    api_session.commit.assert_awaited_once()
+    sync_event.set.assert_called_once()
+
+
+async def test_patch_settings_invalid_jql_returns_422(
+    client: httpx.AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+    api_session: types.SimpleNamespace,
+) -> None:
+    upsert_mock = unittest.mock.AsyncMock()
+    monkeypatch.setattr(models.Setting, 'upsert', upsert_mock)
+
+    sync_event = unittest.mock.Mock()
+    mosura.app.app.state.sync_event = sync_event
+    mosura.app.app.state.jira_client = types.SimpleNamespace(
+        enhanced_search_issues=unittest.mock.Mock(
+            side_effect=jira.JIRAError(text='bad JQL query'),
+        ),
+    )
+
+    response = await client.patch(
+        '/api/v0/settings',
+        json={'custom_jql': 'invalid!!!'},
+    )
+    print('PATCH settings (invalid):', response.status_code, response.text)
+
+    assert response.status_code == 422
+    assert response.json() == {'detail': 'bad JQL query'}
+    upsert_mock.assert_not_awaited()
+    api_session.commit.assert_not_awaited()
+    sync_event.set.assert_not_called()
+
+
+async def test_patch_settings_empty_clears_setting(
+    client: httpx.AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+    api_session: types.SimpleNamespace,
+) -> None:
+    delete_mock = unittest.mock.AsyncMock()
+    monkeypatch.setattr(models.Setting, 'delete', delete_mock)
+
+    sync_event = unittest.mock.Mock()
+    mosura.app.app.state.sync_event = sync_event
+
+    response = await client.patch(
+        '/api/v0/settings',
+        json={'custom_jql': ''},
+    )
+    print('PATCH settings (empty):', response.status_code, response.text)
+
+    assert response.status_code == 200
+    assert response.json() == {
+        'status': 'ok',
+        'custom_jql': None,
+        'issue_count': 0,
+    }
+    delete_mock.assert_awaited_once_with('custom_jql', session=api_session)
+    api_session.commit.assert_awaited_once()
+    sync_event.set.assert_called_once()
+
+
+async def test_patch_settings_null_clears_setting(
+    client: httpx.AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+    api_session: types.SimpleNamespace,
+) -> None:
+    delete_mock = unittest.mock.AsyncMock()
+    monkeypatch.setattr(models.Setting, 'delete', delete_mock)
+
+    sync_event = unittest.mock.Mock()
+    mosura.app.app.state.sync_event = sync_event
+
+    response = await client.patch(
+        '/api/v0/settings',
+        json={'custom_jql': None},
+    )
+    print('PATCH settings (null):', response.status_code, response.text)
+
+    assert response.status_code == 200
+    assert response.json() == {
+        'status': 'ok',
+        'custom_jql': None,
+        'issue_count': 0,
+    }
+    delete_mock.assert_awaited_once_with('custom_jql', session=api_session)
+    api_session.commit.assert_awaited_once()
+    sync_event.set.assert_called_once()

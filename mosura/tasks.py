@@ -45,11 +45,12 @@ async def _search_issues(
 
 def desired_issue_queries(
     app: fastapi.FastAPI,
+    *,
+    custom_jql: str | None,
 ) -> list[tuple[str, str]]:
     tracked_user_id = app.state.tracked_user_id
     queries = [('assignee', f'assignee = "{tracked_user_id}"')]
 
-    custom_jql = app.state.settings.mosura_custom_jql
     if custom_jql:
         queries.append(('custom', custom_jql))
 
@@ -93,7 +94,8 @@ async def sync_desired_issues(
     jira_client = app.state.jira_client
     desired_issues: dict[str, dict[str, Any]] = {}
 
-    for variant, jql in desired_issue_queries(app):
+    custom_jql = await models.Setting.get('custom_jql', session=session)
+    for variant, jql in desired_issue_queries(app, custom_jql=custom_jql):
         issues = await _search_issues(jira_client=jira_client, jql=jql)
         logger.debug('sync(desired/%s): fetched=%d', variant, len(issues))
         for issue in issues:
@@ -274,7 +276,10 @@ async def fetch_desired(
         if sleep is not None:
             logger.debug('fetch(%s): too soon, sleeping %ds', variant, sleep)
             await asyncio.sleep(sleep)
-            continue
+            if app.state.sync_event.is_set():
+                app.state.sync_event.clear()
+            else:
+                continue
 
         async with lock, database.session_from_app(app) as session:
             logger.info('fetch(%s): fetching data', variant)

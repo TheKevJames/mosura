@@ -46,7 +46,6 @@ class Settings(pydantic_settings.BaseSettings):
     jira_domain: str
     jira_label_okr: str = 'okr'
     mosura_appdata: str = '.'
-    mosura_custom_jql: str | None = None
     mosura_log_level: str = 'DEBUG'
     mosura_poll_interval: int = 60
     mosura_user: str | None = None
@@ -56,7 +55,7 @@ class Settings(pydantic_settings.BaseSettings):
         secrets_dir='/run/secrets',
     )
 
-    @pydantic.field_validator('mosura_custom_jql', 'mosura_user')
+    @pydantic.field_validator('mosura_user')
     @classmethod
     def normalize_optional_env_value(cls, value: str | None) -> str | None:
         if value is None:

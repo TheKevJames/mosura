@@ -1,6 +1,9 @@
 import asyncio
+import contextlib
+import datetime
 import types
 import unittest.mock
+from collections.abc import AsyncIterator
 from collections.abc import Callable
 from typing import Any
 from typing import cast
@@ -8,6 +11,7 @@ from typing import cast
 import fastapi
 import pytest
 
+from mosura import database
 from mosura import models
 from mosura import tasks
 
@@ -18,31 +22,32 @@ IssueFactory = Callable[..., dict[str, Any]]
 def _build_app(
     *,
     tracked_user_id: str = 'account-123',
-    custom_jql: str | None = 'project = "MOS"',
 ) -> fastapi.FastAPI:
     app = fastapi.FastAPI()
     app.state.settings = types.SimpleNamespace(
-        mosura_custom_jql=custom_jql,
         mosura_poll_interval=60,
     )
     app.state.tracked_user_id = tracked_user_id
     app.state.jira_client = types.SimpleNamespace()
+    app.state.sync_event = asyncio.Event()
     return app
 
 
 def test_desired_issue_queries_with_custom_jql() -> None:
-    app = _build_app(custom_jql='status = "Needs Triage"')
+    app = _build_app()
 
-    assert tasks.desired_issue_queries(app) == [
+    assert tasks.desired_issue_queries(
+        app, custom_jql='status = "Needs Triage"',
+    ) == [
         ('assignee', 'assignee = "account-123"'),
         ('custom', 'status = "Needs Triage"'),
     ]
 
 
 def test_desired_issue_queries_without_custom_jql() -> None:
-    app = _build_app(custom_jql=None)
+    app = _build_app()
 
-    assert tasks.desired_issue_queries(app) == [
+    assert tasks.desired_issue_queries(app, custom_jql=None) == [
         ('assignee', 'assignee = "account-123"'),
     ]
 
@@ -51,7 +56,7 @@ async def test_sync_desired_issues_unions_and_dedupes(
     monkeypatch: pytest.MonkeyPatch,
     jira_raw_factory: IssueFactory,
 ) -> None:
-    app = _build_app(custom_jql='project = "OPS"')
+    app = _build_app()
     session = object()
 
     assignee_issues = [
@@ -67,9 +72,11 @@ async def test_sync_desired_issues_unions_and_dedupes(
         side_effect=[assignee_issues, custom_issues],
     )
     upsert = unittest.mock.AsyncMock()
+    setting_get = unittest.mock.AsyncMock(return_value='project = "OPS"')
 
     monkeypatch.setattr(tasks, '_search_issues', search)
     monkeypatch.setattr(tasks, '_upsert_issue_graph', upsert)
+    monkeypatch.setattr(models.Setting, 'get', setting_get)
 
     desired = await tasks.sync_desired_issues(app=app, session=session)
 
@@ -104,16 +111,18 @@ async def test_sync_desired_issues_without_custom_jql(
     monkeypatch: pytest.MonkeyPatch,
     jira_raw_factory: IssueFactory,
 ) -> None:
-    app = _build_app(custom_jql=None)
+    app = _build_app()
     session = object()
 
     search = unittest.mock.AsyncMock(
         return_value=[jira_raw_factory(key='MOS-101')],
     )
     upsert = unittest.mock.AsyncMock()
+    setting_get = unittest.mock.AsyncMock(return_value=None)
 
     monkeypatch.setattr(tasks, '_search_issues', search)
     monkeypatch.setattr(tasks, '_upsert_issue_graph', upsert)
+    monkeypatch.setattr(models.Setting, 'get', setting_get)
 
     desired = await tasks.sync_desired_issues(app=app, session=session)
 
@@ -205,7 +214,7 @@ async def test_reconcile_stale_issues_deletes_on_final_fetch_failure(
 async def test_reconcile_stale_issues_keeps_custom_jql_matches(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    app = _build_app(custom_jql='project = "OPS"')
+    app = _build_app()
     session = object()
 
     list_keys = unittest.mock.AsyncMock(return_value=['MOS-1', 'OPS-9'])
@@ -317,3 +326,69 @@ async def test_spawn_creates_single_desired_worker(
     assert fetched[0][0] is app
     assert isinstance(fetched[0][1], asyncio.Lock)
     app.state.jira_client.project.assert_not_called()
+
+
+async def test_fetch_desired_sync_event_triggers_immediate_sync(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+
+    app = _build_app()
+    lock = asyncio.Lock()
+
+    iteration = 0
+
+    class _FakeSession:
+        async def commit(self) -> None:
+            pass
+
+        async def __aenter__(self) -> '_FakeSession':
+            return self
+
+        async def __aexit__(self, *args: object) -> None:
+            pass
+
+    fake_session = _FakeSession()
+
+    task_get = unittest.mock.AsyncMock(
+        return_value=types.SimpleNamespace(
+            latest=datetime.datetime.now(datetime.UTC),
+        ),
+    )
+    task_upsert = unittest.mock.AsyncMock()
+    sync = unittest.mock.AsyncMock(return_value={'MOS-1'})
+    reconcile = unittest.mock.AsyncMock(return_value=set())
+    setting_get = unittest.mock.AsyncMock(return_value=None)
+
+    monkeypatch.setattr(models.Task, 'get', task_get)
+    monkeypatch.setattr(models.Task, 'upsert', task_upsert)
+    monkeypatch.setattr(tasks, 'sync_desired_issues', sync)
+    monkeypatch.setattr(tasks, 'reconcile_stale_issues', reconcile)
+    monkeypatch.setattr(models.Setting, 'get', setting_get)
+
+    async def fake_sleep(_seconds: float) -> None:
+        nonlocal iteration
+        iteration += 1
+        if iteration == 1:
+            # Simulate sync_event being set during the sleep
+            app.state.sync_event.set()
+        elif iteration == 2:
+            # Second sleep after sync completes — stop the loop
+            raise asyncio.CancelledError
+
+    monkeypatch.setattr(asyncio, 'sleep', fake_sleep)
+
+    @contextlib.asynccontextmanager
+    async def fake_session_from_app(
+        _app: fastapi.FastAPI,
+    ) -> AsyncIterator[_FakeSession]:
+        yield fake_session
+
+    monkeypatch.setattr(database, 'session_from_app', fake_session_from_app)
+
+    with pytest.raises(asyncio.CancelledError):
+        await tasks.fetch_desired(app, lock)
+
+    # sync_desired_issues should have been called once (the immediate sync)
+    sync.assert_awaited_once()
+    # sync_event should be cleared after being consumed
+    assert not app.state.sync_event.is_set()

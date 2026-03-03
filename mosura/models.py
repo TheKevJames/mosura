@@ -233,6 +233,39 @@ class Issue(Base):
         await session.execute(query)
 
 
+class Setting(Base):
+    __tablename__ = 'settings'
+
+    key: Mapped[strpk]
+    value: Mapped[str]
+
+    @classmethod
+    async def get(
+        cls, key: str, *, session: AsyncSession,
+    ) -> str | None:
+        query = select(cls.value).where(cls.key == key)
+        result = (await session.execute(query)).scalar_one_or_none()
+        return result
+
+    @classmethod
+    async def upsert(
+        cls, key: str, value: str, *, session: AsyncSession,
+    ) -> None:
+        stmt = insert(cls).values(key=key, value=value)
+        query = stmt.on_conflict_do_update(
+            index_elements=['key'],
+            set_={'value': stmt.excluded.value},
+        )
+        await session.execute(query)
+
+    @classmethod
+    async def delete(
+        cls, key: str, *, session: AsyncSession,
+    ) -> None:
+        query = delete(cls).where(cls.key == key)
+        await session.execute(query)
+
+
 class Task(Base):
     __tablename__ = 'tasks'
 

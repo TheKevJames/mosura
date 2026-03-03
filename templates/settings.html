@@ -1,6 +1,61 @@
 {% extends "base.html" %}
 {% block title %}Settings{% endblock %}
 
+{% block header %}
+<script>
+$(window).on('load', function() {
+  $('#jql-validation-message .close').on('click', function() {
+    $('#jql-validation-message').addClass('hidden');
+  });
+});
+
+async function update_jql(value) {
+  const body = JSON.stringify({"custom_jql": value});
+  console.log(`PATCHing settings with ${body}`);
+
+  if (!value) {
+    try {
+      await fetch("/api/v0/settings", {
+        method: "PATCH",
+        headers: {"Content-Type": "application/json"},
+        body: body,
+      });
+    } catch (err) {
+      console.error('Unable to clear custom JQL', err);
+    }
+    $('#jql-validation-message').addClass('hidden');
+    return;
+  }
+
+  try {
+    const response = await fetch("/api/v0/settings", {
+      method: "PATCH",
+      headers: {"Content-Type": "application/json"},
+      body: body,
+    });
+
+    const payload = await response.json();
+
+    if (response.ok) {
+      $('#jql-validation-message')
+        .removeClass('hidden negative')
+        .addClass('positive');
+      $('#jql-validation-message-text').text(
+        `JQL valid \u2014 ${payload.issue_count} issues matched`
+      );
+    } else {
+      $('#jql-validation-message')
+        .removeClass('hidden positive')
+        .addClass('negative');
+      $('#jql-validation-message-text').text(payload.detail || 'Invalid JQL');
+    }
+  } catch (err) {
+    console.error('Unable to patch settings', err);
+  }
+}
+</script>
+{% endblock %}
+
 {% block content %}
 <div class="ui main text container">
   <div class="ui segments">
@@ -18,11 +73,13 @@
     </div>
     <div class="ui segment">
       Optional custom inclusion JQL:
-      {% if settings.mosura_custom_jql %}
-      <code>{{ settings.mosura_custom_jql }}</code>
-      {% else %}
-      (disabled)
-      {% endif %}
+      <div class="ui input" style="width: 100%; margin-top: 0.5em;">
+        <input type="text" name="custom_jql" placeholder="e.g. labels = triage" onChange="update_jql(this.value);" value="{{ custom_jql or '' }}">
+      </div>
+      <div id="jql-validation-message" class="ui message hidden" style="margin-top: 0.5em;">
+        <i class="close icon"></i>
+        <div id="jql-validation-message-text"></div>
+      </div>
     </div>
     <div class="ui segment">
       Polling interval: {{ settings.mosura_poll_interval }}s
