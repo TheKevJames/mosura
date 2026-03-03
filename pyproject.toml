@@ -17,6 +17,10 @@ dependencies = [
     "pydantic==2.12.5",
     "pydantic-settings==2.13.1",
     "sqlalchemy[aiosqlite]==2.0.48",
+    # NOTE: On arm64, Poetry can omit transitive greenlet from
+    # sqlalchemy[aiosqlite] due marker evaluation (arm64 vs aarch64).
+    # TODO: Remove once greenlet is reliably installed transitively on arm64.
+    "greenlet>=3.3.1; platform_machine == 'arm64'",
     "uvicorn==0.41.0",
     "uvloop==0.22.1",
 ]
