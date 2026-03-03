@@ -1,16 +1,11 @@
 import logging.config
 import warnings
-from typing import Annotated
 from typing import Any
 from typing import Self
 
-import fastapi
 import jira
 import pydantic
 import pydantic_settings
-
-
-logger = logging.getLogger(__name__)
 
 
 class LogConfig(pydantic.BaseModel):
@@ -50,15 +45,10 @@ class Settings(pydantic_settings.BaseSettings):
     jira_auth_user: str
     jira_domain: str
     jira_label_okr: str = 'okr'
-    jira_other_projects: str | None = None
-    jira_project: str
-    jira_team: str | None = None
     mosura_appdata: str = '.'
-    mosura_header_user_email: str | None = None
+    mosura_custom_jql: str | None = None
     mosura_log_level: str = 'DEBUG'
-    mosura_port: int = 8080
-    mosura_poll_interval_closed: int = 60 * 60
-    mosura_poll_interval_open: int = 1 * 60
+    mosura_poll_interval: int = 60
     mosura_user: str | None = None
 
     # support docker compose secrets by default
@@ -66,18 +56,13 @@ class Settings(pydantic_settings.BaseSettings):
         secrets_dir='/run/secrets',
     )
 
-    @pydantic.model_validator(mode='after')
-    def check_team_and_other_projects(self) -> 'Settings':
-        team = self.jira_team
-        projects = self.jira_other_projects
-        if team is projects is None:
-            return self
-        if team is not None and projects is not None:
-            return self
-
-        raise ValueError(
-            'must specify both/neither of jira_team and jira_other_projects',
-        )
+    @pydantic.field_validator('mosura_custom_jql', 'mosura_user')
+    @classmethod
+    def normalize_optional_env_value(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -85,18 +70,9 @@ class Settings(pydantic_settings.BaseSettings):
         log_config = LogConfig(LOG_LEVEL=self.mosura_log_level).model_dump()
         logging.config.dictConfig(log_config)
 
-        if not self.mosura_header_user_email:
-            logger.warning(
-                'MOSURA_HEADER_USER_EMAIL is not set, running in '
-                'insecure mode as user %s', self.mosura_user,
-            )
-
     @property
-    def jira_projects(self) -> list[str]:
-        xs = [self.jira_project]
-        if not self.jira_other_projects:
-            return xs
-        return xs + self.jira_other_projects.split(',')
+    def jira_tracked_user(self) -> str:
+        return self.mosura_user or self.jira_auth_user
 
 
 class Jira(jira.JIRA):
@@ -114,23 +90,3 @@ def load_settings() -> Settings:
         # don't warn on secrets_dir being missing
         warnings.simplefilter('ignore', UserWarning)
         return Settings()
-
-
-class CommonParameters:
-    email: str | None
-    user: str | None
-
-    def __init__(self, request: fastapi.Request) -> None:
-        settings = request.app.state.settings
-        jira_client = request.app.state.jira_client
-
-        if settings.mosura_header_user_email:
-            self.email = request.headers.get(settings.mosura_header_user_email)
-        else:
-            self.email = settings.mosura_user
-
-        users = jira_client.search_users(query=self.email)
-        self.user = str(users.pop()) if users else None
-
-
-CommonsDep = Annotated[CommonParameters, fastapi.Depends()]

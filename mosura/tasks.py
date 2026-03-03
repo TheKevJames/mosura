@@ -1,8 +1,8 @@
 import asyncio
 import datetime
 import logging
+import time
 from typing import Any
-from typing import cast
 
 import fastapi
 
@@ -14,19 +14,219 @@ from . import schemas
 logger = logging.getLogger(__name__)
 
 
-async def fetch(
-        *,
-        app: fastapi.FastAPI,
-        variant: str,
-        jql: str,
-        lock: asyncio.Lock,
-        interval: datetime.timedelta,
+async def _search_issues(
+    *,
+    jira_client: Any,
+    jql: str,
+    page_size: int = 100,
+) -> list[dict[str, Any]]:
+    issues: list[dict[str, Any]] = []
+    page_token: str | None = None
+
+    while True:
+        response: dict[str, Any] = await asyncio.to_thread(
+            jira_client.enhanced_search_issues,
+            jql,
+            nextPageToken=page_token,
+            maxResults=page_size,
+            fields=schemas.Issue.jira_fields(),
+            expand='renderedFields',
+            json_result=True,
+        )
+        page: list[dict[str, Any]] = response.get('issues', [])
+        issues.extend(page)
+
+        if len(page) < page_size or response.get('isLast') is True:
+            break
+        page_token = response.get('nextPageToken')
+
+    return issues
+
+
+def desired_issue_queries(
+    app: fastapi.FastAPI,
+) -> list[tuple[str, str]]:
+    tracked_user_id = app.state.tracked_user_id
+    queries = [('assignee', f'assignee = "{tracked_user_id}"')]
+
+    custom_jql = app.state.settings.mosura_custom_jql
+    if custom_jql:
+        queries.append(('custom', custom_jql))
+
+    return queries
+
+
+async def _upsert_issue_graph(
+    issue: dict[str, Any],
+    *,
+    session: Any,
 ) -> None:
-    # pylint: disable=too-many-locals
-    page_size = 100
+    # TODO: in-place component and label upserts
+    await models.Component.delete(issue['key'], session=session)
+    for component in issue['fields']['components']:
+        await models.Component.upsert(
+            schemas.Component(
+                key=issue['key'],
+                component=component['name'],
+            ),
+            session=session,
+        )
+
+    await models.Label.delete(issue['key'], session=session)
+    for label in issue['fields']['labels']:
+        await models.Label.upsert(
+            schemas.Label(key=issue['key'], label=label),
+            session=session,
+        )
+
+    await models.Issue.upsert(
+        schemas.IssueCreate.from_jira(issue),
+        session=session,
+    )
+
+
+async def sync_desired_issues(
+    *,
+    app: fastapi.FastAPI,
+    session: Any,
+) -> set[str]:
     jira_client = app.state.jira_client
+    desired_issues: dict[str, dict[str, Any]] = {}
+
+    for variant, jql in desired_issue_queries(app):
+        issues = await _search_issues(jira_client=jira_client, jql=jql)
+        logger.debug(
+            'sync(desired): variant=%s jql=%s fetched=%d',
+            variant,
+            jql,
+            len(issues),
+        )
+        for issue in issues:
+            desired_issues[issue['key']] = issue
+
+    for issue in desired_issues.values():
+        await _upsert_issue_graph(issue, session=session)
+
+    desired_keys = set(desired_issues)
+    logger.info('sync(desired): upserted %d issues', len(desired_keys))
+    return desired_keys
+
+
+async def _fetch_issue_by_key(
+    *,
+    jira_client: Any,
+    key: str,
+) -> dict[str, Any] | None:
+    try:
+        issue: object = await asyncio.to_thread(
+            jira_client.issue,
+            id=key,
+            fields=schemas.Issue.jira_fields(),
+            expand='renderedFields',
+        )
+    except Exception:
+        logger.info(
+            'sync(stale): final fetch failed key=%s; deleting local rows',
+            key,
+            exc_info=True,
+        )
+        return None
+
+    raw_issue: object = getattr(issue, 'raw', issue)
+    if not isinstance(raw_issue, dict):
+        logger.warning(
+            'sync(stale): unexpected final fetch payload '
+            'for key=%s (type=%s)',
+            key,
+            type(raw_issue).__name__,
+        )
+        return None
+
+    typed_issue: dict[str, Any] = raw_issue
+    return typed_issue
+
+
+async def reconcile_stale_issues(
+    *,
+    app: fastapi.FastAPI,
+    session: Any,
+    desired_keys: set[str],
+    timeout_seconds: int,
+) -> set[str]:
+    tracked_keys = set(await models.Issue.list_keys(session=session))
+    stale_keys = sorted(tracked_keys - desired_keys)
+    pruned_keys: set[str] = set()
+
+    deadline = time.monotonic() + max(timeout_seconds, 0)
+
+    for key in stale_keys:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            logger.info(
+                'sync(stale): timeout reached after pruning %d/%d issues',
+                len(pruned_keys),
+                len(stale_keys),
+            )
+            break
+
+        try:
+            final_issue = await asyncio.wait_for(
+                _fetch_issue_by_key(
+                    jira_client=app.state.jira_client,
+                    key=key,
+                ),
+                timeout=remaining,
+            )
+        except TimeoutError:
+            logger.info(
+                'sync(stale): timeout while fetching key=%s; '
+                'stopping early',
+                key,
+            )
+            break
+
+        if final_issue is not None:
+            await _upsert_issue_graph(final_issue, session=session)
+
+        await models.Issue.hard_delete(key, session=session)
+        pruned_keys.add(key)
+
     logger.info(
-        'fetch(%s): initialized with interval %ds', variant,
+        'sync(stale): pruned %d/%d issues',
+        len(pruned_keys),
+        len(stale_keys),
+    )
+    return pruned_keys
+
+
+def _next_sleep_seconds(
+    task: schemas.Task | None,
+    *,
+    now: datetime.datetime,
+    interval: datetime.timedelta,
+) -> int | None:
+    if not task or not task.latest:
+        return None
+
+    next_run = task.latest + interval
+    if next_run <= now:
+        return None
+
+    # add a second to avoid race conditions on idle instances
+    return int((next_run - now).total_seconds()) + 1
+
+
+async def fetch_desired(
+    app: fastapi.FastAPI,
+    lock: asyncio.Lock,
+) -> None:
+    variant = 'desired'
+    interval = datetime.timedelta(
+        seconds=app.state.settings.mosura_poll_interval,
+    )
+    logger.info(
+        'fetch(%s): initialized with interval %ds',
+        variant,
         interval.seconds,
     )
 
@@ -35,73 +235,29 @@ async def fetch(
             now = datetime.datetime.now(datetime.UTC)
             task = await models.Task.get('fetch', variant, session=session)
 
-        if task and task.latest + interval > now:
-            # add a second to avoid race conditions on idle instances
-            sleep = (task.latest - now + interval).seconds + 1
+        sleep = _next_sleep_seconds(task, now=now, interval=interval)
+        if sleep is not None:
             logger.debug('fetch(%s): too soon, sleeping %ds', variant, sleep)
             await asyncio.sleep(sleep)
             continue
 
         async with lock, database.session_from_app(app) as session:
             logger.info('fetch(%s): fetching data', variant)
-            total_fetched = 0
-            page_token: str | None = None
-            while True:
-                resp: dict[str, Any] = cast(
-                    dict[str, Any],
-                    await asyncio.to_thread(
-                        jira_client.enhanced_search_issues,
-                        jql,
-                        nextPageToken=page_token,
-                        maxResults=page_size,
-                        fields=schemas.Issue.jira_fields(),
-                        expand='renderedFields',
-                        json_result=True,
-                    ),
-                )
-                issues: list[dict[str, Any]] = resp.get('issues', [])
-                total_fetched += len(issues)
-
-                logger.debug(
-                    'fetch(%s): fetched %d issues, writing to db',
-                    variant, len(issues),
-                )
-                for issue in issues:
-                    # TODO: in-place component and label upserts
-                    await models.Component.delete(
-                        issue['key'],
-                        session=session,
-                    )
-                    for component in issue['fields']['components']:
-                        await models.Component.upsert(
-                            schemas.Component(
-                                key=issue['key'],
-                                component=component['name'],
-                            ),
-                            session=session,
-                        )
-
-                    await models.Label.delete(issue['key'], session=session)
-                    for label in issue['fields']['labels']:
-                        await models.Label.upsert(
-                            schemas.Label(key=issue['key'], label=label),
-                            session=session,
-                        )
-
-                    await models.Issue.upsert(
-                        schemas.IssueCreate.from_jira(issue),
-                        session=session,
-                    )
-
-                # N.B. resp['total'] is not provided for all responses, so we
-                # need to count things ourselves.
-                if len(issues) < page_size or resp.get('isLast') is True:
-                    break
-                page_token = resp.get('nextPageToken')
-
-            logger.info(
-                'fetch(%s): fetched %d issues in total', variant,
-                total_fetched,
+            desired_keys = await sync_desired_issues(app=app, session=session)
+            reconcile_timeout_seconds = interval.seconds // 2
+            pruned_keys = await reconcile_stale_issues(
+                app=app,
+                session=session,
+                desired_keys=desired_keys,
+                timeout_seconds=reconcile_timeout_seconds,
+            )
+            logger.debug(
+                'fetch(%s): desired key count=%d pruned stale key count=%d '
+                'timeout=%ds',
+                variant,
+                len(desired_keys),
+                len(pruned_keys),
+                reconcile_timeout_seconds,
             )
             task = schemas.Task.model_validate({
                 'key': 'fetch',
@@ -112,89 +268,15 @@ async def fetch(
             await session.commit()
 
 
-async def fetch_closed(
-        app: fastapi.FastAPI,
-        lock: asyncio.Lock,
-        project: str,
-        users: list[str] | None = None,
-) -> None:
-    jql = f'project = "{project}" AND status IN ("Closed", "Done")'
-    if users:
-        # TODO: this filter means we stop getting updates for a ticket if it
-        # gets reassigned away from a tracked user. Perhaps we could search the
-        # assignee history? Or do an extra sync for any tickets in our DB but
-        # not recently included in a fetch_ task?
-        assignees = ','.join(f'"{x}"' for x in users)
-        jql += f' AND assignee IN ({assignees})'
-    await fetch(
-        app=app,
-        interval=datetime.timedelta(
-            seconds=app.state.settings.mosura_poll_interval_closed,
-        ),
-        jql=jql,
-        lock=lock,
-        variant=f'{project}/closed',
-    )
-
-
-async def fetch_open(
-        app: fastapi.FastAPI,
-        lock: asyncio.Lock,
-        project: str,
-        users: list[str] | None = None,
-) -> None:
-    jql = f'project = "{project}" AND status NOT IN ("Closed", "Done")'
-    if users:
-        assignees = ','.join(f'"{x}"' for x in users)
-        jql += f' AND assignee IN ({assignees})'
-    await fetch(
-        app=app,
-        interval=datetime.timedelta(
-            seconds=app.state.settings.mosura_poll_interval_open,
-        ),
-        jql=jql,
-        lock=lock,
-        variant=f'{project}/open',
-    )
-
-
 async def spawn(
     app: fastapi.FastAPI,
-    users: list[str],
 ) -> set[asyncio.Task[None]]:
-    projects = app.state.settings.jira_projects
-    for project in projects:
-        try:
-            _ = app.state.jira_client.project(project)
-        except Exception:
-            logger.exception('failed to query project "%s"', project)
-            raise
-
     # TODO: shouldn't this be built into sqlalchemy?
     lock = asyncio.Lock()
 
-    tasks = {
+    return {
         asyncio.create_task(
-            fetch_closed(app, lock, projects[0]),
-            name=f'fetch_closed_{projects[0]}',
-        ),
-        asyncio.create_task(
-            fetch_open(app, lock, projects[0]),
-            name=f'fetch_open_{projects[0]}',
+            fetch_desired(app, lock),
+            name='fetch_desired',
         ),
     }
-    tasks.update({
-        asyncio.create_task(
-            fetch_closed(app, lock, p, users),
-            name=f'fetch_closed_{p}',
-        )
-        for p in projects[1:]
-    })
-    tasks.update({
-        asyncio.create_task(
-            fetch_open(app, lock, p, users),
-            name=f'fetch_open_{p}',
-        )
-        for p in projects[1:]
-    })
-    return tasks

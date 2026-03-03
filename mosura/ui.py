@@ -3,7 +3,6 @@ import datetime
 import fastapi.templating
 import starlette
 
-from . import config
 from . import database
 from . import models
 from . import schemas
@@ -64,14 +63,12 @@ async def list_issues(
 @router.get('/mine', response_class=fastapi.responses.HTMLResponse)
 async def list_my_issues(
         request: fastapi.Request,
-        commons: config.CommonsDep,
 ) -> starlette.responses.Response:
-    if not commons.user:
-        raise fastapi.HTTPException(status_code=403)
+    tracked_user_name = request.app.state.tracked_user_name
 
     async with database.session_from_app(request.app) as session:
         issues = await models.Issue.get(
-            assignee=commons.user, closed=False,
+            assignee=tracked_user_name, closed=False,
             session=session,
         )
 
@@ -101,9 +98,8 @@ async def show_issue(
 @router.get('/settings', response_class=fastapi.responses.HTMLResponse)
 async def show_settings(
         request: fastapi.Request,
-        commons: config.CommonsDep,
 ) -> starlette.responses.Response:
-    context = {'settings': request.app.state.settings, 'commons': commons}
+    context = {'settings': request.app.state.settings}
     return templates.TemplateResponse(request, 'settings.html', context)
 
 

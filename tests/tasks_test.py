@@ -1,102 +1,302 @@
 import asyncio
-import datetime
+import types
 import unittest.mock
-from collections.abc import Awaitable
 from collections.abc import Callable
+from typing import Any
 from typing import cast
 
 import fastapi
 import pytest
 
+from mosura import models
 from mosura import tasks
 
 
-FetchFunc = Callable[
-    [fastapi.FastAPI, asyncio.Lock, str, list[str] | None],
-    Awaitable[None],
-]
+IssueFactory = Callable[..., dict[str, Any]]
 
 
-@pytest.mark.parametrize(
-    ('func_name', 'status_clause', 'interval_seconds', 'variant_suffix'),
-    [
-        ('fetch_open', 'NOT IN ("Closed", "Done")', 45, 'open'),
-        ('fetch_closed', 'IN ("Closed", "Done")', 3600, 'closed'),
-    ],
-)
-@pytest.mark.parametrize(
-    ('users', 'assignee_clause'),
-    [
-        (None, ''),
-        (
-            ['account-1', 'account-2'],
-            ' AND assignee IN ("account-1","account-2")',
+def _build_app(
+    *,
+    tracked_user_id: str = 'account-123',
+    custom_jql: str | None = 'project = "MOS"',
+) -> fastapi.FastAPI:
+    app = fastapi.FastAPI()
+    app.state.settings = types.SimpleNamespace(
+        mosura_custom_jql=custom_jql,
+        mosura_poll_interval=60,
+    )
+    app.state.tracked_user_id = tracked_user_id
+    app.state.jira_client = types.SimpleNamespace()
+    return app
+
+
+def test_desired_issue_queries_with_custom_jql() -> None:
+    app = _build_app(custom_jql='status = "Needs Triage"')
+
+    assert tasks.desired_issue_queries(app) == [
+        ('assignee', 'assignee = "account-123"'),
+        ('custom', 'status = "Needs Triage"'),
+    ]
+
+
+def test_desired_issue_queries_without_custom_jql() -> None:
+    app = _build_app(custom_jql=None)
+
+    assert tasks.desired_issue_queries(app) == [
+        ('assignee', 'assignee = "account-123"'),
+    ]
+
+
+async def test_sync_desired_issues_unions_and_dedupes(
+    monkeypatch: pytest.MonkeyPatch,
+    jira_raw_factory: IssueFactory,
+) -> None:
+    app = _build_app(custom_jql='project = "OPS"')
+    session = object()
+
+    assignee_issues = [
+        jira_raw_factory(key='MOS-1', summary='assignee 1'),
+        jira_raw_factory(key='MOS-2', summary='assignee overlap'),
+    ]
+    custom_issues = [
+        jira_raw_factory(key='MOS-2', summary='custom overlap winner'),
+        jira_raw_factory(key='OPS-9', summary='custom 9'),
+    ]
+
+    search = unittest.mock.AsyncMock(
+        side_effect=[assignee_issues, custom_issues],
+    )
+    upsert = unittest.mock.AsyncMock()
+
+    monkeypatch.setattr(tasks, '_search_issues', search)
+    monkeypatch.setattr(tasks, '_upsert_issue_graph', upsert)
+
+    desired = await tasks.sync_desired_issues(app=app, session=session)
+
+    assert desired == {'MOS-1', 'MOS-2', 'OPS-9'}
+    assert search.await_args_list == [
+        unittest.mock.call(
+            jira_client=app.state.jira_client,
+            jql='assignee = "account-123"',
         ),
-    ],
-)
-async def test_fetch_builds_expected_jql_variant_and_interval(
-    monkeypatch: pytest.MonkeyPatch,
-    app_factory: Callable[..., fastapi.FastAPI],
-    func_name: str,
-    status_clause: str,
-    interval_seconds: int,
-    variant_suffix: str,
-    users: list[str] | None,
-    assignee_clause: str,
-) -> None:
-    app = app_factory(projects=['MOS'])
-    lock = asyncio.Lock()
-    captured: dict[str, object] = {}
+        unittest.mock.call(
+            jira_client=app.state.jira_client,
+            jql='project = "OPS"',
+        ),
+    ]
 
-    async def fake_fetch(**kwargs: object) -> None:
-        captured.update(kwargs)
+    keys = [call.args[0]['key'] for call in upsert.await_args_list]
+    assert len(keys) == 3
+    assert set(keys) == {'MOS-1', 'MOS-2', 'OPS-9'}
 
-    monkeypatch.setattr(tasks, 'fetch', fake_fetch)
-
-    fetch_func = cast(FetchFunc, getattr(tasks, func_name))
-    await fetch_func(app, lock, 'MOS', users)
-
-    assert captured == {
-        'app': app,
-        'interval': datetime.timedelta(seconds=interval_seconds),
-        'jql': f'project = "MOS" AND status {status_clause}{assignee_clause}',
-        'lock': lock,
-        'variant': f'MOS/{variant_suffix}',
+    upserted = {
+        call.args[0]['key']: call.args[0]
+        for call in upsert.await_args_list
     }
+    assert upserted['MOS-2']['fields']['summary'] == 'custom overlap winner'
+    assert all(
+        call.kwargs['session']
+        is session for call in upsert.await_args_list
+    )
 
 
-async def test_spawn_validates_projects_and_creates_expected_tasks(
+async def test_sync_desired_issues_without_custom_jql(
     monkeypatch: pytest.MonkeyPatch,
-    app_factory: Callable[..., fastapi.FastAPI],
+    jira_raw_factory: IssueFactory,
 ) -> None:
-    app = app_factory(projects=['MOS', 'OPS', 'SRE'])
-    project_check = cast(unittest.mock.Mock, app.state.jira_client.project)
-    users = ['account-1', 'account-2']
-    open_calls: list[tuple[str, list[str] | None, asyncio.Lock]] = []
-    closed_calls: list[tuple[str, list[str] | None, asyncio.Lock]] = []
+    app = _build_app(custom_jql=None)
+    session = object()
 
-    def fake_fetch_open(
-        _app: fastapi.FastAPI,
-        lock: asyncio.Lock,
-        project: str,
-        members: list[str] | None = None,
-    ) -> object:
-        open_calls.append((project, members, lock))
-        return ('open', project, members)
+    search = unittest.mock.AsyncMock(
+        return_value=[jira_raw_factory(key='MOS-101')],
+    )
+    upsert = unittest.mock.AsyncMock()
 
-    def fake_fetch_closed(
-        _app: fastapi.FastAPI,
+    monkeypatch.setattr(tasks, '_search_issues', search)
+    monkeypatch.setattr(tasks, '_upsert_issue_graph', upsert)
+
+    desired = await tasks.sync_desired_issues(app=app, session=session)
+
+    assert desired == {'MOS-101'}
+    assert search.await_args_list == [
+        unittest.mock.call(
+            jira_client=app.state.jira_client,
+            jql='assignee = "account-123"',
+        ),
+    ]
+    assert [call.args[0]['key'] for call in upsert.await_args_list] == [
+        'MOS-101',
+    ]
+
+
+async def test_reconcile_stale_issues_final_sync_then_delete(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = _build_app()
+    session = object()
+
+    list_keys = unittest.mock.AsyncMock(
+        return_value=['OPS-9', 'MOS-2', 'MOS-1'],
+    )
+    final_fetch = unittest.mock.AsyncMock(
+        side_effect=[
+            {'key': 'MOS-1'},
+            {'key': 'OPS-9'},
+        ],
+    )
+    upsert = unittest.mock.AsyncMock()
+    hard_delete = unittest.mock.AsyncMock()
+
+    monkeypatch.setattr(models.Issue, 'list_keys', list_keys)
+    monkeypatch.setattr(tasks, '_fetch_issue_by_key', final_fetch)
+    monkeypatch.setattr(tasks, '_upsert_issue_graph', upsert)
+    monkeypatch.setattr(models.Issue, 'hard_delete', hard_delete)
+
+    stale = await tasks.reconcile_stale_issues(
+        app=app,
+        session=session,
+        desired_keys={'MOS-2'},
+        timeout_seconds=30,
+    )
+
+    assert stale == {'MOS-1', 'OPS-9'}
+    assert [call.kwargs['key'] for call in final_fetch.await_args_list] == [
+        'MOS-1',
+        'OPS-9',
+    ]
+    assert [call.args[0]['key'] for call in upsert.await_args_list] == [
+        'MOS-1',
+        'OPS-9',
+    ]
+    assert hard_delete.await_args_list == [
+        unittest.mock.call('MOS-1', session=session),
+        unittest.mock.call('OPS-9', session=session),
+    ]
+
+
+async def test_reconcile_stale_issues_deletes_on_final_fetch_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = _build_app()
+    session = object()
+
+    list_keys = unittest.mock.AsyncMock(return_value=['MOS-404'])
+    final_fetch = unittest.mock.AsyncMock(return_value=None)
+    upsert = unittest.mock.AsyncMock()
+    hard_delete = unittest.mock.AsyncMock()
+
+    monkeypatch.setattr(models.Issue, 'list_keys', list_keys)
+    monkeypatch.setattr(tasks, '_fetch_issue_by_key', final_fetch)
+    monkeypatch.setattr(tasks, '_upsert_issue_graph', upsert)
+    monkeypatch.setattr(models.Issue, 'hard_delete', hard_delete)
+
+    stale = await tasks.reconcile_stale_issues(
+        app=app,
+        session=session,
+        desired_keys=set(),
+        timeout_seconds=30,
+    )
+
+    assert stale == {'MOS-404'}
+    upsert.assert_not_awaited()
+    hard_delete.assert_awaited_once_with('MOS-404', session=session)
+
+
+async def test_reconcile_stale_issues_keeps_custom_jql_matches(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = _build_app(custom_jql='project = "OPS"')
+    session = object()
+
+    list_keys = unittest.mock.AsyncMock(return_value=['MOS-1', 'OPS-9'])
+    final_fetch = unittest.mock.AsyncMock(return_value={'key': 'MOS-1'})
+    upsert = unittest.mock.AsyncMock()
+    hard_delete = unittest.mock.AsyncMock()
+
+    monkeypatch.setattr(models.Issue, 'list_keys', list_keys)
+    monkeypatch.setattr(tasks, '_fetch_issue_by_key', final_fetch)
+    monkeypatch.setattr(tasks, '_upsert_issue_graph', upsert)
+    monkeypatch.setattr(models.Issue, 'hard_delete', hard_delete)
+
+    stale = await tasks.reconcile_stale_issues(
+        app=app,
+        session=session,
+        desired_keys={'OPS-9'},
+        timeout_seconds=30,
+    )
+
+    assert stale == {'MOS-1'}
+    final_fetch.assert_awaited_once_with(
+        jira_client=app.state.jira_client,
+        key='MOS-1',
+    )
+    hard_delete.assert_awaited_once_with('MOS-1', session=session)
+
+
+async def test_reconcile_stale_issues_stops_after_timeout_budget(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = _build_app()
+    session = object()
+
+    list_keys = unittest.mock.AsyncMock(return_value=['MOS-1', 'MOS-2'])
+    final_fetch = unittest.mock.AsyncMock(
+        side_effect=[
+            {'key': 'MOS-1'},
+            {'key': 'MOS-2'},
+        ],
+    )
+    upsert = unittest.mock.AsyncMock()
+    hard_delete = unittest.mock.AsyncMock()
+    monotonic = unittest.mock.Mock(side_effect=[100.0, 100.0, 101.1])
+
+    monkeypatch.setattr(models.Issue, 'list_keys', list_keys)
+    monkeypatch.setattr(tasks, '_fetch_issue_by_key', final_fetch)
+    monkeypatch.setattr(tasks, '_upsert_issue_graph', upsert)
+    monkeypatch.setattr(models.Issue, 'hard_delete', hard_delete)
+    monkeypatch.setattr(
+        tasks,
+        'time',
+        types.SimpleNamespace(monotonic=monotonic),
+    )
+
+    stale = await tasks.reconcile_stale_issues(
+        app=app,
+        session=session,
+        desired_keys=set(),
+        timeout_seconds=1,
+    )
+
+    assert stale == {'MOS-1'}
+    assert [call.kwargs['key'] for call in final_fetch.await_args_list] == [
+        'MOS-1',
+    ]
+    hard_delete.assert_awaited_once_with('MOS-1', session=session)
+
+
+async def test_spawn_creates_single_desired_worker(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = _build_app()
+    app.state.jira_client.project = unittest.mock.Mock()
+
+    fetched: list[tuple[fastapi.FastAPI, asyncio.Lock]] = []
+
+    def fake_fetch_desired(
+        app_: fastapi.FastAPI,
         lock: asyncio.Lock,
-        project: str,
-        members: list[str] | None = None,
     ) -> object:
-        closed_calls.append((project, members, lock))
-        return ('closed', project, members)
+        fetched.append((app_, lock))
+        return ('desired', lock)
 
     created: list[asyncio.Task[None]] = []
 
-    def fake_create_task(_payload: object, *, name: str) -> asyncio.Task[None]:
-        _ = name
+    def fake_create_task(
+        _payload: object,
+        *,
+        name: str,
+    ) -> asyncio.Task[None]:
+        assert name == 'fetch_desired'
         task = cast(
             asyncio.Task[None],
             unittest.mock.Mock(spec=asyncio.Task),
@@ -106,66 +306,14 @@ async def test_spawn_validates_projects_and_creates_expected_tasks(
 
     create_task = unittest.mock.Mock(side_effect=fake_create_task)
 
-    monkeypatch.setattr(tasks, 'fetch_open', fake_fetch_open)
-    monkeypatch.setattr(tasks, 'fetch_closed', fake_fetch_closed)
+    monkeypatch.setattr(tasks, 'fetch_desired', fake_fetch_desired)
     monkeypatch.setattr(asyncio, 'create_task', create_task)
 
-    spawned = await tasks.spawn(app, users)
+    spawned = await tasks.spawn(app)
 
-    assert project_check.call_args_list == [
-        unittest.mock.call('MOS'),
-        unittest.mock.call('OPS'),
-        unittest.mock.call('SRE'),
-    ]
-    assert len(spawned) == 6
+    assert len(spawned) == 1
     assert spawned == set(created)
-
-    assert [item[0] for item in open_calls] == ['MOS', 'OPS', 'SRE']
-    assert [item[0] for item in closed_calls] == ['MOS', 'OPS', 'SRE']
-    assert open_calls[0][1] is None
-    assert closed_calls[0][1] is None
-    assert all(call_[1] == users for call_ in open_calls[1:])
-    assert all(call_[1] == users for call_ in closed_calls[1:])
-
-    shared_lock = open_calls[0][2]
-    assert all(call_[2] is shared_lock for call_ in open_calls + closed_calls)
-
-    assert [
-        call.kwargs['name']
-        for call in create_task.call_args_list
-    ] == [
-        'fetch_closed_MOS',
-        'fetch_open_MOS',
-        'fetch_closed_OPS',
-        'fetch_closed_SRE',
-        'fetch_open_OPS',
-        'fetch_open_SRE',
-    ]
-
-
-async def test_spawn_raises_if_project_validation_fails(
-    monkeypatch: pytest.MonkeyPatch,
-    app_factory: Callable[..., fastapi.FastAPI],
-) -> None:
-    def fake_project(project: str) -> object:
-        if project == 'BROKEN':
-            raise RuntimeError('project lookup failed')
-        return object()
-
-    app = app_factory(
-        projects=['MOS', 'BROKEN'],
-        project_side_effect=fake_project,
-    )
-    project_check = cast(unittest.mock.Mock, app.state.jira_client.project)
-
-    create_task = unittest.mock.Mock()
-    monkeypatch.setattr(asyncio, 'create_task', create_task)
-
-    with pytest.raises(RuntimeError, match='project lookup failed'):
-        await tasks.spawn(app, users=['account-1'])
-
-    assert project_check.call_args_list == [
-        unittest.mock.call('MOS'),
-        unittest.mock.call('BROKEN'),
-    ]
-    create_task.assert_not_called()
+    assert len(fetched) == 1
+    assert fetched[0][0] is app
+    assert isinstance(fetched[0][1], asyncio.Lock)
+    app.state.jira_client.project.assert_not_called()

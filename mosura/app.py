@@ -6,6 +6,7 @@ import signal
 from collections.abc import AsyncIterator
 
 import fastapi.staticfiles
+import jira
 
 from . import api
 from . import config
@@ -27,29 +28,41 @@ def _log_task_exception(task: asyncio.Task[None]) -> None:
             os.kill(os.getpid(), signal.SIGTERM)
 
 
-def load_users(app_: fastapi.FastAPI) -> list[str]:
-    settings = app_.state.settings
-    jira_client = app_.state.jira_client
-    if not settings.jira_team:
-        return []
+def resolve_tracked_user(app_: fastapi.FastAPI) -> jira.resources.User:
+    settings: config.Settings = app_.state.settings
+    jira_client: config.Jira = app_.state.jira_client
+    tracked_user = settings.jira_tracked_user
+    users = jira_client.search_users(query=tracked_user)
+    if not users:
+        raise RuntimeError(
+            f'could not resolve tracked Jira user "{tracked_user}"',
+        )
 
-    # https://github.com/pycontribs/jira/issues/1761
-    project = settings.jira_project
-    team = settings.jira_team
-    base = (
-        f'{{server}}/gateway/api/public/teams/v1/org/{project}/teams/{team}'
-        '/{path}'
+    for user in users:
+        if user.accountId == tracked_user:
+            return user
+    if len(users) == 1:
+        return users[0]
+
+    raise RuntimeError(
+        f'tracked Jira user "{tracked_user}" is ambiguous; set MOSURA_USER to '
+        'a unique value',
     )
-    resp = jira_client._get_json(  # pylint: disable=protected-access
-        'members', {'first': 40}, base, use_post=True,
-    )
-    return [x['accountId'] for x in resp.get('results', [])]
 
 
 @contextlib.asynccontextmanager
 async def lifespan(app_: fastapi.FastAPI) -> AsyncIterator[None]:
     app_.state.settings = config.load_settings()
     app_.state.jira_client = config.Jira.from_settings(app_.state.settings)
+
+    user = resolve_tracked_user(app_)
+    app_.state.tracked_user_id = user.accountId
+    app_.state.tracked_user_name = user.displayName
+    logger.info(
+        'startup(): resolved tracked user %s (%s)',
+        app_.state.tracked_user_id,
+        app_.state.tracked_user_name,
+    )
 
     app_.state.engine = database.build_engine(app_.state.settings)
     app_.state.sessionmaker = database.build_sessionmaker(app_.state.engine)
@@ -58,11 +71,8 @@ async def lifespan(app_: fastapi.FastAPI) -> AsyncIterator[None]:
         await conn.run_sync(models.Base.metadata.create_all)
     logger.info('startup(): initialized db')
 
-    users = load_users(app_)
-    logger.info('startup(): loaded %d users', len(users))
-
     # TODO: catch errors in these tasks immediately and crash/retry
-    app_.state.tasks = await tasks.spawn(app_, users)
+    app_.state.tasks = await tasks.spawn(app_)
     for t in app_.state.tasks:
         t.add_done_callback(_log_task_exception)
         if t.done():

@@ -185,6 +185,24 @@ class Issue(Base):
         return issues
 
     @classmethod
+    async def list_keys(
+        cls, *, session: AsyncSession,
+    ) -> list[str]:
+        query = select(cls.key).order_by(cls.key)
+        rows = await session.execute(query)
+        return list(rows.scalars())
+
+    @classmethod
+    async def hard_delete(
+        cls, key: str, *, session: AsyncSession,
+    ) -> None:
+        # TODO(perf): group these into a single operation?
+        await Component.delete(key, session=session)
+        await Label.delete(key, session=session)
+        query = delete(cls).where(cls.key == key)
+        await session.execute(query)
+
+    @classmethod
     async def upsert(
         cls, issue: schemas.IssueCreate, *,
         session: AsyncSession,

@@ -152,7 +152,7 @@ def issue_from_jira_factory() -> Callable[..., schemas.Issue]:
         if summary is not None:
             issue_data['summary'] = summary
 
-        key = cast(str, issue_data['key'])
+        key = issue_data['key']
         return schemas.Issue(
             **issue_data,
             components=[
@@ -301,26 +301,3 @@ def api_session(monkeypatch: pytest.MonkeyPatch) -> types.SimpleNamespace:
     )
     monkeypatch.setattr('mosura.api.asyncio.to_thread', run_inline)
     return session
-
-
-@pytest.fixture(scope='function')
-def app_factory() -> Callable[..., fastapi.FastAPI]:
-    def _build(
-        *,
-        projects: list[str],
-        open_interval: int = 45,
-        closed_interval: int = 3600,
-        project_side_effect: Callable[[str], object] | None = None,
-    ) -> fastapi.FastAPI:
-        app = fastapi.FastAPI()
-        app.state.settings = types.SimpleNamespace(
-            jira_projects=projects,
-            mosura_poll_interval_open=open_interval,
-            mosura_poll_interval_closed=closed_interval,
-        )
-        app.state.jira_client = types.SimpleNamespace(
-            project=unittest.mock.Mock(side_effect=project_side_effect),
-        )
-        return app
-
-    return _build

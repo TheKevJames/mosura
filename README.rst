@@ -29,15 +29,18 @@ Best run via docker/podman/etc:
         -e JIRA_AUTH_TOKEN=mytoken123456 \
         -e JIRA_AUTH_USER=myuser@example.com \
         -e JIRA_DOMAIN=https://myinstance.atlassian.net \
+        -e MOSURA_USER=myuser@example.com \  # (optional; defaults to JIRA_AUTH_USER)
+        -e MOSURA_CUSTOM_JQL='project = MOS AND labels = triage' \  # (optional)
         -e JIRA_LABEL_OKR=okr \  # (optional, default: okr)
-        -e JIRA_PROJECT=MOS \
-        -e JIRA_TEAM='1234-5678' \  # (optional, id)
-        -e JIRA_OTHER_PROJECTS='ASDF,FDSA' \  # (optional, comma-separated)
         -e MOSURA_APPDATA=/data \  # (optional, default: .)
-        -e MOSURA_HEADER_USER_EMAIL=X-Token-User-Email \
         -e MOSURA_PORT=8080 \  # (optional, default: 8080)
         --restart unless-stopped \
         quay.io/thekevjames/mosura:latest
+
+Mosura sync scope is user-centric: issues are included if they are assigned to
+``MOSURA_USER`` (or ``JIRA_AUTH_USER`` when unset) and/or match
+``MOSURA_CUSTOM_JQL`` when provided. Startup fails fast if the tracked user
+cannot be resolved in Jira.
 
 # TODO: docker-compose, k8s
 
@@ -46,8 +49,7 @@ Can also be run locally for development purposes:
 .. code-block:: console
 
     export ...
-    export MOSURA_USER=...  # force the user without going through auth
-    poetry install --sync
+    poetry sync
     poetry run uvicorn mosura.app:app --reload
 
 In development mode, there's a few extra env vars you may want to set:
@@ -56,8 +58,7 @@ In development mode, there's a few extra env vars you may want to set:
 
     export PYTHONDEVMODE=1
     export PYTHONWARNINGS=error
-    export MOSURA_POLL_INTERVAL_OPEN=60
-    export MOSURA_POLL_INTERVAL_CLOSED=600
+    export MOSURA_POLL_INTERVAL=60
 
 Workflow Assumptions
 --------------------
@@ -85,7 +86,7 @@ fields:
 
 * ``assignee``: the assigned user
 
-  * if the ``assignee`` matches your configured Jira credentials, the "my
+  * if the ``assignee`` matches your configured tracked Jira user, the "my
     issues" page will work
 
 * ``customfield_12161``: a.k.a. ``Start Date``; if anyone is aware of a builtin

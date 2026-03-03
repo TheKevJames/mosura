@@ -199,6 +199,80 @@ async def test_issue_get_filters_closed_assignee_and_needs_triage(
     assert sorted(issue.key for issue in all_for_ada) == ['MOS-1', 'MOS-2']
 
 
+async def test_issue_list_keys_returns_sorted_keys(
+    db_session: sqlalchemy.ext.asyncio.AsyncSession,
+    issue_create_factory: Callable[..., schemas.IssueCreate],
+    seed_issue: Callable[..., Awaitable[None]],
+) -> None:
+    await seed_issue(
+        issue_create_factory('MOS-3', status='In Progress', assignee='Ada'),
+        components=['API'],
+        labels=['feature'],
+    )
+    await seed_issue(
+        issue_create_factory('MOS-1', status='Backlog', assignee='Ada'),
+        components=['Platform'],
+        labels=['bug'],
+    )
+    await seed_issue(
+        issue_create_factory('MOS-2', status='Done', assignee='Ada'),
+        components=['Client'],
+        labels=['ops'],
+    )
+    await db_session.commit()
+
+    tracked_keys = await models.Issue.list_keys(session=db_session)
+
+    assert tracked_keys == ['MOS-1', 'MOS-2', 'MOS-3']
+
+
+async def test_issue_hard_delete_removes_only_target_issue_graph(
+    db_session: sqlalchemy.ext.asyncio.AsyncSession,
+    issue_create_factory: Callable[..., schemas.IssueCreate],
+    seed_issue: Callable[..., Awaitable[None]],
+) -> None:
+    await seed_issue(
+        issue_create_factory('MOS-1', status='Backlog', assignee='Ada'),
+        components=['Platform', 'API'],
+        labels=['feature', 'maintenance'],
+    )
+    await seed_issue(
+        issue_create_factory('MOS-2', status='In Progress', assignee='Bob'),
+        components=['Client'],
+        labels=['ops'],
+    )
+    await db_session.commit()
+
+    await models.Issue.hard_delete('MOS-1', session=db_session)
+    await db_session.commit()
+
+    remaining_issues = await models.Issue.get(closed=True, session=db_session)
+    component_rows = await db_session.execute(
+        sqlalchemy.select(models.Component),
+    )
+    label_rows = await db_session.execute(
+        sqlalchemy.select(models.Label),
+    )
+    components = component_rows.scalars().all()
+    labels = label_rows.scalars().all()
+    print(
+        f'remaining issue keys={[x.key for x in remaining_issues]}, '
+        f'components={[(x.key, x.component) for x in components]}, '
+        f'labels={[(x.key, x.label) for x in labels]}',
+    )
+
+    issue_keys = [issue.key for issue in remaining_issues]
+    component_pairs = [
+        (component.key, component.component)
+        for component in components
+    ]
+    label_pairs = [(label.key, label.label) for label in labels]
+
+    assert issue_keys == ['MOS-2']
+    assert component_pairs == [('MOS-2', 'Client')]
+    assert label_pairs == [('MOS-2', 'ops')]
+
+
 async def test_issue_upsert_updates_existing_issue(
     db_session: sqlalchemy.ext.asyncio.AsyncSession,
     issue_create_factory: Callable[..., schemas.IssueCreate],

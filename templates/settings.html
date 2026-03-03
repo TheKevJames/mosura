@@ -14,35 +14,24 @@
 
   <div class="ui segments">
     <div class="ui segment">
-      Watching project: {{ settings.jira_project }}
+      Tracking Jira user: {{ settings.jira_tracked_user }}
     </div>
     <div class="ui segment">
-      Polling interval (open tickets): {{ settings.mosura_poll_interval_open }}s
+      Optional custom inclusion JQL:
+      {% if settings.mosura_custom_jql %}
+      <code>{{ settings.mosura_custom_jql }}</code>
+      {% else %}
+      (disabled)
+      {% endif %}
     </div>
     <div class="ui segment">
-      Polling interval (closed tickets): {{ settings.mosura_poll_interval_closed }}s
+      Polling interval: {{ settings.mosura_poll_interval }}s
     </div>
-    {% if settings.jira_team %}
-    <div class="ui segment">
-      Following team: {{ settings.jira_team }}
-    </div>
-    <div class="ui segment">
-      Allowlisted additional projects for team members:
-      <ul>
-      {% for project in settings.jira_other_projects.split(',') %}
-        <li>{{ project }}</li>
-      {% endfor %}
-      </ul>
-    </div>
-    {% endif %}
   </div>
 
   <div class="ui segments">
     <div class="ui segment">
       Configuring OKRs from label: {{ settings.jira_label_okr }}
-    </div>
-    <div class="ui segment">
-      Viewing as: {{ commons.user }} ({{ commons.email }})
     </div>
   </div>
 </div>
