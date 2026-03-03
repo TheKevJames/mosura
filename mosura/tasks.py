@@ -190,6 +190,8 @@ async def reconcile_stale_issues(
     tracked_keys = set(await models.Issue.list_keys(session=session))
     stale_keys = sorted(tracked_keys - desired_keys)
     pruned_keys: set[str] = set()
+    if not stale_keys:
+        return pruned_keys
 
     deadline = time.monotonic() + max(timeout_seconds, 0)
 
@@ -285,7 +287,7 @@ async def fetch_desired(
                 timeout_seconds=reconcile_timeout_seconds,
             )
             logger.debug(
-                'fetch(%s): desired keys=%d pruned stale key=%d timeout=%ds',
+                'fetch(%s): desired keys=%d pruned stale keys=%d timeout=%ds',
                 variant,
                 len(desired_keys),
                 len(pruned_keys),
@@ -298,6 +300,8 @@ async def fetch_desired(
             })
             await models.Task.upsert(task, session=session)
             await session.commit()
+
+        await asyncio.sleep(interval.total_seconds())
 
 
 async def spawn(
