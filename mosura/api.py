@@ -102,11 +102,9 @@ async def patch_settings(
         return {'status': 'ok', 'custom_jql': None, 'issue_count': 0}
 
     try:
-        result: dict[str, Any] = await asyncio.to_thread(
-            request.app.state.jira_client.enhanced_search_issues,
+        issue_count: int = await asyncio.to_thread(
+            request.app.state.jira_client.approximate_issue_count,
             custom_jql,
-            maxResults=1,
-            json_result=True,
         )
     except jira.JIRAError as exc:
         raise fastapi.HTTPException(
@@ -124,7 +122,7 @@ async def patch_settings(
     return {
         'status': 'ok',
         'custom_jql': custom_jql,
-        'issue_count': result.get('total', 0),
+        'issue_count': issue_count,
     }
 
 

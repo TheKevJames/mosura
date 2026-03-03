@@ -248,9 +248,7 @@ async def test_patch_settings_valid_jql_persists_and_returns_count(
     sync_event = unittest.mock.Mock()
     mosura.app.app.state.sync_event = sync_event
     mosura.app.app.state.jira_client = types.SimpleNamespace(
-        enhanced_search_issues=unittest.mock.Mock(
-            return_value={'total': 42, 'issues': [{'key': 'MOS-1'}]},
-        ),
+        approximate_issue_count=unittest.mock.Mock(return_value=42),
     )
 
     response = await client.patch(
@@ -283,7 +281,7 @@ async def test_patch_settings_invalid_jql_returns_422(
     sync_event = unittest.mock.Mock()
     mosura.app.app.state.sync_event = sync_event
     mosura.app.app.state.jira_client = types.SimpleNamespace(
-        enhanced_search_issues=unittest.mock.Mock(
+        approximate_issue_count=unittest.mock.Mock(
             side_effect=jira.JIRAError(text='bad JQL query'),
         ),
     )
