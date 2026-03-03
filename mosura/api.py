@@ -6,6 +6,7 @@ import fastapi
 from . import database
 from . import models
 from . import schemas
+from . import tasks
 
 
 logger = logging.getLogger(__name__)
@@ -52,9 +53,16 @@ async def patch_issue(
             expand='renderedFields',
         )
         if cached_issue != live_issue:
-            # TODO: render feedback in the UI when this occurs
+            tasks.schedule_issue_refresh(
+                app=request.app,
+                key=cached_issue.key,
+            )
             raise fastapi.HTTPException(
                 status_code=fastapi.status.HTTP_409_CONFLICT,
+                detail=(
+                    'This issue was modified in Jira while you were editing '
+                    'it, please refresh the page and try again.'
+                ),
             )
 
         new_data = issue.model_dump(exclude_unset=True)

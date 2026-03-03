@@ -107,6 +107,11 @@ async def test_patch_issue_conflict(
     jira_issue = unittest.mock.MagicMock(return_value=live_issue)
     mosura.app.app.state.jira_client = types.SimpleNamespace(issue=jira_issue)
 
+    schedule_refresh_mock = unittest.mock.Mock()
+    monkeypatch.setattr(
+        'mosura.api.tasks.schedule_issue_refresh',
+        schedule_refresh_mock,
+    )
     monkeypatch.setattr(models.Issue, 'get', get_mock)
     monkeypatch.setattr(models.Issue, 'upsert', upsert_mock)
 
@@ -117,10 +122,18 @@ async def test_patch_issue_conflict(
     print('PATCH conflict:', response.status_code, response.text)
 
     assert response.status_code == 409
+    assert response.json()['detail'] == (
+        'This issue was modified in Jira while you were editing it, '
+        'please refresh the page and try again.'
+    )
     jira_issue.assert_called_once_with(
         id='MOS-777',
         fields=schemas.Issue.jira_fields(),
         expand='renderedFields',
+    )
+    schedule_refresh_mock.assert_called_once_with(
+        app=mosura.app.app,
+        key='MOS-777',
     )
     update_mock.assert_not_called()
     upsert_mock.assert_not_awaited()

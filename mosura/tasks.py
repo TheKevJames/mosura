@@ -95,12 +95,7 @@ async def sync_desired_issues(
 
     for variant, jql in desired_issue_queries(app):
         issues = await _search_issues(jira_client=jira_client, jql=jql)
-        logger.debug(
-            'sync(desired): variant=%s jql=%s fetched=%d',
-            variant,
-            jql,
-            len(issues),
-        )
+        logger.debug('sync(desired/%s): fetched=%d', variant, len(issues))
         for issue in issues:
             desired_issues[issue['key']] = issue
 
@@ -108,7 +103,7 @@ async def sync_desired_issues(
         await _upsert_issue_graph(issue, session=session)
 
     desired_keys = set(desired_issues)
-    logger.info('sync(desired): upserted %d issues', len(desired_keys))
+    logger.info('sync(desired/%s): upserted=%d', variant, len(desired_keys))
     return desired_keys
 
 
@@ -126,7 +121,7 @@ async def _fetch_issue_by_key(
         )
     except Exception:
         logger.info(
-            'sync(stale): final fetch failed key=%s; deleting local rows',
+            'sync(fetch): fetch failed key=%s, deleting local rows',
             key,
             exc_info=True,
         )
@@ -135,8 +130,7 @@ async def _fetch_issue_by_key(
     raw_issue: object = getattr(issue, 'raw', issue)
     if not isinstance(raw_issue, dict):
         logger.warning(
-            'sync(stale): unexpected final fetch payload '
-            'for key=%s (type=%s)',
+            'sync(fetch): unexpected final fetch payload for key=%s (type=%s)',
             key,
             type(raw_issue).__name__,
         )
@@ -144,6 +138,46 @@ async def _fetch_issue_by_key(
 
     typed_issue: dict[str, Any] = raw_issue
     return typed_issue
+
+
+def _log_issue_refresh_exception(task: asyncio.Task[None]) -> None:
+    if task.cancelled():
+        return
+
+    exc = task.exception()
+    if exc is not None:
+        logger.error('sync(issue): background refresh failed', exc_info=exc)
+
+
+async def refresh_issue_by_key(
+    *,
+    app: fastapi.FastAPI,
+    key: str,
+) -> None:
+    logger.info('sync(issue): syncing outdated key=%s', key)
+    fetched_issue = await _fetch_issue_by_key(
+        jira_client=app.state.jira_client,
+        key=key,
+    )
+    if fetched_issue is None:
+        logger.warning('sync(issue): unable to refresh key=%s', key)
+        return
+
+    async with database.session_from_app(app) as session:
+        await _upsert_issue_graph(fetched_issue, session=session)
+        await session.commit()
+
+
+def schedule_issue_refresh(
+    *,
+    app: fastapi.FastAPI,
+    key: str,
+) -> None:
+    task = asyncio.create_task(
+        refresh_issue_by_key(app=app, key=key),
+        name=f'refresh_issue_by_key_{key}',
+    )
+    task.add_done_callback(_log_issue_refresh_exception)
 
 
 async def reconcile_stale_issues(
@@ -179,8 +213,7 @@ async def reconcile_stale_issues(
             )
         except TimeoutError:
             logger.info(
-                'sync(stale): timeout while fetching key=%s; '
-                'stopping early',
+                'sync(stale): timeout while fetching key=%s, stopping early',
                 key,
             )
             break
@@ -252,8 +285,7 @@ async def fetch_desired(
                 timeout_seconds=reconcile_timeout_seconds,
             )
             logger.debug(
-                'fetch(%s): desired key count=%d pruned stale key count=%d '
-                'timeout=%ds',
+                'fetch(%s): desired keys=%d pruned stale key=%d timeout=%ds',
                 variant,
                 len(desired_keys),
                 len(pruned_keys),

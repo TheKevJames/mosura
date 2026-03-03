@@ -7,25 +7,54 @@
 <script>
 $(window).on('load', function() {
   $('.ui.dropdown').dropdown();
+  $('#issue-conflict-message .close').on('click', function() {
+    $('#issue-conflict-message').addClass('hidden');
+  });
 })
 
-function update_field(field, value) {
-  body = JSON.stringify({[field]: value});
+async function update_field(field, value) {
+  const body = JSON.stringify({[field]: value});
   console.log(`PATCHing {{ issue.key}} with ${body}`);
 
-  fetch("/api/v0/issues/{{ issue.key }}", {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: body,
-  });
+  try {
+    const response = await fetch("/api/v0/issues/{{ issue.key }}", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: body,
+    });
+
+    if (response.status !== 409) {
+      return;
+    }
+
+    let detail = 'Unable to update this issue right now.';
+    try {
+      const payload = await response.json();
+      if (payload.detail) {
+        detail = payload.detail;
+      }
+    } catch (err) {
+      console.error('Unable to parse conflict response payload', err);
+    }
+
+    $('#issue-conflict-message-text').text(detail);
+    $('#issue-conflict-message').removeClass('hidden');
+  } catch (err) {
+    console.error('Unable to patch issue field', err);
+  }
 }
 </script>
 {% endblock %}
 
 {% block content %}
 <div class="ui main text container">
+  <div id="issue-conflict-message" class="ui negative message hidden">
+    <i class="close icon"></i>
+    <div id="issue-conflict-message-text"></div>
+  </div>
+
   <div class="ui celled grid">
     <div class="row">
       <div class="two wide column">
