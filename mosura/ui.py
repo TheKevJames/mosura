@@ -71,7 +71,7 @@ async def list_issues(
         issues = await models.Issue.get(closed=False, session=session)
 
     meta = schemas.Meta.from_issues(issues)
-    context = {'issues': issues, 'meta': meta}
+    context = {'issues': issues, 'meta': meta, 'title': 'Issues'}
     return templates.TemplateResponse(request, 'issues.list.html', context)
 
 
@@ -88,7 +88,7 @@ async def list_my_issues(
         )
 
     meta = schemas.Meta.from_issues(issues)
-    context = {'issues': issues, 'meta': meta}
+    context = {'issues': issues, 'meta': meta, 'title': 'My Issues'}
     return templates.TemplateResponse(request, 'issues.list.html', context)
 
 
@@ -155,5 +155,5 @@ async def list_triagable_issues(
         issues = await models.Issue.get(needs_triage=True, session=session)
 
     meta = schemas.Meta.from_issues(issues)
-    context = {'issues': issues, 'meta': meta}
+    context = {'issues': issues, 'meta': meta, 'title': 'Triage'}
     return templates.TemplateResponse(request, 'issues.list.html', context)
