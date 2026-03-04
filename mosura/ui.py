@@ -131,7 +131,11 @@ async def show_timeline(
     async with database.session_from_app(request.app) as session:
         # TODO: for perf, move some filters out of Timeline.from_issues() and
         # into this SQL command.
-        issues = await models.Issue.get(closed=True, session=session)
+        issues = await models.Issue.get(
+            assignee=request.app.state.tracked_user_name,
+            closed=True,
+            session=session,
+        )
 
     target = (
         datetime.date.fromisoformat(date) if date
@@ -139,11 +143,10 @@ async def show_timeline(
     )
     timeline = schemas.Timeline.from_issues(
         issues,
-        okr_label=request.app.state.settings.jira_label_okr,
         target=target,
     )
 
-    context = {'timeline': timeline, 'settings': request.app.state.settings}
+    context = {'timeline': timeline}
     return templates.TemplateResponse(request, 'timeline.html', context)
 
 

@@ -31,7 +31,6 @@ Best run via docker/podman/etc:
         -e JIRA_DOMAIN=https://myinstance.atlassian.net \
         -e MOSURA_USER=myuser@example.com \  # (optional; defaults to JIRA_AUTH_USER)
         -e MOSURA_CUSTOM_JQL='project = MOS AND labels = triage' \  # (optional)
-        -e JIRA_LABEL_OKR=okr \  # (optional, default: okr)
         -e MOSURA_APPDATA=/data \  # (optional, default: .)
         -e MOSURA_PORT=8080 \  # (optional, default: 8080)
         --restart unless-stopped \
@@ -106,8 +105,6 @@ fields:
 
   * if a ticket has no listed labels, it will get highlighted as requiring
     attention
-  * if the label matches your configured "OKR Label" setting (default:
-    ``okr``), ensure it appears on the timeline page
 
 * ``votes``: the collection of user votes on the issue
 

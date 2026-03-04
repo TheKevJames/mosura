@@ -44,7 +44,6 @@ class Settings(pydantic_settings.BaseSettings):
     jira_auth_token: pydantic.SecretStr
     jira_auth_user: str
     jira_domain: str
-    jira_label_okr: str = 'okr'  # TODO: remove okr feature?
     mosura_appdata: str = '.'
     mosura_log_level: str = 'DEBUG'
     mosura_poll_interval: int = 60

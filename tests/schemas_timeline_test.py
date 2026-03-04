@@ -11,18 +11,7 @@ def test_partition_issues_applies_triage_and_window_rules(
     end_date = datetime.date(2024, 2, 1)
 
     issues = [
-        issue_factory(
-            'SKIP-1',
-            assignee=None,
-            startdate=datetime.date(2024, 1, 8),
-        ),
         issue_factory('TRIAGE-1', assignee='Alice', startdate=None),
-        issue_factory(
-            'TRIAGE-2',
-            assignee=None,
-            startdate=None,
-            labels=['okr'],
-        ),
         issue_factory(
             'CLOSED-1',
             assignee='Alice',
@@ -46,23 +35,16 @@ def test_partition_issues_applies_triage_and_window_rules(
             startdate=datetime.date(2024, 1, 15),
             timeestimate=datetime.timedelta(days=14),
         ),
-        issue_factory(
-            'ALIGN-2',
-            assignee=None,
-            startdate=datetime.date(2024, 1, 22),
-            labels=['okr'],
-        ),
     ]
 
     aligning, triage = schemas.Timeline.partition_issues(
         issues,
         start_date,
         end_date,
-        okr_label='okr',
     )
 
-    assert [issue.key for issue in aligning] == ['ALIGN-1', 'ALIGN-2']
-    assert [issue.key for issue in triage] == ['TRIAGE-1', 'TRIAGE-2']
+    assert [issue.key for issue in aligning] == ['ALIGN-1']
+    assert [issue.key for issue in triage] == ['TRIAGE-1']
 
 
 def test_get_boxes_anchors_to_monday_and_flags_visible_weeks() -> None:
@@ -150,7 +132,7 @@ def test_align_issues_clamps_span_to_window(
     ]
 
 
-def test_from_issues_groups_assignees_and_collects_triage(
+def test_from_issues_collects_triage_and_aligns(
     issue_factory: Callable[..., schemas.Issue],
 ) -> None:
     issues = [
@@ -172,31 +154,10 @@ def test_from_issues_groups_assignees_and_collects_triage(
             summary='Bob scheduled',
             startdate=datetime.date(2024, 1, 15),
         ),
-        issue_factory(
-            'OKR-1',
-            assignee=None,
-            summary='Unassigned scheduled',
-            startdate=datetime.date(2024, 1, 8),
-            labels=['okr'],
-        ),
-        issue_factory(
-            'SKIP-2',
-            assignee=None,
-            summary='Unassigned non-okr',
-            startdate=datetime.date(2024, 1, 8),
-        ),
-        issue_factory(
-            'OKR-2',
-            assignee=None,
-            summary='A triage',
-            startdate=None,
-            labels=['okr'],
-        ),
     ]
 
     timeline = schemas.Timeline.from_issues(
         issues,
-        okr_label='okr',
         target=datetime.date(2024, 1, 10),
         weeks_before=0,
         weeks_after=1,
@@ -208,25 +169,11 @@ def test_from_issues_groups_assignees_and_collects_triage(
         (datetime.date(2024, 1, 15), True),
     ]
 
-    assert list(timeline.aligned) == ['Ann', 'Bob', 'Unassigned']
-    assert [issue.key for issue in timeline.triage] == ['ANN-2', 'OKR-2']
+    assert [issue.key for issue in timeline.triage] == ['ANN-2']
 
-    ann_row = timeline.aligned['Ann'][0]
-    bob_row = timeline.aligned['Bob'][0]
-    unassigned_row = timeline.aligned['Unassigned'][0]
-
+    # aligned is now list[list[tuple[int, Issue | None]]]
+    # ANN-1 (Jan 8) and BOB-1 (Jan 15) don't overlap, so both fit in row 0
     assert [
         (span, issue.key if issue else None)
-        for span, issue in ann_row
-    ] == [(1, 'ANN-1')]
-    assert [
-        (span, issue.key if issue else None)
-        for span, issue in bob_row
-    ] == [
-        (1, None),
-        (1, 'BOB-1'),
-    ]
-    assert [
-        (span, issue.key if issue else None)
-        for span, issue in unassigned_row
-    ] == [(1, 'OKR-1')]
+        for span, issue in timeline.aligned[0]
+    ] == [(1, 'ANN-1'), (1, 'BOB-1')]

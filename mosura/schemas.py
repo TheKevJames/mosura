@@ -1,6 +1,5 @@
 import datetime
 import enum
-import itertools
 import logging
 from collections.abc import Iterable
 from typing import Any
@@ -260,10 +259,6 @@ class Meta:
 Aligned = list[list[tuple[int, Issue | None]]]
 
 
-def getassignee(x: Issue) -> str:
-    return x.assignee or 'Unassigned'
-
-
 def getsummary(x: Issue) -> str:
     return x.summary
 
@@ -274,7 +269,7 @@ def sortdate(x: Issue) -> datetime.date:
 
 @pydantic.dataclasses.dataclass
 class Timeline:
-    aligned: dict[str, Aligned]
+    aligned: Aligned
     triage: list[Issue]
     monday: datetime.date
     boxes: list[tuple[datetime.date, bool]]
@@ -284,32 +279,24 @@ class Timeline:
             cls,
             issues: list[Issue],
             *,
-            okr_label: str | None = None,
             target: datetime.date | None = None,
             weeks_before: int = 3,
             weeks_after: int = 10,
     ) -> 'Timeline':
-        aligned: dict[str, Aligned] = {}
         triage: list[Issue] = []
         monday, boxes = cls.get_boxes(target, weeks_before, weeks_after)
 
-        groups = itertools.groupby(
-            sorted(issues, key=getassignee),
-            getassignee,
+        aligning, triaging = cls.partition_issues(
+            issues,
+            boxes[0][0],
+            boxes[-1][0] + datetime.timedelta(days=7),
         )
-        for assignee, candidates in groups:
-            aligning, triaging = cls.partition_issues(
-                candidates,
-                boxes[0][0],
-                boxes[-1][0] + datetime.timedelta(days=7),
-                okr_label,
-            )
-            aligned[assignee] = cls.align_issues(
-                sorted(aligning, key=sortdate),
-                boxes[0][0],
-                boxes[-1][0] + datetime.timedelta(days=7),
-            )
-            triage.extend(sorted(triaging, key=getsummary))
+        aligned = cls.align_issues(
+            sorted(aligning, key=sortdate),
+            boxes[0][0],
+            boxes[-1][0] + datetime.timedelta(days=7),
+        )
+        triage.extend(sorted(triaging, key=getsummary))
 
         return cls(aligned, triage, monday, boxes)
 
@@ -318,17 +305,11 @@ class Timeline:
             issues: Iterable[Issue],
             start_date: datetime.date,
             end_date: datetime.date,
-            okr_label: str | None,
     ) -> tuple[list[Issue], list[Issue]]:
         aligning: list[Issue] = []
         triage: list[Issue] = []
 
         for x in issues:
-            is_okr = okr_label and okr_label in {x.label for x in x.labels}
-            if not x.assignee and not is_okr:
-                # only track unassigned issues if they are OKRs
-                continue
-
             if x.status != 'Closed' and not (x.startdate and x.enddate):
                 triage.append(x)
             if x.startdate and x.startdate >= end_date:

@@ -29,7 +29,6 @@ function onclick_navigate(e, key) {
   <table class="ui celled fixed unstackable structured table">
     <thead>
       <tr>
-        <th class="two wide">Name</th>
         {% for header, enabled in timeline.boxes %}
         <th {% if not enabled %}style="color:gray;"{% endif %}>
           {{ header | dayformat }}
@@ -38,12 +37,9 @@ function onclick_navigate(e, key) {
     </thead>
     <tbody>
       <tr><td></td></tr>
-      {% for assignee, rows in timeline.aligned.items() %}
-        {% for assigned in rows %}
-        <tr>
-          <!-- TODO: rowspan the name -->
-          <td class="two wide">{{ assignee }}</td>
-          {% for span, issue in assigned %}
+      {% for assigned in timeline.aligned %}
+      <tr>
+        {% for span, issue in assigned %}
             {% if issue %}
             <td colspan="{{ span }}" title="{{ issue.key}}: {{ issue.summary }}" class="ui message
               {% if issue.status == "Closed" %}green
@@ -58,7 +54,6 @@ function onclick_navigate(e, key) {
             </td>
           {% endfor %}
         </tr>
-        {% endfor %}
       {% endfor %}
     </tbody>
   </table>
@@ -67,7 +62,7 @@ function onclick_navigate(e, key) {
 
   <div>
     <p>Any ticket with an assigned start date and time estimate will appear above. Tweak those values in Jira to change them here.</p>
-    <p>Tickets below are ones you should probably schedule, either because they are assigned but are missing a start date / time estimate or because they are unassigned but have been labelled with <code>{{ settings.jira_label_okr }}</code>.</p>
+    <p>Issues assigned to you that are missing a start date or time estimate.</p>
   </div>
 
   {% if timeline.triage %}
