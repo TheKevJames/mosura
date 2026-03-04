@@ -8,5 +8,84 @@
   </div>
 </div>
 
+<div class="ui main container">
+
+  <h2>My Issues (Top 5) <a href="/mine" style="margin-left: 0.3em;"><i class="black external square alternate icon"></i></a></h2>
+  {% if my_issues %}
+  <table class="ui celled striped unstackable selectable table">
+    <thead class="single line">
+      <th>Key</th>
+      <th>Summary</th>
+      <th>Status</th>
+      <th>Priority</th>
+    </thead>
+    <tbody>
+    {% for issue in my_issues %}
+      <tr onclick="onclick_navigate(event, '{{ issue.key }}');">
+        <td data-label="Key">{{ issue.key }}</td>
+        <td data-label="Summary">{{ issue.summary }}</td>
+        <td data-label="Status" {% if issue.status == "Needs Triage" %}class="warning"{% endif %}>{{ issue.status }}</td>
+        <td data-label="Priority" {% if issue.priority == 'No priority' %}class="warning"{% endif %}>{{ issue.priority }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No issues assigned</p>
+  {% endif %}
+
+  <div class="ui hidden divider"></div>
+  <div class="ui section divider" style="border-color: rgba(0, 0, 0, 0.1); width: 80%; margin-left: auto; margin-right: auto;"></div>
+
+  <h2>Needs Triage <a href="/triage" style="margin-left: 0.3em;"><i class="black external square alternate icon"></i></a></h2>
+  {% if triage_issues %}
+  <table class="ui celled striped unstackable selectable table">
+    <thead class="single line">
+      <th>Key</th>
+      <th>Summary</th>
+      <th>Status</th>
+      <th>Priority</th>
+      <th>Assignee</th>
+      <th>Components</th>
+      <th>Labels</th>
+    </thead>
+    <tbody>
+    {% for issue in triage_issues %}
+      <tr onclick="onclick_navigate(event, '{{ issue.key }}');">
+        <td data-label="Key">{{ issue.key }}</td>
+        <td data-label="Summary">{{ issue.summary }}</td>
+        <td data-label="Status" {% if issue.status == "Needs Triage" %}class="warning"{% endif %}>{{ issue.status }}</td>
+        <td data-label="Priority" {% if issue.priority == 'No priority' %}class="warning"{% endif %}>{{ issue.priority }}</td>
+        <td data-label="Assignee">{{ issue.assignee }}</td>
+        <td data-label="Components" {% if not issue.components %}class="warning"{% endif %}>
+        {% for c in issue.components %}
+          <p>{{ c.component }}</p>
+        {% endfor %}
+        </td>
+        <td data-label="Labels" {% if not issue.labels %}class="warning"{% endif %}>
+        {% for l in issue.labels %}
+          <p>{{ l.label }}</p>
+        {% endfor %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>Nothing to triage</p>
+  {% endif %}
+
+</div>
+
+<script>
+function onclick_navigate(e, key) {
+  var target = '_self';
+  if (e.ctrlKey || e.metaKey) {
+    target = '_blank';
+  }
+  window.open('/issues/' + key, target=target);
+};
+</script>
+
 <div class="ui inverted vertical footer segment"></div>
 {% endblock %}

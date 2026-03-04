@@ -45,7 +45,22 @@ templates.env.filters['timeformat'] = timeformat
 async def home(
         request: fastapi.Request,
 ) -> starlette.responses.Response:
-    return templates.TemplateResponse(request, 'home.html')
+    async with database.session_from_app(request.app) as session:
+        my_issues = await models.Issue.get(
+            assignee=request.app.state.tracked_user_name,
+            closed=False,
+            session=session,
+        )
+        triage_issues = await models.Issue.get(
+            needs_triage=True, session=session,
+        )
+
+    my_issues.sort(key=lambda i: i.priority.sort_value, reverse=True)
+    my_issues = my_issues[:5]
+    triage_issues = triage_issues[:10]
+
+    context = {'my_issues': my_issues, 'triage_issues': triage_issues}
+    return templates.TemplateResponse(request, 'home.html', context)
 
 
 @router.get('/issues', response_class=fastapi.responses.HTMLResponse)
