@@ -74,11 +74,56 @@ class Label(Base):
         await session.execute(stmt.on_conflict_do_nothing())
 
 
+class IssueTransition(Base):
+    __tablename__ = 'issue_transitions'
+
+    key: Mapped[strfk]
+    from_status: Mapped[str | None]
+    to_status: Mapped[str]
+    timestamp: Mapped[
+        Annotated[
+            datetime.datetime,
+            mapped_column(primary_key=True),
+        ]
+    ]
+
+    @classmethod
+    async def delete(cls, key: str, *, session: AsyncSession) -> None:
+        query = delete(cls).where(cls.key == key)
+        await session.execute(query)
+
+    @classmethod
+    async def upsert(
+        cls, transition: schemas.IssueTransition, *,
+        session: AsyncSession,
+    ) -> None:
+        stmt = insert(cls).values(**transition.model_dump())
+        await session.execute(stmt.on_conflict_do_nothing())
+
+    @classmethod
+    async def get_by_keys(
+        cls, keys: list[str], *, session: AsyncSession,
+    ) -> list[schemas.IssueTransition]:
+        query = select(cls).where(
+            cls.key.in_(keys),
+        ).order_by(
+            cls.key,
+            cls.timestamp,
+        )
+        results = await session.execute(query)
+        rows = results.scalars().all()
+        return [
+            schemas.IssueTransition.model_validate(row)
+            for row in rows
+        ]
+
+
 IssueRow = Row[
     tuple[
         str, str, str | None, str, str | None, str,
-        datetime.datetime | None, str,
-        list[Component], list[Label], int,
+        datetime.datetime | None, datetime.datetime, datetime.datetime,
+        datetime.timedelta, int, datetime.datetime | None, str | None,
+        str | None,
     ]
 ]
 
@@ -97,14 +142,14 @@ def convert_component_response(
         key: str,
         results: Sequence[IssueRow],
 ) -> list[dict[str, str]]:
-    return convert_field_response(key, results, idx=9, name='component')
+    return convert_field_response(key, results, idx=12, name='component')
 
 
 def convert_label_response(
         key: str,
         results: Sequence[IssueRow],
 ) -> list[dict[str, str]]:
-    return convert_field_response(key, results, idx=10, name='label')
+    return convert_field_response(key, results, idx=13, name='label')
 
 
 def convert_issue_response(
@@ -118,6 +163,8 @@ def convert_issue_response(
             fields[0][6].replace(tzinfo=datetime.UTC)
             if fields[0][6] else None
         )
+        created = fields[0][7].replace(tzinfo=datetime.UTC)
+        updated = fields[0][8].replace(tzinfo=datetime.UTC)
         xs.append(
             schemas.Issue.model_validate({
                 'key': key,
@@ -127,8 +174,10 @@ def convert_issue_response(
                 'assignee': fields[0][4],
                 'priority': fields[0][5],
                 'startdate': startdate,
-                'timeestimate': fields[0][7],
-                'votes': fields[0][8],
+                'created': created,
+                'updated': updated,
+                'timeestimate': fields[0][9],
+                'votes': fields[0][10],
                 'components': convert_component_response(key, fields),
                 'labels': convert_label_response(key, fields),
             }),
@@ -147,8 +196,13 @@ class Issue(Base):
     assignee: Mapped[str | None]
     priority: Mapped[str]
     startdate: Mapped[datetime.datetime | None]
+    created: Mapped[datetime.datetime]
+    updated: Mapped[datetime.datetime]
     timeestimate: Mapped[datetime.timedelta]
     votes: Mapped[int]
+    transitions_synced_at: Mapped[datetime.datetime | None] = mapped_column(
+        nullable=True,
+    )
 
     components: Mapped[list[Component]] = relationship()
     labels: Mapped[list[Label]] = relationship()
@@ -221,12 +275,14 @@ class Issue(Base):
             index_elements=['key'],
             set_={
                 'assignee': stmt.excluded.assignee,
+                'created': stmt.excluded.created,
                 'description': stmt.excluded.description,
                 'priority': stmt.excluded.priority,
                 'status': stmt.excluded.status,
                 'summary': stmt.excluded.summary,
                 'startdate': stmt.excluded.startdate,
                 'timeestimate': stmt.excluded.timeestimate,
+                'updated': stmt.excluded.updated,
                 'votes': stmt.excluded.votes,
             },
         )

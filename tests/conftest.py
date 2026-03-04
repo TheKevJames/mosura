@@ -59,6 +59,8 @@ def jira_raw_factory() -> Callable[..., dict[str, Any]]:
         votes: int = 7,
         components: list[str] | None = None,
         labels: list[str] | None = None,
+        created: str = '2026-01-01T00:00:00.000000+00:00',
+        updated: str = '2026-01-02T00:00:00.000000+00:00',
     ) -> dict[str, Any]:
         return {
             'key': key,
@@ -72,6 +74,7 @@ def jira_raw_factory() -> Callable[..., dict[str, Any]]:
                     {'name': component}
                     for component in components or []
                 ],
+                'created': created,
                 'customfield_12133': calendar_start,
                 'customfield_12161': issue_start,
                 'duedate': due_date,
@@ -80,6 +83,7 @@ def jira_raw_factory() -> Callable[..., dict[str, Any]]:
                 'status': {'name': status},
                 'summary': summary,
                 'timeoriginalestimate': time_original_estimate,
+                'updated': updated,
                 'votes': {'votes': votes},
             },
             'renderedFields': {
@@ -111,6 +115,12 @@ def issue_factory() -> Callable[..., schemas.Issue]:
         assignee: str | None = 'Alice',
         priority: schemas.Priority = schemas.Priority.medium,
         startdate: datetime.date | None = datetime.date(2024, 1, 1),
+        created: datetime.datetime = datetime.datetime(
+            2024, 1, 1, 0, 0, 0, tzinfo=datetime.UTC,
+        ),
+        updated: datetime.datetime = datetime.datetime(
+            2024, 1, 2, 0, 0, 0, tzinfo=datetime.UTC,
+        ),
         timeestimate: datetime.timedelta = datetime.timedelta(days=7),
         votes: int = 0,
         components: list[str] | None = None,
@@ -124,6 +134,8 @@ def issue_factory() -> Callable[..., schemas.Issue]:
             assignee=assignee,
             priority=priority,
             startdate=startdate,
+            created=created,
+            updated=updated,
             timeestimate=timeestimate,
             votes=votes,
             components=[
@@ -170,7 +182,7 @@ def issue_from_jira_factory() -> Callable[..., schemas.Issue]:
 
 @pytest.fixture(scope='function')
 def issue_create_factory() -> Callable[..., schemas.IssueCreate]:
-    def _build(
+    def _build(  # pylint: disable=too-many-arguments
         key: str,
         *,
         summary: str | None = None,
@@ -179,6 +191,12 @@ def issue_create_factory() -> Callable[..., schemas.IssueCreate]:
         assignee: str | None,
         priority: schemas.Priority = schemas.Priority.medium,
         startdate: datetime.date | None = datetime.date(2026, 1, 1),
+        created: datetime.datetime = datetime.datetime(
+            2026, 1, 1, 0, 0, 0, tzinfo=datetime.UTC,
+        ),
+        updated: datetime.datetime = datetime.datetime(
+            2026, 1, 2, 0, 0, 0, tzinfo=datetime.UTC,
+        ),
         timeestimate: datetime.timedelta = datetime.timedelta(days=2),
         votes: int = 1,
     ) -> schemas.IssueCreate:
@@ -190,8 +208,31 @@ def issue_create_factory() -> Callable[..., schemas.IssueCreate]:
             assignee=assignee,
             priority=priority,
             startdate=startdate,
+            created=created,
+            updated=updated,
             timeestimate=timeestimate,
             votes=votes,
+        )
+
+    return _build
+
+
+@pytest.fixture(scope='function')
+def transition_factory() -> Callable[..., schemas.IssueTransition]:
+    def _build(
+        *,
+        key: str = 'MOS-123',
+        from_status: str | None = 'Backlog',
+        to_status: str = 'In Progress',
+        timestamp: datetime.datetime = datetime.datetime(
+            2026, 1, 5, 10, 0, 0, tzinfo=datetime.UTC,
+        ),
+    ) -> schemas.IssueTransition:
+        return schemas.IssueTransition(
+            key=key,
+            from_status=from_status,
+            to_status=to_status,
+            timestamp=timestamp,
         )
 
     return _build

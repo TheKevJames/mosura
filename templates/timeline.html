@@ -1,36 +1,103 @@
 {% extends "base.html" %}
 {% block title %}Timeline{% endblock %}
-{% block header %}
-<script>
-function onclick_navigate(e, key) {
-  var target = '_self';
-  if (e.ctrlKey || e.metaKey) {
-    target = '_blank';
-  }
-  window.open('/issues/' + key, target=target);
-};
-</script>
-{% endblock %}
 
 {% block content %}
 <div class="ui main container">
-  <div>
+  <div class="timeline-picker">
     <h1>
-      <a href="?date={{ timeline.prev_month }}">
+      <a class="timeline-picker-link" href="?date={{ timeline.prev_month }}" aria-label="Previous month">
+        <i class="icon double angle left"></i>
+      </a>
+      <a class="timeline-picker-link" href="?date={{ timeline.prev_week }}" aria-label="Previous week">
         <i class="icon angle left"></i>
       </a>
-      {{ timeline.monday }}
-      <a href="?date={{ timeline.next_month }}">
+      {{ timeline.range_start }} - {{ timeline.range_end }}
+      <a class="timeline-picker-link" href="?date={{ timeline.next_week }}" aria-label="Next week">
         <i class="icon angle right"></i>
+      </a>
+      <a class="timeline-picker-link" href="?date={{ timeline.next_month }}" aria-label="Next month">
+        <i class="icon double angle right"></i>
       </a>
     </h1>
   </div>
 
+  {% if timeline.issues %}
+  <div class="gantt-chart">
+    <!-- Header Row with Week Labels -->
+    <div class="gantt-header">
+      <div class="gantt-header-label">Issue</div>
+      <div class="gantt-header-bar">
+        {% for box_date, is_current in timeline.boxes %}
+        <div class="gantt-week-header{% if is_current %} is-current{% endif %}">
+          {{ box_date | dayformat }}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Issue Rows with Gantt Bars -->
+    {% for issue in timeline.issues %}
+    <div class="gantt-row">
+      <div class="gantt-label">
+        <a href="/issues/{{ issue.key }}" title="{{ issue.key }}: {{ issue.summary }}">
+          {{ issue.summary }}
+        </a>
+      </div>
+      <div class="gantt-bar">
+        <div class="gantt-current-week-background" aria-hidden="true">
+          {% for _, is_current in timeline.boxes %}
+          <div class="gantt-current-week-cell{% if is_current %} is-current{% endif %}"></div>
+          {% endfor %}
+        </div>
+        <div class="gantt-grid" aria-hidden="true">
+          {% for _, is_current in timeline.boxes %}
+          <div class="gantt-grid-week"></div>
+          {% endfor %}
+        </div>
+
+        <!-- Segments for each status transition -->
+        {% for segment in issue.segments %}
+          {% set status_class = segment.status_css_class %}
+
+          <div class="gantt-segment {{ status_class }}{% if segment.show_transition_marker %} has-transition-marker{% endif %}"
+               style="left: {{ segment.left_percent }}%; width: {{ segment.width_percent }}%;"
+               title="{{ segment.status }}: {{ segment.start }} to {{ segment.end }}">
+          </div>
+        {% endfor %}
+
+        <!-- Estimated Completion Marker -->
+        {% if issue.estimated_completion and not issue.overdue %}
+          <div class="gantt-estimated-completion"
+               style="left: {{ issue.estimated_completion_percent }}%;"
+               title="Estimated completion: {{ issue.estimated_completion }}"></div>
+        {% endif %}
+
+        <!-- Overdue Indicator (from estimated completion to today) -->
+        {% if issue.overdue and issue.overdue_width_percent > 0 %}
+          <div class="gantt-overdue"
+               style="left: {{ issue.estimated_completion_percent }}%; width: {{ issue.overdue_width_percent }}%;"
+               title="{{ issue.status }}: overdue since {{ issue.estimated_completion }}"></div>
+        {% endif %}
+
+        <!-- Overdue Start Indicator (from start date to today when no In Progress) -->
+        {% if issue.overdue_start and issue.overdue_start_width_percent > 0 %}
+          <div class="gantt-overdue-start"
+               style="left: {{ issue.startdate_percent }}%; width: {{ issue.overdue_start_width_percent }}%;"
+               title="Not started since {{ issue.startdate }}"></div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Old Table-based Timeline (temporary fallback for old structure) -->
+  {% if timeline.aligned and not timeline.issues %}
   <table class="ui celled fixed unstackable structured table">
     <thead>
       <tr>
-        {% for header, enabled in timeline.boxes %}
-        <th {% if not enabled %}style="color:gray;"{% endif %}>
+        {% for header, is_current in timeline.boxes %}
+        <th {% if is_current %}style="background-color:#f5f5f5;"{% endif %}>
           {{ header | dayformat }}
         </th>
         {% endfor %}
@@ -57,20 +124,56 @@ function onclick_navigate(e, key) {
       {% endfor %}
     </tbody>
   </table>
+  {% endif %}
 
   <div class="ui divider"></div>
 
-  <div>
-    <p>Any ticket with an assigned start date and time estimate will appear above. Tweak those values in Jira to change them here.</p>
-    <p>Issues assigned to you that are missing a start date or time estimate.</p>
-  </div>
+  <!-- Requires Attention Section (new structure from task-3) -->
+  {% if timeline.attention %}
+  <h3>Requires Attention</h3>
+  <p>Issues that are missing a start date, time estimate, or have been in the backlog for too long.</p>
 
-  {% if timeline.triage %}
-  <div class="ui divider"></div>
+  <table class="ui celled fixed unstackable structured table">
+    <thead>
+      <tr>
+        <th>Assignee</th>
+        <th>Start Date</th>
+        <th>Time Estimate</th>
+        <th colspan="5">Issue</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for issue in timeline.attention %}
+      <tr>
+        <td>{{ issue.assignee or "Unassigned" }}</td>
+        <td class="{% if issue.overdue_start %}ui message yellow{% endif %}">
+          {{ issue.startdate | dateformat }}
+        </td>
+        <td class="{% if issue.timeestimate.total_seconds() == 0 %}ui message yellow{% endif %}">
+          {% if issue.timeestimate.total_seconds() > 0 %}
+            {{ (issue.timeestimate.days / 7) | round(1) }} Weeks
+          {% else %}
+            Unset
+          {% endif %}
+        </td>
+        <td colspan="5" title="{{ issue.key}}: {{ issue.summary }}" class="ui message
+          {% if issue.status == "Closed" %}green
+          {% elif issue.status in ("In Progress", "Code Review") %}yellow
+          {% elif issue.status == "Needs Triage" %}red
+          {% endif %}
+        ">
+          <a href="/issues/{{ issue.key }}">{{ issue.summary }}</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
 
+  <!-- Old Incomplete Scheduling Data Section (temporary fallback for old structure) -->
+  {% if timeline.triage and not timeline.attention %}
   <h3>Incomplete Scheduling Data</h3>
 
-  <!-- TODO: either make this a list, or make it a full "All Issues" style table -->
   <table class="ui celled fixed unstackable structured table">
     <thead>
       <tr>

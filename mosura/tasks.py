@@ -5,6 +5,7 @@ import time
 from typing import Any
 
 import fastapi
+from sqlalchemy.sql import update
 
 from . import database
 from . import models
@@ -57,10 +58,106 @@ def desired_issue_queries(
     return queries
 
 
+def _parse_changelog(
+    issue_raw: dict[str, Any],
+    key: str,
+) -> list[schemas.IssueTransition]:
+    """Parse Jira changelog and extract status transitions."""
+    transitions: list[schemas.IssueTransition] = []
+    histories = issue_raw.get('changelog', {}).get('histories', [])
+
+    for history in histories:
+        for item in history.get('items', []):
+            if item.get('field') == 'status':
+                created_str = history.get('created', '')
+                # Parse ISO format from Jira: '2026-01-05T10:00:00.000+0000'
+                try:
+                    timestamp = datetime.datetime.fromisoformat(
+                        created_str.replace('+0000', '+00:00'),
+                    ).replace(tzinfo=datetime.UTC)
+                except (ValueError, AttributeError):
+                    logger.warning(
+                        'sync(issue): failed to parse changelog timestamp '
+                        'for key=%s, skipping',
+                        key,
+                    )
+                    continue
+
+                from_status = item.get('fromString')
+                to_status = item.get('toString', '')
+
+                transitions.append(
+                    schemas.IssueTransition(
+                        key=key,
+                        from_status=from_status,
+                        to_status=to_status,
+                        timestamp=timestamp,
+                    ),
+                )
+
+    return transitions
+
+
+async def _sync_issue_transitions(
+    issue_key: str,
+    issue_obj: Any,
+    issue_updated: datetime.datetime,
+    jira_client: Any,
+    session: Any,
+) -> None:
+    """Sync transitions for a single issue from Jira changelog."""
+    # Check if we need to fetch the changelog
+    should_sync = (
+        not hasattr(issue_obj, 'transitions_synced_at')
+        or issue_obj.transitions_synced_at is None
+        or issue_updated > issue_obj.transitions_synced_at
+    )
+
+    if not should_sync:
+        return
+
+    try:
+        # Fetch full issue with changelog
+        full_issue = await asyncio.to_thread(
+            jira_client.issue,
+            issue_key,
+            expand='changelog',
+        )
+        issue_raw = getattr(full_issue, 'raw', {})
+
+        # Parse transitions
+        transitions = _parse_changelog(issue_raw, issue_key)
+
+        # Delete old transitions and insert new ones
+        await models.IssueTransition.delete(issue_key, session=session)
+        for transition in transitions:
+            await models.IssueTransition.upsert(
+                transition,
+                session=session,
+            )
+
+        # Update transitions_synced_at
+        now = datetime.datetime.now(datetime.UTC)
+        stmt = update(models.Issue).where(
+            models.Issue.key == issue_key,
+        ).values(transitions_synced_at=now)
+        await session.execute(stmt)
+
+    except Exception:
+        logger.warning(
+            'sync(issue): failed to sync transitions for key=%s',
+            issue_key,
+            exc_info=True,
+        )
+
+
 async def _upsert_issue_graph(
     issue: dict[str, Any],
     *,
     session: Any,
+    tracked_user_name: str | None = None,
+    jira_client: Any = None,
+    sync_transitions: bool = True,
 ) -> None:
     # TODO: in-place component and label upserts
     await models.Component.delete(issue['key'], session=session)
@@ -85,28 +182,102 @@ async def _upsert_issue_graph(
         session=session,
     )
 
+    # Sync transitions for tracked user issues
+    if not sync_transitions:
+        return
+
+    if not (tracked_user_name and jira_client):
+        return
+
+    assignee = (
+        issue.get('fields', {}).get('assignee') or {}
+    ).get('displayName')
+    if assignee != tracked_user_name:
+        return
+
+    # Check if we need to fetch the changelog
+    existing_issue = await models.Issue.get(
+        key=issue['key'],
+        closed=True,
+        session=session,
+    )
+    if not existing_issue:
+        return
+
+    issue_obj = existing_issue[0]
+    issue_updated = datetime.datetime.fromisoformat(
+        issue['fields']['updated'].replace('+0000', '+00:00'),
+    ).replace(tzinfo=datetime.UTC)
+
+    await _sync_issue_transitions(
+        issue['key'],
+        issue_obj,
+        issue_updated,
+        jira_client,
+        session,
+    )
+
 
 async def sync_desired_issues(
     *,
     app: fastapi.FastAPI,
     session: Any,
+    transition_timeout: int | None = None,
 ) -> set[str]:
-    jira_client = app.state.jira_client
     desired_issues: dict[str, dict[str, Any]] = {}
 
     custom_jql = await models.Setting.get('custom_jql', session=session)
     for variant, jql in desired_issue_queries(app, custom_jql=custom_jql):
-        issues = await _search_issues(jira_client=jira_client, jql=jql)
-        logger.debug('sync(desired/%s): fetched=%d', variant, len(issues))
-        for issue in issues:
+        fetched_issues = await _search_issues(
+            jira_client=app.state.jira_client,
+            jql=jql,
+        )
+        logger.debug(
+            'sync(desired/%s): fetched=%d',
+            variant,
+            len(fetched_issues),
+        )
+        for issue in fetched_issues:
             desired_issues[issue['key']] = issue
 
-    for issue in desired_issues.values():
-        await _upsert_issue_graph(issue, session=session)
+    if transition_timeout is None:
+        transition_timeout = app.state.settings.mosura_poll_interval // 2
 
-    desired_keys = set(desired_issues)
-    logger.info('sync(desired/%s): upserted=%d', variant, len(desired_keys))
-    return desired_keys
+    deadline = time.monotonic() + max(transition_timeout, 0)
+    transitions_enabled = transition_timeout > 0
+    transition_sync_attempts = 0
+    skipped_transition_syncs = 0
+
+    for issue in desired_issues.values():
+        if transitions_enabled and time.monotonic() >= deadline:
+            logger.info(
+                'sync(desired): transition timeout reached after %d issues',
+                transition_sync_attempts,
+            )
+            transitions_enabled = False
+
+        if transitions_enabled:
+            transition_sync_attempts += 1
+        else:
+            skipped_transition_syncs += 1
+
+        await _upsert_issue_graph(
+            issue,
+            session=session,
+            tracked_user_name=app.state.tracked_user_name,
+            jira_client=app.state.jira_client,
+            sync_transitions=transitions_enabled,
+        )
+
+    logger.info(
+        'sync(desired): upserted=%d transition_attempts=%d '
+        'skipped_transition_syncs=%d timeout=%ds',
+        len(desired_issues),
+        transition_sync_attempts,
+        skipped_transition_syncs,
+        transition_timeout,
+    )
+    return set(desired_issues)
 
 
 async def _fetch_issue_by_key(
@@ -166,7 +337,12 @@ async def refresh_issue_by_key(
         return
 
     async with database.session_from_app(app) as session:
-        await _upsert_issue_graph(fetched_issue, session=session)
+        await _upsert_issue_graph(
+            fetched_issue,
+            session=session,
+            tracked_user_name=app.state.tracked_user_name,
+            jira_client=app.state.jira_client,
+        )
         await session.commit()
 
 
@@ -292,7 +468,7 @@ async def fetch_desired(
                 timeout_seconds=reconcile_timeout_seconds,
             )
             logger.debug(
-                'fetch(%s): desired keys=%d pruned stale keys=%d timeout=%ds',
+                'fetch(%s): desired=%d pruned=%d timeout=%ds',
                 variant,
                 len(desired_keys),
                 len(pruned_keys),

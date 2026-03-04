@@ -2,7 +2,7 @@ import datetime
 
 import pytest
 
-from mosura.schemas import IssueCreate
+from mosura.schemas.issue import IssueCreate
 
 
 @pytest.mark.parametrize(

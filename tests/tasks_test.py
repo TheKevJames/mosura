@@ -22,12 +22,14 @@ IssueFactory = Callable[..., dict[str, Any]]
 def _build_app(
     *,
     tracked_user_id: str = 'account-123',
+    tracked_user_name: str = 'Test User',
 ) -> fastapi.FastAPI:
     app = fastapi.FastAPI()
     app.state.settings = types.SimpleNamespace(
         mosura_poll_interval=60,
     )
     app.state.tracked_user_id = tracked_user_id
+    app.state.tracked_user_name = tracked_user_name
     app.state.jira_client = types.SimpleNamespace()
     app.state.sync_event = asyncio.Event()
     return app
@@ -136,6 +138,49 @@ async def test_sync_desired_issues_without_custom_jql(
     assert [call.args[0]['key'] for call in upsert.await_args_list] == [
         'MOS-101',
     ]
+
+
+async def test_sync_desired_issues_limits_transition_sync_after_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+    jira_raw_factory: IssueFactory,
+) -> None:
+    app = _build_app()
+    session = object()
+
+    search = unittest.mock.AsyncMock(
+        return_value=[
+            jira_raw_factory(key='MOS-1'),
+            jira_raw_factory(key='MOS-2'),
+            jira_raw_factory(key='MOS-3'),
+        ],
+    )
+    upsert = unittest.mock.AsyncMock()
+    setting_get = unittest.mock.AsyncMock(return_value=None)
+    monotonic = unittest.mock.Mock(side_effect=[100.0, 100.0, 100.2, 101.1])
+
+    monkeypatch.setattr(tasks, '_search_issues', search)
+    monkeypatch.setattr(tasks, '_upsert_issue_graph', upsert)
+    monkeypatch.setattr(models.Setting, 'get', setting_get)
+    monkeypatch.setattr(
+        tasks,
+        'time',
+        types.SimpleNamespace(monotonic=monotonic),
+    )
+
+    desired = await tasks.sync_desired_issues(
+        app=app,
+        session=session,
+        transition_timeout=1,
+    )
+
+    transition_flags = [
+        call.kwargs['sync_transitions']
+        for call in upsert.await_args_list
+    ]
+    print('sync_transitions flags:', transition_flags)
+
+    assert desired == {'MOS-1', 'MOS-2', 'MOS-3'}
+    assert transition_flags == [True, True, False]
 
 
 async def test_reconcile_stale_issues_final_sync_then_delete(

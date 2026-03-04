@@ -13,6 +13,7 @@ from mosura import schemas
     [
         ('To Do', 'Backlog'),
         ('Done', 'Closed'),
+        ('Root Caused', 'Closed'),
         ('In Progress', 'In Progress'),
     ],
 )
@@ -104,3 +105,23 @@ def test_issue_equality_logs_mismatch_for_jira_issue(
         'summary: Changed summary locally != Canonical summary'
         in caplog.text
     )
+
+
+def test_issuecreate_from_jira_parses_created_and_updated(
+    jira_raw_factory: Callable[..., dict[str, Any]],
+) -> None:
+    raw = jira_raw_factory(
+        created='2026-01-01T10:30:00.000+0000',
+        updated='2026-01-15T14:45:00.000+0000',
+    )
+
+    issue = schemas.IssueCreate.from_jira(raw)
+
+    expected_created = datetime.datetime(
+        2026, 1, 1, 10, 30, 0, tzinfo=datetime.UTC,
+    )
+    expected_updated = datetime.datetime(
+        2026, 1, 15, 14, 45, 0, tzinfo=datetime.UTC,
+    )
+    assert issue.created == expected_created
+    assert issue.updated == expected_updated

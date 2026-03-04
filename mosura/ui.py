@@ -45,21 +45,47 @@ templates.env.filters['timeformat'] = timeformat
 async def home(
         request: fastapi.Request,
 ) -> starlette.responses.Response:
+    transitions_by_issue: dict[str, list[schemas.IssueTransition]] = {}
+
     async with database.session_from_app(request.app) as session:
         my_issues = await models.Issue.get(
             assignee=request.app.state.tracked_user_name,
             closed=False,
             session=session,
         )
-        triage_issues = await models.Issue.get(
-            needs_triage=True, session=session,
+        timeline_issues = await models.Issue.get(
+            assignee=request.app.state.tracked_user_name,
+            closed=True,
+            session=session,
         )
+
+        issue_keys = [issue.key for issue in timeline_issues]
+        if issue_keys:
+            transitions = await models.IssueTransition.get_by_keys(
+                issue_keys,
+                session=session,
+            )
+            for transition in transitions:
+                transitions_by_issue.setdefault(
+                    transition.key,
+                    [],
+                ).append(transition)
 
     my_issues.sort(key=lambda i: i.priority.sort_value, reverse=True)
     my_issues = my_issues[:5]
-    triage_issues = triage_issues[:10]
 
-    context = {'my_issues': my_issues, 'triage_issues': triage_issues}
+    current_date = datetime.datetime.now(datetime.UTC).date()
+    timeline = schemas.Timeline.from_issues(
+        timeline_issues,
+        selected_date=current_date,
+        current_date=current_date,
+        transitions=transitions_by_issue,
+        weeks_before=1,
+        weeks_after=1,
+    )
+    _enrich_timeline_for_template(timeline, current_date=current_date)
+
+    context = {'my_issues': my_issues, 'timeline': timeline}
     return templates.TemplateResponse(request, 'home.html', context)
 
 
@@ -123,28 +149,148 @@ async def show_settings(
     return templates.TemplateResponse(request, 'settings.html', context)
 
 
+def _mapped_status(status: str | None) -> str:
+    if not status:
+        return ''
+    return schemas.IssueCreate.parse_status(status)
+
+
+def _status_color_group(status: str | None) -> str:
+    mapped = _mapped_status(status)
+    if mapped in {'In Progress', 'Code Review', 'Ready for Testing'}:
+        return 'in-progress'
+    return mapped.lower().replace(' ', '-')
+
+
+def _enrich_timeline_for_template(
+        timeline: schemas.Timeline,
+        current_date: datetime.date,
+) -> None:
+    """Add computed percentages and CSS classes to timeline issues."""
+    # pylint: disable=too-many-locals
+    total_days = len(timeline.boxes) * 7
+    view_start = timeline.boxes[0][0]
+    today = current_date
+
+    for issue in getattr(timeline, 'issues', []):
+        if hasattr(issue, 'status_css_class'):
+            continue
+
+        if hasattr(issue, 'startdate') and issue.startdate:
+            days_from_start = (issue.startdate - view_start).days
+            issue.startdate_percent = days_from_start / total_days * 100
+
+        if (
+            hasattr(issue, 'estimated_completion')
+            and issue.estimated_completion
+        ):
+            days_from_start = (
+                issue.estimated_completion - view_start
+            ).days
+            issue.estimated_completion_percent = (
+                days_from_start / total_days * 100
+            )
+
+        if (
+            hasattr(issue, 'overdue') and issue.overdue
+            and hasattr(issue, 'estimated_completion')
+            and issue.estimated_completion
+        ):
+            days_overdue = (today - issue.estimated_completion).days
+            issue.overdue_width_percent = (
+                days_overdue / total_days * 100
+            )
+        else:
+            issue.overdue_width_percent = 0
+
+        if (
+            hasattr(issue, 'overdue_start') and issue.overdue_start
+            and hasattr(issue, 'startdate') and issue.startdate
+        ):
+            days_not_started = (today - issue.startdate).days
+            issue.overdue_start_width_percent = (
+                days_not_started / total_days * 100
+            )
+        else:
+            issue.overdue_start_width_percent = 0
+
+        previous_segment = None
+        previous_color_group = ''
+        for segment in getattr(issue, 'segments', []):
+            if hasattr(segment, 'left_percent'):
+                previous_segment = segment
+                previous_color_group = _status_color_group(segment.status)
+                continue
+
+            segment_start_offset = (segment.start - view_start).days
+            # Render segment end date inclusively so a segment ending on a
+            # given date still fills that date on the chart.
+            segment_width = (segment.end - segment.start).days + 1
+            segment.left_percent = segment_start_offset / total_days * 100
+            segment.width_percent = max(
+                segment_width / total_days * 100,
+                0.1,
+            )
+
+            mapped_status = _mapped_status(segment.status)
+            status_slug = mapped_status.lower().replace(' ', '-')
+            segment.status_css_class = f'status-{status_slug}'
+            segment.status_display = segment.status
+
+            color_group = _status_color_group(segment.status)
+            segment.show_transition_marker = bool(
+                previous_segment
+                and segment.left_percent > 0
+                and color_group == previous_color_group,
+            )
+
+            previous_segment = segment
+            previous_color_group = color_group
+
+
 @router.get('/timeline', response_class=fastapi.responses.HTMLResponse)
 async def show_timeline(
         request: fastapi.Request,
         date: str | None = None,
 ) -> starlette.responses.Response:
+    transitions_by_issue: dict[str, list[schemas.IssueTransition]] = {}
+
     async with database.session_from_app(request.app) as session:
-        # TODO: for perf, move some filters out of Timeline.from_issues() and
-        # into this SQL command.
+        # TODO: for perf, move some filters out of Timeline.from_issues()
+        # and into this SQL command.
         issues = await models.Issue.get(
             assignee=request.app.state.tracked_user_name,
             closed=True,
             session=session,
         )
 
-    target = (
+        issue_keys = [issue.key for issue in issues]
+        if issue_keys:
+            transitions = await models.IssueTransition.get_by_keys(
+                issue_keys,
+                session=session,
+            )
+            for transition in transitions:
+                transitions_by_issue.setdefault(
+                    transition.key,
+                    [],
+                ).append(transition)
+
+    current_date = datetime.datetime.now(datetime.UTC).date()
+    selected_date = (
         datetime.date.fromisoformat(date) if date
-        else datetime.datetime.now(datetime.UTC).date()
+        else current_date
     )
+
     timeline = schemas.Timeline.from_issues(
         issues,
-        target=target,
+        selected_date=selected_date,
+        current_date=current_date,
+        transitions=transitions_by_issue,
     )
+
+    # Enrich timeline with computed positioning for template
+    _enrich_timeline_for_template(timeline, current_date=current_date)
 
     context = {'timeline': timeline}
     return templates.TemplateResponse(request, 'timeline.html', context)

@@ -1,7 +1,6 @@
 import datetime
 import enum
 import logging
-from collections.abc import Iterable
 from typing import Any
 from typing import assert_never
 from typing import Self
@@ -67,6 +66,15 @@ class Label(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(from_attributes=True)
 
 
+class IssueTransition(pydantic.BaseModel):
+    key: str
+    from_status: str | None = None
+    to_status: str
+    timestamp: datetime.datetime
+
+    model_config = pydantic.ConfigDict(from_attributes=True)
+
+
 class IssueCreate(pydantic.BaseModel):
     key: str
     summary: str
@@ -75,6 +83,8 @@ class IssueCreate(pydantic.BaseModel):
     assignee: str | None = None
     priority: Priority
     startdate: datetime.date | None = None
+    created: datetime.datetime
+    updated: datetime.datetime
     timeestimate: datetime.timedelta
     votes: int
 
@@ -83,6 +93,7 @@ class IssueCreate(pydantic.BaseModel):
         return [
             'assignee',
             'components',
+            'created',
             'customfield_12133',
             'customfield_12161',
             'description',
@@ -93,6 +104,7 @@ class IssueCreate(pydantic.BaseModel):
             'status',
             'summary',
             'timeoriginalestimate',
+            'updated',
             'votes',
         ]
 
@@ -103,6 +115,13 @@ class IssueCreate(pydantic.BaseModel):
         return datetime.datetime.fromisoformat(x).replace(
             tzinfo=datetime.UTC,
         ).date()
+
+    @classmethod
+    def parse_datetime(cls, x: str) -> datetime.datetime:
+        dt = datetime.datetime.fromisoformat(x)
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=datetime.UTC)
+        return dt
 
     @classmethod
     def parse_timeestimate(cls, total_seconds: str) -> datetime.timedelta:
@@ -117,14 +136,18 @@ class IssueCreate(pydantic.BaseModel):
         seconds = int(total_seconds) % seconds_per_day
         return datetime.timedelta(days=days, seconds=seconds)
 
+    @staticmethod
+    def parse_status(status: str) -> str:
+        return {
+            'To Do': 'Backlog',
+            'Done': 'Closed',
+            'Root Caused': 'Closed',
+        }.get(status, status)
+
     @classmethod
     def from_jira(cls, data: dict[str, Any]) -> Self:
         # normalizations
-        status = data['fields']['status']['name']
-        status = {
-            'To Do': 'Backlog',
-            'Done': 'Closed',
-        }.get(status, status)
+        status = cls.parse_status(data['fields']['status']['name'])
 
         # TODO: make this less stupid
         # TODO: two-way sync to keep these in sync?
@@ -149,6 +172,8 @@ class IssueCreate(pydantic.BaseModel):
             status=status,
             summary=data['fields']['summary'],
             startdate=startdate,
+            created=cls.parse_datetime(data['fields']['created']),
+            updated=cls.parse_datetime(data['fields']['updated']),
             timeestimate=timeestimate,
             votes=data['fields']['votes']['votes'],
         )
@@ -226,18 +251,6 @@ class IssuePatch(pydantic.BaseModel):
         return data
 
 
-class SettingValue(pydantic.BaseModel):
-    value: str
-
-
-class Task(pydantic.BaseModel):
-    key: str
-    variant: str
-    latest: datetime.datetime
-
-    model_config = pydantic.ConfigDict(from_attributes=True)
-
-
 @pydantic.dataclasses.dataclass
 class Meta:
     assignees: list[str]
@@ -254,139 +267,3 @@ class Meta:
         priorities = sorted({i.priority for i in xs})
         statuses = sorted({i.status for i in xs})
         return cls(assignees, components, labels, priorities, statuses)
-
-
-Aligned = list[list[tuple[int, Issue | None]]]
-
-
-def getsummary(x: Issue) -> str:
-    return x.summary
-
-
-def sortdate(x: Issue) -> datetime.date:
-    return x.startdate or datetime.date.min
-
-
-@pydantic.dataclasses.dataclass
-class Timeline:
-    aligned: Aligned
-    triage: list[Issue]
-    monday: datetime.date
-    boxes: list[tuple[datetime.date, bool]]
-
-    @classmethod
-    def from_issues(
-            cls,
-            issues: list[Issue],
-            *,
-            target: datetime.date | None = None,
-            weeks_before: int = 3,
-            weeks_after: int = 10,
-    ) -> 'Timeline':
-        triage: list[Issue] = []
-        monday, boxes = cls.get_boxes(target, weeks_before, weeks_after)
-
-        aligning, triaging = cls.partition_issues(
-            issues,
-            boxes[0][0],
-            boxes[-1][0] + datetime.timedelta(days=7),
-        )
-        aligned = cls.align_issues(
-            sorted(aligning, key=sortdate),
-            boxes[0][0],
-            boxes[-1][0] + datetime.timedelta(days=7),
-        )
-        triage.extend(sorted(triaging, key=getsummary))
-
-        return cls(aligned, triage, monday, boxes)
-
-    @staticmethod
-    def partition_issues(
-            issues: Iterable[Issue],
-            start_date: datetime.date,
-            end_date: datetime.date,
-    ) -> tuple[list[Issue], list[Issue]]:
-        aligning: list[Issue] = []
-        triage: list[Issue] = []
-
-        for x in issues:
-            if x.status != 'Closed' and not (x.startdate and x.enddate):
-                triage.append(x)
-            if x.startdate and x.startdate >= end_date:
-                # don't render future events
-                continue
-            if x.enddate and x.enddate > start_date:
-                aligning.append(x)
-
-        return aligning, triage
-
-    @staticmethod
-    def get_boxes(
-            target: datetime.date | None,
-            weeks_before: int,
-            weeks_after: int,
-    ) -> tuple[datetime.date, list[tuple[datetime.date, bool]]]:
-        now = target or datetime.datetime.now(datetime.UTC).date()
-        monday = now - datetime.timedelta(days=now.weekday())
-
-        weeks = weeks_before + 1 + weeks_after
-        start = monday - datetime.timedelta(days=7 * weeks_before)
-        boxes = [
-            (
-                start + datetime.timedelta(days=7 * week),
-                week >= weeks_before,
-            )
-            for week in range(weeks)
-        ]
-
-        return monday, boxes
-
-    @classmethod
-    def align_issues(
-            cls,
-            issues: list[Issue],
-            start: datetime.date,
-            end: datetime.date,
-    ) -> Aligned:
-        """
-        Aligns issues into rows of non-overlapping spans.
-
-        Packs optimally when issues is sorted by start date.
-        """
-        assigned: Aligned = []
-        for x in issues:
-            assert x.startdate, 'cannot align issues without startdate'
-            assert x.enddate, 'cannot align issues without enddate'
-
-            # clamp rendering to current view
-            target = max(x.startdate, start)
-            enddate = min(x.enddate, end)
-            fills = -(-(enddate - target).days // 7)
-
-            first_empty: datetime.date
-            row: list[tuple[int, Issue | None]]
-            for row in assigned:
-                filled = sum(x[0] for x in row)
-                first_empty = start + datetime.timedelta(days=7 * filled)
-                if first_empty <= target:
-                    break
-            else:
-                row = []
-                assigned.append(row)
-                first_empty = start
-
-            gap = (target - first_empty).days // 7
-            if gap:
-                row.append((gap, None))
-
-            row.append((fills, x))
-
-        return assigned
-
-    @property
-    def next_month(self) -> str:
-        return (self.monday + datetime.timedelta(days=28)).isoformat()
-
-    @property
-    def prev_month(self) -> str:
-        return (self.monday - datetime.timedelta(days=28)).isoformat()
