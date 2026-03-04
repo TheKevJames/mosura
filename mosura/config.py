@@ -86,5 +86,7 @@ class Jira(jira.JIRA):
 def load_settings() -> Settings:
     with warnings.catch_warnings():
         # don't warn on secrets_dir being missing
-        warnings.simplefilter('ignore', UserWarning)
+        warnings.filterwarnings(
+            'ignore', 'directory ".*" does not exist', UserWarning,
+        )
         return Settings()

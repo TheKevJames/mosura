@@ -14,7 +14,6 @@ def build_engine(settings: Settings) -> AsyncEngine:
     return create_async_engine(
         f'sqlite+aiosqlite:///{settings.mosura_appdata}/mosura.db',
         connect_args={'check_same_thread': False},
-        # echo=True,
     )
 
 

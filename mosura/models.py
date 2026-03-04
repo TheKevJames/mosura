@@ -41,8 +41,32 @@ class Component(Base):
     component: Mapped[strpk]
 
     @classmethod
+    async def list_(cls, key: str, *, session: AsyncSession) -> set[str]:
+        query = select(cls.component).where(cls.key == key)
+        rows = await session.execute(query)
+        return set(rows.scalars())
+
+    @classmethod
     async def delete(cls, key: str, *, session: AsyncSession) -> None:
         query = delete(cls).where(cls.key == key)
+        await session.execute(query)
+
+    @classmethod
+    async def delete_many(
+        cls,
+        key: str,
+        components: set[str],
+        *,
+        session: AsyncSession,
+    ) -> None:
+        if not components:
+            return
+
+        query = (
+            delete(cls)
+            .where(cls.key == key)
+            .where(cls.component.in_(components))
+        )
         await session.execute(query)
 
     @classmethod
@@ -61,8 +85,32 @@ class Label(Base):
     label: Mapped[strpk]
 
     @classmethod
+    async def list_(cls, key: str, *, session: AsyncSession) -> set[str]:
+        query = select(cls.label).where(cls.key == key)
+        rows = await session.execute(query)
+        return set(rows.scalars())
+
+    @classmethod
     async def delete(cls, key: str, *, session: AsyncSession) -> None:
         query = delete(cls).where(cls.key == key)
+        await session.execute(query)
+
+    @classmethod
+    async def delete_many(
+        cls,
+        key: str,
+        labels: set[str],
+        *,
+        session: AsyncSession,
+    ) -> None:
+        if not labels:
+            return
+
+        query = (
+            delete(cls)
+            .where(cls.key == key)
+            .where(cls.label.in_(labels))
+        )
         await session.execute(query)
 
     @classmethod
@@ -253,6 +301,7 @@ class Issue(Base):
         # TODO(perf): group these into a single operation?
         await Component.delete(key, session=session)
         await Label.delete(key, session=session)
+        await IssueTransition.delete(key, session=session)
         query = delete(cls).where(cls.key == key)
         await session.execute(query)
 

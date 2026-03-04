@@ -7,6 +7,7 @@ from typing import Any
 import pytest
 
 from mosura import models
+from mosura import schemas
 from mosura import tasks
 
 
@@ -32,11 +33,16 @@ async def _upsert_issue_graph(
     jira_client: Any,
 ) -> None:
     upsert = getattr(tasks, '_upsert_issue_graph')
+    app = types.SimpleNamespace(
+        state=types.SimpleNamespace(
+            tracked_user_name=tracked_user_name,
+            jira_client=jira_client,
+        ),
+    )
     await upsert(
         issue,
+        app=app,
         session=session,
-        tracked_user_name=tracked_user_name,
-        jira_client=jira_client,
     )
 
 
@@ -66,9 +72,27 @@ async def test_upsert_issue_graph_syncs_transitions_for_tracked_user(
         ),
     )
     monkeypatch.setattr(models.Issue, 'upsert', unittest.mock.AsyncMock())
-    monkeypatch.setattr(models.Component, 'delete', unittest.mock.AsyncMock())
+    monkeypatch.setattr(
+        models.Component,
+        'list_',
+        unittest.mock.AsyncMock(return_value=set()),
+    )
+    monkeypatch.setattr(
+        models.Component,
+        'delete_many',
+        unittest.mock.AsyncMock(),
+    )
     monkeypatch.setattr(models.Component, 'upsert', unittest.mock.AsyncMock())
-    monkeypatch.setattr(models.Label, 'delete', unittest.mock.AsyncMock())
+    monkeypatch.setattr(
+        models.Label,
+        'list_',
+        unittest.mock.AsyncMock(return_value=set()),
+    )
+    monkeypatch.setattr(
+        models.Label,
+        'delete_many',
+        unittest.mock.AsyncMock(),
+    )
     monkeypatch.setattr(models.Label, 'upsert', unittest.mock.AsyncMock())
 
     transition_delete = unittest.mock.AsyncMock()
@@ -121,9 +145,27 @@ async def test_upsert_issue_graph_skips_transitions_for_non_tracked_user(
         assignee='Bob',
     )
 
-    monkeypatch.setattr(models.Component, 'delete', unittest.mock.AsyncMock())
+    monkeypatch.setattr(
+        models.Component,
+        'list_',
+        unittest.mock.AsyncMock(return_value=set()),
+    )
+    monkeypatch.setattr(
+        models.Component,
+        'delete_many',
+        unittest.mock.AsyncMock(),
+    )
     monkeypatch.setattr(models.Component, 'upsert', unittest.mock.AsyncMock())
-    monkeypatch.setattr(models.Label, 'delete', unittest.mock.AsyncMock())
+    monkeypatch.setattr(
+        models.Label,
+        'list_',
+        unittest.mock.AsyncMock(return_value=set()),
+    )
+    monkeypatch.setattr(
+        models.Label,
+        'delete_many',
+        unittest.mock.AsyncMock(),
+    )
     monkeypatch.setattr(models.Label, 'upsert', unittest.mock.AsyncMock())
     monkeypatch.setattr(models.Issue, 'upsert', unittest.mock.AsyncMock())
     transition_delete = unittest.mock.AsyncMock()
@@ -137,6 +179,65 @@ async def test_upsert_issue_graph_skips_transitions_for_non_tracked_user(
     )
 
     transition_delete.assert_not_awaited()
+
+
+async def test_upsert_issue_graph_only_mutates_changed_components_and_labels(
+    monkeypatch: pytest.MonkeyPatch,
+    jira_raw_factory: IssueFactory,
+) -> None:
+    issue = jira_raw_factory(
+        key='MOS-9',
+        assignee='Bob',
+        components=['A', 'B'],
+        labels=['x'],
+    )
+
+    component_delete_many = unittest.mock.AsyncMock()
+    component_upsert = unittest.mock.AsyncMock()
+    label_delete_many = unittest.mock.AsyncMock()
+    label_upsert = unittest.mock.AsyncMock()
+
+    monkeypatch.setattr(models.Issue, 'upsert', unittest.mock.AsyncMock())
+    monkeypatch.setattr(
+        models.Component,
+        'list_',
+        unittest.mock.AsyncMock(return_value={'A', 'C'}),
+    )
+    monkeypatch.setattr(models.Component, 'delete_many', component_delete_many)
+    monkeypatch.setattr(models.Component, 'upsert', component_upsert)
+    monkeypatch.setattr(
+        models.Label,
+        'list_',
+        unittest.mock.AsyncMock(return_value={'x', 'y'}),
+    )
+    monkeypatch.setattr(models.Label, 'delete_many', label_delete_many)
+    monkeypatch.setattr(models.Label, 'upsert', label_upsert)
+
+    await _upsert_issue_graph(
+        issue,
+        session=object(),
+        tracked_user_name='Alice',
+        jira_client=types.SimpleNamespace(),
+    )
+
+    component_delete_many.assert_awaited_once_with(
+        'MOS-9',
+        {'C'},
+        session=unittest.mock.ANY,
+    )
+    component_upsert.assert_awaited_once()
+    component_upsert_call = component_upsert.await_args
+    assert component_upsert_call is not None
+    assert component_upsert_call.args[0] == schemas.Component(
+        key='MOS-9',
+        component='B',
+    )
+    label_delete_many.assert_awaited_once_with(
+        'MOS-9',
+        {'y'},
+        session=unittest.mock.ANY,
+    )
+    label_upsert.assert_not_awaited()
 
 
 async def test_upsert_issue_graph_syncs_transitions_for_closed_issue(
@@ -172,9 +273,27 @@ async def test_upsert_issue_graph_syncs_transitions_for_closed_issue(
     issue_get = unittest.mock.AsyncMock(side_effect=get_issue)
     monkeypatch.setattr(models.Issue, 'get', issue_get)
     monkeypatch.setattr(models.Issue, 'upsert', unittest.mock.AsyncMock())
-    monkeypatch.setattr(models.Component, 'delete', unittest.mock.AsyncMock())
+    monkeypatch.setattr(
+        models.Component,
+        'list_',
+        unittest.mock.AsyncMock(return_value=set()),
+    )
+    monkeypatch.setattr(
+        models.Component,
+        'delete_many',
+        unittest.mock.AsyncMock(),
+    )
     monkeypatch.setattr(models.Component, 'upsert', unittest.mock.AsyncMock())
-    monkeypatch.setattr(models.Label, 'delete', unittest.mock.AsyncMock())
+    monkeypatch.setattr(
+        models.Label,
+        'list_',
+        unittest.mock.AsyncMock(return_value=set()),
+    )
+    monkeypatch.setattr(
+        models.Label,
+        'delete_many',
+        unittest.mock.AsyncMock(),
+    )
     monkeypatch.setattr(models.Label, 'upsert', unittest.mock.AsyncMock())
 
     transition_delete = unittest.mock.AsyncMock()
@@ -226,24 +345,26 @@ async def test_upsert_issue_graph_syncs_transitions_for_closed_issue(
 
 def test_parse_changelog_keeps_original_jira_status_names() -> None:
     parse_changelog = getattr(tasks, '_parse_changelog')
-    transitions = parse_changelog(
-        {
-            'changelog': {
-                'histories': [
-                    {
-                        'created': '2026-01-05T10:00:00.000+0000',
-                        'items': [
-                            {
-                                'field': 'status',
-                                'fromString': 'To Do',
-                                'toString': 'Done',
-                            },
-                        ],
-                    },
-                ],
+    transitions = list(
+        parse_changelog(
+            {
+                'changelog': {
+                    'histories': [
+                        {
+                            'created': '2026-01-05T10:00:00.000+0000',
+                            'items': [
+                                {
+                                    'field': 'status',
+                                    'fromString': 'To Do',
+                                    'toString': 'Done',
+                                },
+                            ],
+                        },
+                    ],
+                },
             },
-        },
-        'MOS-1',
+            'MOS-1',
+        ),
     )
 
     assert len(transitions) == 1

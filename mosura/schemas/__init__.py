@@ -6,6 +6,7 @@ from mosura.schemas.issue import IssueTransition
 from mosura.schemas.issue import Label
 from mosura.schemas.issue import Meta
 from mosura.schemas.issue import Priority
+from mosura.schemas.issue import Status
 from mosura.schemas.task import SettingValue
 from mosura.schemas.task import Task
 from mosura.schemas.timeline import Timeline
@@ -21,6 +22,7 @@ __all__ = [
     'Label',
     'Meta',
     'Priority',
+    'Status',
     'SettingValue',
     'Task',
     'Timeline',

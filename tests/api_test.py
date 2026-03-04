@@ -245,8 +245,6 @@ async def test_patch_settings_valid_jql_persists_and_returns_count(
     upsert_mock = unittest.mock.AsyncMock()
     monkeypatch.setattr(models.Setting, 'upsert', upsert_mock)
 
-    sync_event = unittest.mock.Mock()
-    mosura.app.app.state.sync_event = sync_event
     mosura.app.app.state.jira_client = types.SimpleNamespace(
         approximate_issue_count=unittest.mock.Mock(return_value=42),
     )
@@ -267,7 +265,6 @@ async def test_patch_settings_valid_jql_persists_and_returns_count(
         'custom_jql', 'project = MOS', session=api_session,
     )
     api_session.commit.assert_awaited_once()
-    sync_event.set.assert_called_once()
 
 
 async def test_patch_settings_invalid_jql_returns_422(
@@ -278,8 +275,6 @@ async def test_patch_settings_invalid_jql_returns_422(
     upsert_mock = unittest.mock.AsyncMock()
     monkeypatch.setattr(models.Setting, 'upsert', upsert_mock)
 
-    sync_event = unittest.mock.Mock()
-    mosura.app.app.state.sync_event = sync_event
     mosura.app.app.state.jira_client = types.SimpleNamespace(
         approximate_issue_count=unittest.mock.Mock(
             side_effect=jira.JIRAError(text='bad JQL query'),
@@ -296,7 +291,6 @@ async def test_patch_settings_invalid_jql_returns_422(
     assert response.json() == {'detail': 'bad JQL query'}
     upsert_mock.assert_not_awaited()
     api_session.commit.assert_not_awaited()
-    sync_event.set.assert_not_called()
 
 
 async def test_patch_settings_empty_clears_setting(
@@ -306,9 +300,6 @@ async def test_patch_settings_empty_clears_setting(
 ) -> None:
     delete_mock = unittest.mock.AsyncMock()
     monkeypatch.setattr(models.Setting, 'delete', delete_mock)
-
-    sync_event = unittest.mock.Mock()
-    mosura.app.app.state.sync_event = sync_event
 
     response = await client.patch(
         '/api/v0/settings',
@@ -324,7 +315,6 @@ async def test_patch_settings_empty_clears_setting(
     }
     delete_mock.assert_awaited_once_with('custom_jql', session=api_session)
     api_session.commit.assert_awaited_once()
-    sync_event.set.assert_called_once()
 
 
 async def test_patch_settings_null_clears_setting(
@@ -334,9 +324,6 @@ async def test_patch_settings_null_clears_setting(
 ) -> None:
     delete_mock = unittest.mock.AsyncMock()
     monkeypatch.setattr(models.Setting, 'delete', delete_mock)
-
-    sync_event = unittest.mock.Mock()
-    mosura.app.app.state.sync_event = sync_event
 
     response = await client.patch(
         '/api/v0/settings',
@@ -352,4 +339,3 @@ async def test_patch_settings_null_clears_setting(
     }
     delete_mock.assert_awaited_once_with('custom_jql', session=api_session)
     api_session.commit.assert_awaited_once()
-    sync_event.set.assert_called_once()

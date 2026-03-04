@@ -183,9 +183,7 @@
   background-color: #e74c3c;
 }
 
-.gantt-segment.status-in-progress,
-.gantt-segment.status-code-review,
-.gantt-segment.status-ready-for-testing {
+.gantt-segment.status-in-progress {
   background-color: #f39c12;
   color: #333;
 }

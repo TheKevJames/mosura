@@ -24,7 +24,7 @@ class Priority(str, enum.Enum):
         return self.value
 
     @property
-    def css_class(self) -> str:  # pylint: disable=inconsistent-return-statements
+    def css_class(self) -> str:
         if self == Priority.unknown:
             return 'grey question circle icon'
         if self == Priority.low:
@@ -38,7 +38,7 @@ class Priority(str, enum.Enum):
         assert_never(self)
 
     @property
-    def sort_value(self) -> str:  # pylint: disable=inconsistent-return-statements
+    def sort_value(self) -> str:
         if self == Priority.unknown:
             return 'pri0'
         if self == Priority.low:
@@ -50,6 +50,20 @@ class Priority(str, enum.Enum):
         if self == Priority.urgent:
             return 'pri4'
         assert_never(self)
+
+
+class Status:
+    @staticmethod
+    def normalize_status(x: str) -> str:
+        if x in {'To Do', 'Backlog'}:
+            return 'backlog'
+        if x == 'Needs Triage':
+            return 'needs-triage'
+        if x in {'Code Review', 'In Progress', 'Ready for Testing'}:
+            return 'in-progress'
+        if x in {'Closed', 'Done', 'Root Caused'}:
+            return 'closed'
+        return x.lower().replace(' ', '-')
 
 
 class Component(pydantic.BaseModel):
@@ -109,14 +123,6 @@ class IssueCreate(pydantic.BaseModel):
         ]
 
     @classmethod
-    def parse_date(cls, x: str | None) -> datetime.date | None:
-        if x is None:
-            return x
-        return datetime.datetime.fromisoformat(x).replace(
-            tzinfo=datetime.UTC,
-        ).date()
-
-    @classmethod
     def parse_datetime(cls, x: str) -> datetime.datetime:
         dt = datetime.datetime.fromisoformat(x)
         if dt.tzinfo is None:
@@ -138,6 +144,10 @@ class IssueCreate(pydantic.BaseModel):
 
     @staticmethod
     def parse_status(status: str) -> str:
+        # This method should only be used for cases that we want to globally be
+        # true, eg. to de-duplicate statuses with differing names in differing
+        # projects. Do not use this method to make different statuses act the
+        # same way, that should be done in `normalize_status()`.
         return {
             'To Do': 'Backlog',
             'Done': 'Closed',
@@ -146,16 +156,25 @@ class IssueCreate(pydantic.BaseModel):
 
     @classmethod
     def from_jira(cls, data: dict[str, Any]) -> Self:
-        # normalizations
-        status = cls.parse_status(data['fields']['status']['name'])
-
         # TODO: make this less stupid
         # TODO: two-way sync to keep these in sync?
-        startdate = cls.parse_date(
+        startdate_value = (
             data['fields']['customfield_12133']  # Start Date (cal)
-            or data['fields'].get('customfield_12161'),  # Start Date (issue)
+            or data['fields'].get('customfield_12161')  # Start Date (issue)
         )
-        duedate = cls.parse_date(data['fields']['duedate'])  # End Date (cal)
+        startdate = (
+            cls.parse_datetime(startdate_value).date()
+            if startdate_value is not None
+            else None
+        )
+
+        duedate_value = data['fields']['duedate']  # End Date (cal)
+        duedate = (
+            cls.parse_datetime(duedate_value).date()
+            if duedate_value is not None
+            else None
+        )
+
         if duedate is not None and startdate is not None:
             timeestimate = duedate - startdate
         else:
@@ -169,7 +188,7 @@ class IssueCreate(pydantic.BaseModel):
             description=data['renderedFields']['description'],
             key=data['key'],
             priority=data['fields']['priority']['name'],
-            status=status,
+            status=cls.parse_status(data['fields']['status']['name']),
             summary=data['fields']['summary'],
             startdate=startdate,
             created=cls.parse_datetime(data['fields']['created']),
@@ -186,17 +205,14 @@ class IssueCreate(pydantic.BaseModel):
 
     @property
     def status_sort_value(self) -> str:
-        if self.status == 'Needs Triage':
-            return 'stat0'
-        if self.status == 'Backlog':
-            return 'stat1'
-        if self.status == 'In Progress':
-            return 'stat2'
-        if self.status == 'Code Review':
-            return 'stat3'
-        if self.status == 'Closed':
-            return 'stat4'
-        return 'stat9'
+        return {
+            'Needs Triage': 'stat0',
+            'Backlog': 'stat1',
+            'In Progress': 'stat2',
+            'Code Review': 'stat3',
+            'Ready for Testing': 'stat4',
+            'Closed': 'stat5',
+        }.get(self.status, 'stat9')
 
 
 class Issue(IssueCreate):

@@ -98,7 +98,6 @@ async def patch_settings(
         async with database.session_from_app(request.app) as session:
             await models.Setting.delete('custom_jql', session=session)
             await session.commit()
-        request.app.state.sync_event.set()
         return {'status': 'ok', 'custom_jql': None, 'issue_count': 0}
 
     try:
@@ -118,7 +117,6 @@ async def patch_settings(
         )
         await session.commit()
 
-    request.app.state.sync_event.set()
     return {
         'status': 'ok',
         'custom_jql': custom_jql,

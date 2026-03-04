@@ -512,7 +512,7 @@ async def test_timeline_uses_issue_transitions_for_segments(
     html = response.text
     assert 'status-needs-triage' in html
     assert 'status-in-progress' in html
-    assert 'status-ready-for-testing' in html
+    assert 'status-ready-for-testing' not in html
     assert 'title="Code Review: 2026-03-02 to 2026-03-02"' in html
     assert 'title="Ready for Testing: 2026-03-02 to 2026-03-08"' in html
     assert html.count('has-transition-marker') >= 2

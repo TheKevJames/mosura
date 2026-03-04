@@ -71,8 +71,6 @@ async def lifespan(app_: fastapi.FastAPI) -> AsyncIterator[None]:
         await conn.run_sync(models.Base.metadata.create_all)
     logger.info('startup(): initialized db')
 
-    app_.state.sync_event = asyncio.Event()
-
     # TODO: catch errors in these tasks immediately and crash/retry
     app_.state.tasks = await tasks.spawn(app_)
     for t in app_.state.tasks:
@@ -89,7 +87,6 @@ async def lifespan(app_: fastapi.FastAPI) -> AsyncIterator[None]:
         task.cancel()
 
     await asyncio.gather(*app_.state.tasks, return_exceptions=True)
-
     await app_.state.engine.dispose()
 
 
