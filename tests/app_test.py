@@ -40,7 +40,7 @@ def test_resolve_tracked_user_falls_back_to_jira_auth_user() -> None:
 
     resolved = mosura.app.resolve_tracked_user(app)
 
-    assert resolved == 'account-123'
+    assert resolved.accountId == 'account-123'
     app.state.jira_client.search_users.assert_called_once_with(
         query='auth@example.com',
     )
@@ -64,7 +64,7 @@ def test_resolve_tracked_user_raises_on_ambiguous_matches() -> None:
 
 def test_resolve_tracked_user_prefers_matching_account_id() -> None:
     app = fastapi.FastAPI()
-    app.state.tracked_user_id = 'acct-2'
+    app.state.settings = types.SimpleNamespace(jira_tracked_user='acct-2')
     app.state.jira_client = types.SimpleNamespace(
         search_users=unittest.mock.Mock(
             return_value=[
@@ -76,7 +76,7 @@ def test_resolve_tracked_user_prefers_matching_account_id() -> None:
 
     resolved = mosura.app.resolve_tracked_user(app)
 
-    assert resolved == 'Bob'
+    assert resolved.displayName == 'Bob'
 
 
 async def test_lifespan_fails_fast_if_tracked_user_is_unresolvable(
@@ -157,14 +157,10 @@ async def test_lifespan_starts_background_tasks(
         mosura.app,
         'resolve_tracked_user',
         unittest.mock.Mock(
-            return_value='account-123',
-        ),
-    )
-    monkeypatch.setattr(
-        mosura.app,
-        'resolve_tracked_assignee',
-        unittest.mock.Mock(
-            return_value='Alice Example',
+            return_value=types.SimpleNamespace(
+                accountId='account-123',
+                displayName='Alice Example',
+            ),
         ),
     )
     monkeypatch.setattr(
