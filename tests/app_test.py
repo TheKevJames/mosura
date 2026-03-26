@@ -512,6 +512,19 @@ async def test_timeline_uses_issue_transitions_for_segments(
     )
     mosura.app.app.state.tracked_user_name = 'TestUser'
 
+    frozen = datetime.datetime(2026, 3, 4, 12, 0, 0, tzinfo=datetime.UTC)
+    original_now = datetime.datetime.now
+
+    def _fake_now(tz: object = None) -> datetime.datetime:
+        return frozen if tz is not None else original_now()
+
+    fake_cls = type(
+        'FakeDatetime',
+        (datetime.datetime,),
+        {'now': staticmethod(_fake_now)},
+    )
+    monkeypatch.setattr('mosura.ui.datetime.datetime', fake_cls)
+
     response = await client.get('/timeline?date=2026-03-04')
 
     assert response.status_code == 200
