@@ -10,8 +10,8 @@ from typing import Any
 from typing import cast
 
 import fastapi
-import httpx
 import jira
+import niquests
 import pytest
 import sqlalchemy.ext.asyncio
 import sqlalchemy.orm
@@ -34,10 +34,9 @@ class SyncSessionAdapter:
 
 
 @pytest.fixture(scope='function')
-async def client() -> AsyncIterator[httpx.AsyncClient]:
-    async with httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=mosura.app.app),
-        base_url='http://test',
+async def client() -> AsyncIterator[niquests.AsyncSession]:
+    async with niquests.AsyncSession(
+        app=mosura.app.app,
     ) as c:
         yield c
 

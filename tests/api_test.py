@@ -3,8 +3,8 @@ import unittest.mock
 from collections.abc import Callable
 from typing import Any
 
-import httpx
 import jira
+import niquests
 import pytest
 
 import mosura.app
@@ -13,7 +13,7 @@ from mosura import schemas
 
 
 async def test_read_issue_success(
-    client: httpx.AsyncClient,
+    client: niquests.AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
     api_session: types.SimpleNamespace,
     issue_factory: Callable[..., schemas.Issue],
@@ -34,7 +34,7 @@ async def test_read_issue_success(
 
 
 async def test_read_issue_not_found(
-    client: httpx.AsyncClient,
+    client: niquests.AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
     api_session: types.SimpleNamespace,
 ) -> None:
@@ -53,7 +53,7 @@ async def test_read_issue_not_found(
 
 
 async def test_patch_issue_not_found(
-    client: httpx.AsyncClient,
+    client: niquests.AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
     api_session: types.SimpleNamespace,
 ) -> None:
@@ -79,7 +79,7 @@ async def test_patch_issue_not_found(
 
 
 async def test_patch_issue_conflict(
-    client: httpx.AsyncClient,
+    client: niquests.AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
     api_session: types.SimpleNamespace,
     jira_raw_factory: Callable[..., dict[str, Any]],
@@ -141,7 +141,7 @@ async def test_patch_issue_conflict(
 
 
 async def test_patch_issue_success(  # pylint: disable=too-many-locals
-    client: httpx.AsyncClient,
+    client: niquests.AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
     api_session: types.SimpleNamespace,
     jira_raw_factory: Callable[..., dict[str, Any]],
@@ -206,7 +206,7 @@ async def test_patch_issue_success(  # pylint: disable=too-many-locals
 
 
 async def test_get_settings_returns_null_when_no_setting(
-    client: httpx.AsyncClient,
+    client: niquests.AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
     api_session: types.SimpleNamespace,
 ) -> None:
@@ -222,7 +222,7 @@ async def test_get_settings_returns_null_when_no_setting(
 
 
 async def test_get_settings_returns_current_value(
-    client: httpx.AsyncClient,
+    client: niquests.AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
     api_session: types.SimpleNamespace,
 ) -> None:
@@ -238,7 +238,7 @@ async def test_get_settings_returns_current_value(
 
 
 async def test_patch_settings_valid_jql_persists_and_returns_count(
-    client: httpx.AsyncClient,
+    client: niquests.AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
     api_session: types.SimpleNamespace,
 ) -> None:
@@ -268,7 +268,7 @@ async def test_patch_settings_valid_jql_persists_and_returns_count(
 
 
 async def test_patch_settings_invalid_jql_returns_422(
-    client: httpx.AsyncClient,
+    client: niquests.AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
     api_session: types.SimpleNamespace,
 ) -> None:
@@ -294,7 +294,7 @@ async def test_patch_settings_invalid_jql_returns_422(
 
 
 async def test_patch_settings_empty_clears_setting(
-    client: httpx.AsyncClient,
+    client: niquests.AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
     api_session: types.SimpleNamespace,
 ) -> None:
@@ -318,7 +318,7 @@ async def test_patch_settings_empty_clears_setting(
 
 
 async def test_patch_settings_null_clears_setting(
-    client: httpx.AsyncClient,
+    client: niquests.AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
     api_session: types.SimpleNamespace,
 ) -> None:

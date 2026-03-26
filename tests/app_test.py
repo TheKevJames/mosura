@@ -8,7 +8,7 @@ import warnings
 from collections.abc import Callable
 
 import fastapi
-import httpx
+import niquests
 import pytest
 
 import mosura.app
@@ -18,7 +18,7 @@ from mosura import models
 from mosura import schemas
 
 
-async def test_root(client: httpx.AsyncClient) -> None:
+async def test_root(client: niquests.AsyncSession) -> None:
     response = await client.get('/api/v0/ping')
 
     assert response.status_code == 204
@@ -221,7 +221,7 @@ def _mock_issue_get(
 
 @pytest.mark.usefixtures('api_session')
 async def test_home_returns_200_with_section_headings(
-    client: httpx.AsyncClient,
+    client: niquests.AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
     issue_factory: Callable[..., schemas.Issue],
 ) -> None:
@@ -247,6 +247,7 @@ async def test_home_returns_200_with_section_headings(
     response = await client.get('/')
 
     assert response.status_code == 200
+    assert response.text is not None
     html = response.text
     print(f'Response contains {len(html)} chars')
     assert 'My Issues (Top 5)' in html
@@ -256,7 +257,7 @@ async def test_home_returns_200_with_section_headings(
 
 @pytest.mark.usefixtures('api_session')
 async def test_home_limits_my_issues_to_5(
-    client: httpx.AsyncClient,
+    client: niquests.AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
     issue_factory: Callable[..., schemas.Issue],
 ) -> None:
@@ -274,6 +275,7 @@ async def test_home_limits_my_issues_to_5(
 
     response = await client.get('/')
 
+    assert response.text is not None
     html = response.text
     # Count unique issue keys rendered in the "my issues" table
     my_keys_found = sorted(set(re.findall(r'MY-\d+', html)))
@@ -283,7 +285,7 @@ async def test_home_limits_my_issues_to_5(
 
 @pytest.mark.usefixtures('api_session')
 async def test_home_sorts_my_issues_by_priority_descending(
-    client: httpx.AsyncClient,
+    client: niquests.AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
     issue_factory: Callable[..., schemas.Issue],
 ) -> None:
@@ -307,6 +309,7 @@ async def test_home_sorts_my_issues_by_priority_descending(
 
     response = await client.get('/')
 
+    assert response.text is not None
     html = response.text
     # Find the order of issue keys in the rendered HTML
     positions = {
@@ -323,7 +326,7 @@ async def test_home_sorts_my_issues_by_priority_descending(
 
 @pytest.mark.usefixtures('api_session')
 async def test_home_empty_states(
-    client: httpx.AsyncClient,
+    client: niquests.AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
@@ -339,6 +342,7 @@ async def test_home_empty_states(
 
     response = await client.get('/')
 
+    assert response.text is not None
     html = response.text
     print(f'Empty state HTML length: {len(html)}')
     assert 'No issues assigned' in html
@@ -347,7 +351,7 @@ async def test_home_empty_states(
 
 @pytest.mark.usefixtures('api_session')
 async def test_home_timeline_renders_gantt_chart(
-    client: httpx.AsyncClient,
+    client: niquests.AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
     issue_factory: Callable[..., schemas.Issue],
     transition_factory: Callable[..., schemas.IssueTransition],
@@ -390,6 +394,7 @@ async def test_home_timeline_renders_gantt_chart(
     response = await client.get('/')
 
     assert response.status_code == 200
+    assert response.text is not None
     html = response.text
     # Verify gantt chart class is present
     assert 'gantt-chart' in html
@@ -401,7 +406,7 @@ async def test_home_timeline_renders_gantt_chart(
 
 @pytest.mark.usefixtures('api_session')
 async def test_home_timeline_has_no_date_navigation(
-    client: httpx.AsyncClient,
+    client: niquests.AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
     issue_factory: Callable[..., schemas.Issue],
 ) -> None:
@@ -424,6 +429,7 @@ async def test_home_timeline_has_no_date_navigation(
     response = await client.get('/')
 
     assert response.status_code == 200
+    assert response.text is not None
     html = response.text
     # Verify no timeline-picker-link elements (date navigation controls)
     assert html.count('timeline-picker-link') == 0
@@ -431,7 +437,7 @@ async def test_home_timeline_has_no_date_navigation(
 
 @pytest.mark.usefixtures('api_session')
 async def test_timeline_header_shows_full_range(
-    client: httpx.AsyncClient,
+    client: niquests.AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     issue_get = unittest.mock.AsyncMock(return_value=[])
@@ -441,6 +447,7 @@ async def test_timeline_header_shows_full_range(
     response = await client.get('/timeline?date=2026-03-02')
 
     assert response.status_code == 200
+    assert response.text is not None
     html = response.text
     assert '2026-02-09 - 2026-04-13' in html
     # Timeline has 4 navigation links: prev month, prev week, next week, next
@@ -450,7 +457,7 @@ async def test_timeline_header_shows_full_range(
 
 @pytest.mark.usefixtures('api_session')
 async def test_timeline_uses_issue_transitions_for_segments(
-    client: httpx.AsyncClient,
+    client: niquests.AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
     issue_factory: Callable[..., schemas.Issue],
     transition_factory: Callable[..., schemas.IssueTransition],
@@ -509,6 +516,7 @@ async def test_timeline_uses_issue_transitions_for_segments(
 
     assert response.status_code == 200
     transition_get.assert_awaited_once()
+    assert response.text is not None
     html = response.text
     assert 'status-needs-triage' in html
     assert 'status-in-progress' in html
@@ -520,7 +528,7 @@ async def test_timeline_uses_issue_transitions_for_segments(
 
 @pytest.mark.usefixtures('api_session')
 async def test_timeline_overdue_tooltip_includes_status(
-    client: httpx.AsyncClient,
+    client: niquests.AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
     issue_factory: Callable[..., schemas.Issue],
 ) -> None:
@@ -551,5 +559,6 @@ async def test_timeline_overdue_tooltip_includes_status(
     response = await client.get('/timeline?date=2026-03-04')
 
     assert response.status_code == 200
+    assert response.text is not None
     html = response.text
     assert 'title="In Progress: overdue since 2026-03-01"' in html
