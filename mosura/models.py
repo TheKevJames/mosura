@@ -310,7 +310,7 @@ class Issue(Base):
         cls, issue: schemas.IssueCreate, *,
         session: AsyncSession,
     ) -> None:
-        # TODO: fix upserts, then aviod the deletion here
+        # TODO: fix upserts, then avoid the deletion here
         deletion = delete(cls).where(cls.key == issue.key)
         await session.execute(deletion)
 
