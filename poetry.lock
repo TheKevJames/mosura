@@ -702,14 +702,14 @@ files = [
 
 [[package]]
 name = "niquests"
-version = "3.18.2"
+version = "3.18.3"
 description = "Niquests is a simple, yet elegant, HTTP library. It is a drop-in replacement for Requests, which is under feature freeze."
 optional = false
 python-versions = ">=3.7"
 groups = ["dev"]
 files = [
-    {file = "niquests-3.18.2-py3-none-any.whl", hash = "sha256:930b43cb8633029e7acb4e8ff41607eca3b01a8e30f1806eed6734c74266b42c"},
-    {file = "niquests-3.18.2.tar.gz", hash = "sha256:12256e7ecaccc498d9cccd9f4116b91abab812bace37966f3f439e92e26195b9"},
+    {file = "niquests-3.18.3-py3-none-any.whl", hash = "sha256:3db9831becafd3e48323c2ab4044801a9ddf7f08a634dab2276013e117cf0ae7"},
+    {file = "niquests-3.18.3.tar.gz", hash = "sha256:d561dfeb5a932f9b5c7724302543883774d4a175fc22d9301753ab304c89ce08"},
 ]
 
 [package.dependencies]
@@ -719,9 +719,10 @@ wassima = {version = ">=1.0.1,<3", markers = "sys_platform != \"emscripten\""}
 
 [package.extras]
 brotli = ["urllib3-future[brotli]"]
-full = ["orjson (>=3,<4)", "urllib3-future[brotli,socks,ws,zstd]"]
+full = ["orjson (>=3,<4)", "urllib3-future[brotli,rtls,socks,ws,zstd]"]
 http3 = ["urllib3-future[qh3]"]
 ocsp = ["urllib3-future[qh3]"]
+rtls = ["urllib3-future[rtls]"]
 socks = ["urllib3-future[socks]"]
 speedups = ["orjson (>=3,<4)", "urllib3-future[brotli,zstd]"]
 ws = ["urllib3-future[ws]"]
@@ -1499,4 +1500,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<4.0"
-content-hash = "d0405d7d7c338d04ac3061b59ed05df81e01ba27d803981e6ecc0cdab621a36c"
+content-hash = "ee096469aa7faca4deb3d5a176d8db3cd00c36ea71b5c19ce5252db140b0e048"
