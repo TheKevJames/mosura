@@ -20,7 +20,7 @@ dependencies = [
     # NOTE: On arm64, Poetry can omit transitive greenlet from
     # sqlalchemy[aiosqlite] due marker evaluation (arm64 vs aarch64).
     # TODO: Remove once greenlet is reliably installed transitively on arm64.
-    "greenlet==3.3.2; platform_machine == 'arm64'",
+    "greenlet==3.4.0; platform_machine == 'arm64'",
     "uvicorn==0.44.0",
     "uvloop==0.22.1",
 ]
