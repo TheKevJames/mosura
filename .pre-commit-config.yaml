@@ -99,7 +99,7 @@ repos:
         # Note that some libraries keep their type hints in packages named
         # `types-$lib` or `$lib-stubs`.
         additional_dependencies:
-          - fastapi==0.136.0
+          - fastapi==0.136.1
           - niquests==3.18.6
           - jira==3.10.5
           - pydantic==2.13.3
