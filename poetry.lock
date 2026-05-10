@@ -708,14 +708,14 @@ files = [
 
 [[package]]
 name = "niquests"
-version = "3.18.7"
+version = "3.18.8"
 description = "Niquests is a simple, yet elegant, HTTP library. It is a drop-in replacement for Requests, which is under feature freeze."
 optional = false
 python-versions = ">=3.7"
 groups = ["dev"]
 files = [
-    {file = "niquests-3.18.7-py3-none-any.whl", hash = "sha256:6126e20bd5b09d5deaa2c20634e4d9c1c0d0112aaa92cb24be56d6a858b22daa"},
-    {file = "niquests-3.18.7.tar.gz", hash = "sha256:7587a20e5c0fba0f2474d06b1f95794310585ba3a90e509c9a41f817100011e4"},
+    {file = "niquests-3.18.8-py3-none-any.whl", hash = "sha256:9b1a3a378277bfca4b2438877d0954e989e4d3f3f75da7bb83bf7204dfa5f1cf"},
+    {file = "niquests-3.18.8.tar.gz", hash = "sha256:06244ef4d1c93b067295b22c1d7a8938be948af1227d368c22acf531f61fdf57"},
 ]
 
 [package.dependencies]
@@ -1505,4 +1505,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<4.0"
-content-hash = "60686aec741517a770362b057aa5ec7ab747b56210d75b1017f488057d7a7b3f"
+content-hash = "a15a5e45f55231f6c4537e53406ffc9cac149e715d454bf4023a3898d5e6e8ea"
