@@ -104,7 +104,7 @@ repos:
           - jira==3.10.5
           - pydantic==2.13.4
           - pydantic-settings==2.14.2
-          - pytest==9.0.3
+          - pytest==9.1.1
           - sqlalchemy==2.0.51
         args:
           - --show-error-codes
