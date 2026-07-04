@@ -36,7 +36,7 @@ package-mode = true
 python = ">=3.11,<4.0"
 
 [tool.poetry.group.dev.dependencies]
-niquests = "3.19.1"
+niquests = "3.20.0"
 pytest = "9.1.1"
 pytest-asyncio = "1.4.0"
 
