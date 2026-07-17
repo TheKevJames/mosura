@@ -100,7 +100,7 @@ repos:
         # `types-$lib` or `$lib-stubs`.
         additional_dependencies:
           - fastapi==0.139.0
-          - niquests==3.20.0
+          - niquests==3.20.1
           - jira==3.10.5
           - pydantic==2.13.4
           - pydantic-settings==2.14.2
