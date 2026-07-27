@@ -1,9 +1,9 @@
 version: 2.1
 
 orbs:
-  docker: talkiq/docker@4.2.0
-  linter: talkiq/linter@4.0.1
-  poetry: talkiq/poetry@4.2.1
+  docker: https://raw.githubusercontent.com/TheKevJames/tools/refs/heads/master/circleci-orbs/docker.yml
+  poetry: https://raw.githubusercontent.com/TheKevJames/tools/refs/heads/master/circleci-orbs/poetry.yml
+  pre-commit: https://raw.githubusercontent.com/TheKevJames/tools/refs/heads/master/circleci-orbs/pre-commit.yml
 
 executors:
   docker:
@@ -78,7 +78,7 @@ jobs:
 workflows:
   run-jobs:
     jobs:
-      - linter/pre-commit:
+      - pre-commit/pre-commit:
           executor: python
       - poetry/run:
           name: test
@@ -87,7 +87,7 @@ workflows:
             - run: poetry run pytest
       - docker-build-readme:
           requires:
-            - linter/pre-commit
+            - pre-commit/pre-commit
       - docker-workflow:
           requires:
             - docker-build-readme
