@@ -103,7 +103,7 @@ repos:
           - niquests==3.21.0
           - jira==3.10.5
           - pydantic==2.13.4
-          - pydantic-settings==2.14.2
+          - pydantic-settings==2.15.0
           - pytest==9.1.1
           - sqlalchemy==2.0.51
         args:
