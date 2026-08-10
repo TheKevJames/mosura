@@ -122,6 +122,38 @@ async def test_unchanged_issue_skips_writes_and_changelog(
     assert not jira_client.changelog_fetches
 
 
+async def test_non_utc_offset_round_trips_and_skips_second_cycle(
+    db_session: sqlalchemy.ext.asyncio.AsyncSession,
+    jira_raw_factory: IssueFactory,
+) -> None:
+    # Real Jira returns ``updated`` in the caller's timezone, not UTC. A
+    # store-then-fetch of the same instant must compare equal, otherwise every
+    # issue looks changed on every poll. Drive two consecutive syncs off one
+    # payload whose ``updated`` never advances and prove the second is a skip.
+    payload = jira_raw_factory(
+        key='MOS-1',
+        assignee='Alice',
+        summary='v1',
+        updated='2026-01-05T05:00:00.000-0500',
+    )
+    jira_client = _FakeJiraClient([payload], histories=_STATUS_HISTORY)
+    app = _build_app(jira_client)
+
+    await tasks.sync_desired_issues(app=app, session=db_session)
+    await db_session.commit()
+    assert await _summary(db_session, 'MOS-1') == 'v1'
+
+    # Same instant, new summary: a working gate skips the write entirely.
+    payload['fields']['summary'] = 'v2'
+    jira_client.changelog_fetches.clear()
+
+    await tasks.sync_desired_issues(app=app, session=db_session)
+    await db_session.commit()
+
+    assert await _summary(db_session, 'MOS-1') == 'v1'
+    assert not jira_client.changelog_fetches
+
+
 async def test_changed_issue_resyncs_graph_and_transitions(
     db_session: sqlalchemy.ext.asyncio.AsyncSession,
     issue_create_factory: Callable[..., schemas.IssueCreate],
