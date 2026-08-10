@@ -1,0 +1,164 @@
+.agents/skills/ask-matt/PHASE-BOUNDARIES.md
+  h_b8efbacaba1c31 1-55
+.agents/skills/ask-matt/SKILL.md
+  h_b8efbacaba1c31 1-90
+.agents/skills/ask-matt/agents/openai.yaml
+  h_b8efbacaba1c31 1-5
+.agents/skills/code-review/SKILL.md
+  h_b8efbacaba1c31 1-87
+.agents/skills/code-review/agents/openai.yaml
+  h_b8efbacaba1c31 1-3
+.agents/skills/codebase-design/DEEPENING.md
+  h_b8efbacaba1c31 1-37
+.agents/skills/codebase-design/DESIGN-IT-TWICE.md
+  h_b8efbacaba1c31 1-44
+.agents/skills/codebase-design/SKILL.md
+  h_b8efbacaba1c31 1-114
+.agents/skills/codebase-design/agents/openai.yaml
+  h_b8efbacaba1c31 1-3
+.agents/skills/diagnosing-bugs/SKILL.md
+  h_b8efbacaba1c31 1-140
+.agents/skills/diagnosing-bugs/agents/openai.yaml
+  h_b8efbacaba1c31 1-3
+.agents/skills/diagnosing-bugs/scripts/hitl-loop.template.sh
+  h_b8efbacaba1c31 1-44
+.agents/skills/domain-modeling/ADR-FORMAT.md
+  h_b8efbacaba1c31 1-47
+.agents/skills/domain-modeling/CONTEXT-FORMAT.md
+  h_b8efbacaba1c31 1-60
+.agents/skills/domain-modeling/SKILL.md
+  h_b8efbacaba1c31 1-74
+.agents/skills/domain-modeling/agents/openai.yaml
+  h_b8efbacaba1c31 1-3
+.agents/skills/grill-me/SKILL.md
+  h_b8efbacaba1c31 1-7
+.agents/skills/grill-me/agents/openai.yaml
+  h_b8efbacaba1c31 1-5
+.agents/skills/grill-with-docs/SKILL.md
+  h_b8efbacaba1c31 1-7
+.agents/skills/grill-with-docs/agents/openai.yaml
+  h_b8efbacaba1c31 1-5
+.agents/skills/grilling/SKILL.md
+  h_b8efbacaba1c31 1-22
+.agents/skills/grilling/agents/openai.yaml
+  h_b8efbacaba1c31 1-3
+.agents/skills/handoff/SKILL.md
+  h_b8efbacaba1c31 1-16
+.agents/skills/handoff/agents/openai.yaml
+  h_b8efbacaba1c31 1-5
+.agents/skills/implement/SKILL.md
+  h_b8efbacaba1c31 1-15
+.agents/skills/implement/agents/openai.yaml
+  h_b8efbacaba1c31 1-5
+.agents/skills/improve-codebase-architecture/HTML-REPORT.md
+  h_b8efbacaba1c31 1-123
+.agents/skills/improve-codebase-architecture/SKILL.md
+  h_b8efbacaba1c31 1-71
+.agents/skills/improve-codebase-architecture/agents/openai.yaml
+  h_b8efbacaba1c31 1-5
+.agents/skills/prototype/LOGIC.md
+  h_b8efbacaba1c31 1-67
+.agents/skills/prototype/SKILL.md
+  h_b8efbacaba1c31 1-26
+.agents/skills/prototype/UI.md
+  h_b8efbacaba1c31 1-112
+.agents/skills/prototype/agents/openai.yaml
+  h_b8efbacaba1c31 1-3
+.agents/skills/research/SKILL.md
+  h_b8efbacaba1c31 1-12
+.agents/skills/research/agents/openai.yaml
+  h_b8efbacaba1c31 1-3
+.agents/skills/resolving-merge-conflicts/SKILL.md
+  h_b8efbacaba1c31 1-14
+.agents/skills/resolving-merge-conflicts/agents/openai.yaml
+  h_b8efbacaba1c31 1-3
+.agents/skills/setup-matt-pocock-skills/SKILL.md
+  h_b8efbacaba1c31 1-116
+.agents/skills/setup-matt-pocock-skills/agents/openai.yaml
+  h_b8efbacaba1c31 1-5
+.agents/skills/setup-matt-pocock-skills/domain.md
+  h_b8efbacaba1c31 1-51
+.agents/skills/setup-matt-pocock-skills/issue-tracker-github.md
+  h_b8efbacaba1c31 1-45
+.agents/skills/setup-matt-pocock-skills/issue-tracker-gitlab.md
+  h_b8efbacaba1c31 1-46
+.agents/skills/setup-matt-pocock-skills/issue-tracker-local.md
+  h_b8efbacaba1c31 1-30
+.agents/skills/setup-matt-pocock-skills/triage-labels.md
+  h_b8efbacaba1c31 1-15
+.agents/skills/tdd/SKILL.md
+  h_b8efbacaba1c31 1-38
+.agents/skills/tdd/agents/openai.yaml
+  h_b8efbacaba1c31 1-3
+.agents/skills/tdd/mocking.md
+  h_b8efbacaba1c31 1-59
+.agents/skills/tdd/tests.md
+  h_b8efbacaba1c31 1-77
+.agents/skills/teach/GLOSSARY-FORMAT.md
+  h_b8efbacaba1c31 1-35
+.agents/skills/teach/LEARNING-RECORD-FORMAT.md
+  h_b8efbacaba1c31 1-46
+.agents/skills/teach/MISSION-FORMAT.md
+  h_b8efbacaba1c31 1-31
+.agents/skills/teach/RESOURCES-FORMAT.md
+  h_b8efbacaba1c31 1-32
+.agents/skills/teach/SKILL.md
+  h_b8efbacaba1c31 1-140
+.agents/skills/teach/agents/openai.yaml
+  h_b8efbacaba1c31 1-5
+.agents/skills/to-questionnaire/SKILL.md
+  h_b8efbacaba1c31 1-53
+.agents/skills/to-questionnaire/agents/openai.yaml
+  h_b8efbacaba1c31 1-5
+.agents/skills/to-spec/SKILL.md
+  h_b8efbacaba1c31 1-75
+.agents/skills/to-spec/agents/openai.yaml
+  h_b8efbacaba1c31 1-5
+.agents/skills/to-tickets/SKILL.md
+  h_b8efbacaba1c31 1-105
+.agents/skills/to-tickets/agents/openai.yaml
+  h_b8efbacaba1c31 1-5
+.agents/skills/triage/AGENT-BRIEF.md
+  h_b8efbacaba1c31 1-207
+.agents/skills/triage/OUT-OF-SCOPE.md
+  h_b8efbacaba1c31 1-105
+.agents/skills/triage/SKILL.md
+  h_b8efbacaba1c31 1-112
+.agents/skills/triage/agents/openai.yaml
+  h_b8efbacaba1c31 1-5
+.agents/skills/wait-what/SKILL.md
+  h_b8efbacaba1c31 1-7
+.agents/skills/wait-what/agents/openai.yaml
+  h_b8efbacaba1c31 1-5
+.agents/skills/wayfinder/SKILL.md
+  h_b8efbacaba1c31 1-128
+.agents/skills/wayfinder/agents/openai.yaml
+  h_b8efbacaba1c31 1-5
+.agents/skills/wizard/SKILL.md
+  h_b8efbacaba1c31 1-44
+.agents/skills/wizard/agents/openai.yaml
+  h_b8efbacaba1c31 1-3
+.agents/skills/wizard/template.sh
+  h_b8efbacaba1c31 1-204
+.agents/skills/writing-for-agents/SKILL-MECHANICS.md
+  h_b8efbacaba1c31 1-22
+.agents/skills/writing-for-agents/SKILL.md
+  h_b8efbacaba1c31 1-81
+.agents/skills/writing-for-agents/agents/openai.yaml
+  h_b8efbacaba1c31 1-3
+.pre-commit-config.yaml
+  h_b8efbacaba1c31 13-14
+skills-lock.json
+  h_b8efbacaba1c31 1-155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "4492a0e4fc446ce6674d52a7335b29996f27e841",
+  "prompts": {},
+  "humans": {
+    "h_b8efbacaba1c31": {
+      "author": "Kevin James <KevinJames@thekev.in>"
+    }
+  }
+}
