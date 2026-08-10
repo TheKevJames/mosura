@@ -1,0 +1,21 @@
+mosura/schemas/issue.py
+  s_8a534ae212f626::t_16e21622a871a2 127-132,136
+tests/tasks_issue_graph_test.py
+  s_8a534ae212f626::t_189ce5fc7742f7 125-156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "8dc7ff63de856daa6491e36dd6e9e99bf896554c",
+  "prompts": {},
+  "sessions": {
+    "s_8a534ae212f626": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019febbb-0693-7568-9746-7de315ef6efb",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Kevin James <KevinJames@thekev.in>"
+    }
+  }
+}
