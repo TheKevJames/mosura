@@ -1,13 +1,10 @@
 import asyncio
 import datetime
 import logging
-import random
-import time
 from collections.abc import Iterator
 from typing import Any
 
 import fastapi
-from sqlalchemy.sql import update
 
 from . import database
 from . import models
@@ -87,33 +84,18 @@ async def _sync_issue_transitions(
     app: fastapi.FastAPI,
     session: Any,
 ) -> None:
-    """Sync transitions for a single issue from Jira changelog."""
+    """
+    Sync transitions for a single issue from Jira changelog.
+
+    Callers gate this on the issue having actually changed (see
+    ``sync_desired_issues``), so there is no per-issue freshness guard here.
+    """
     assignee = (
         issue.get('fields', {}).get('assignee') or {}
     ).get('displayName')
     if assignee != app.state.tracked_user_name:
         # We don't need transitions unless we're rendering timelines, and we
         # only do that for the tracked user.
-        return
-
-    existing_issue = await models.Issue.get(
-        key=issue['key'],
-        closed=True,
-        session=session,
-    )
-    if not existing_issue:
-        logger.error(
-            'tried to sync transitions for missing issue %s', issue['key'],
-        )
-        return
-
-    issue_obj = existing_issue[0]
-    issue_updated = datetime.datetime.fromisoformat(
-        issue['fields']['updated'].replace('+0000', '+00:00'),
-    ).replace(tzinfo=datetime.UTC)
-    transitions_synced_at = getattr(issue_obj, 'transitions_synced_at', None)
-    if transitions_synced_at and transitions_synced_at > issue_updated:
-        # Don't sync if the issue hasn't been updated since last time
         return
 
     try:
@@ -134,14 +116,6 @@ async def _sync_issue_transitions(
                 transition,
                 session=session,
             )
-
-        # Update transitions_synced_at
-        # TODO: formalize this into Issue.upsert
-        now = datetime.datetime.now(datetime.UTC)
-        stmt = update(models.Issue).where(
-            models.Issue.key == issue['key'],
-        ).values(transitions_synced_at=now)
-        await session.execute(stmt)
     except Exception:
         logger.exception(
             'sync(issue): failed to sync transitions for key=%s',
@@ -154,7 +128,6 @@ async def _upsert_issue_graph(
     *,
     app: fastapi.FastAPI,
     session: Any,
-    sync_transitions: bool = True,
 ) -> None:
     key = issue['key']
 
@@ -196,15 +169,25 @@ async def _upsert_issue_graph(
     )
 
     # Sync transitions for tracked user issues
-    if sync_transitions:
-        await _sync_issue_transitions(issue, app, session)
+    await _sync_issue_transitions(issue, app, session)
+
+
+def _issue_changed(
+    fetched_updated: datetime.datetime,
+    stored_updated: datetime.datetime | None,
+) -> bool:
+    # The single change-detection rule applied to the whole issue graph: an
+    # issue is worth syncing when we have never stored it, or when Jira's
+    # ``updated`` has advanced past what we stored last time. Both sides are
+    # tz-aware UTC (stored values are normalised on read) so this comparison
+    # never raises on the naive datetimes SQLite hands back.
+    return stored_updated is None or fetched_updated > stored_updated
 
 
 async def sync_desired_issues(
     *,
     app: fastapi.FastAPI,
     session: Any,
-    transition_timeout: float,
 ) -> set[str]:
     jql = f'(assignee = "{app.state.tracked_user_id}")'
     custom_jql = await models.Setting.get('custom_jql', session=session)
@@ -217,39 +200,31 @@ async def sync_desired_issues(
     )
     logger.debug('sync(desired): fetched=%d', len(fetched_issues))
 
-    deadline = time.monotonic() + max(transition_timeout, 0)
-    transitions_enabled = transition_timeout > 0
-    transition_syncs = 0
-    transition_syncs_skipped = 0
+    stored_updated = await models.Issue.get_updated_map(session=session)
 
-    # If we're timing out regularly, random sampling will at least let us
-    # best-effort sync more issue transitions.
-    for issue in random.sample(fetched_issues, k=len(fetched_issues)):
-        if transitions_enabled and time.monotonic() >= deadline:
-            logger.info(
-                'sync(desired): transition timeout reached after %d issues',
-                transition_syncs,
-            )
-            transitions_enabled = False
+    synced = 0
+    skipped = 0
+    for issue in fetched_issues:
+        fetched_updated = schemas.IssueCreate.parse_datetime(
+            issue['fields']['updated'],
+        )
+        stored = stored_updated.get(issue['key'])
+        if not _issue_changed(fetched_updated, stored):
+            skipped += 1
+            continue
 
-        if transitions_enabled:
-            transition_syncs += 1
-        else:
-            transition_syncs_skipped += 1
-
+        synced += 1
         await _upsert_issue_graph(
             issue,
             app=app,
             session=session,
-            sync_transitions=transitions_enabled,
         )
 
     logger.info(
-        'sync(desired): upserted=%d transmission_syncs=%d '
-        'transition_syncs_skipped=%d',
+        'sync(desired): fetched=%d synced=%d skipped_unchanged=%d',
         len(fetched_issues),
-        transition_syncs,
-        transition_syncs_skipped,
+        synced,
+        skipped,
     )
     return {issue['key'] for issue in fetched_issues}
 
@@ -396,7 +371,6 @@ async def fetch_desired(
             desired_keys = await sync_desired_issues(
                 app=app,
                 session=session,
-                transition_timeout=interval.total_seconds() // 2,
             )
             pruned_keys = await reconcile_stale_issues(
                 session=session,

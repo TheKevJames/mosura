@@ -1,10 +1,11 @@
-import asyncio
+import datetime
 import types
-import unittest.mock
+from collections.abc import Awaitable
 from collections.abc import Callable
 from typing import Any
 
-import pytest
+import fastapi
+import sqlalchemy.ext.asyncio
 
 from mosura import models
 from mosura import schemas
@@ -14,333 +15,283 @@ from mosura import tasks
 IssueFactory = Callable[..., dict[str, Any]]
 
 
-async def _to_thread_inline(
-    func: Callable[..., Any],
-    *args: Any,
-    **kwargs: Any,
-) -> Any:
-    result = func(*args, **kwargs)
-    if asyncio.iscoroutine(result):
-        return await result
-    return result
+class _FakeJiraClient:
+    """
+    Faithful-enough stand-in for the only Jira boundary the sync touches.
 
+    Records changelog fetches so tests can assert on the real external effect
+    (an extra Jira round-trip) rather than on private call counts.
+    """
 
-async def _upsert_issue_graph(
-    issue: dict[str, Any],
-    *,
-    session: Any,
-    tracked_user_name: str,
-    jira_client: Any,
-) -> None:
-    upsert = getattr(tasks, '_upsert_issue_graph')
-    app = types.SimpleNamespace(
-        state=types.SimpleNamespace(
-            tracked_user_name=tracked_user_name,
-            jira_client=jira_client,
-        ),
-    )
-    await upsert(
-        issue,
-        app=app,
-        session=session,
-    )
-
-
-async def test_upsert_issue_graph_syncs_transitions_for_tracked_user(
-    monkeypatch: pytest.MonkeyPatch,
-    jira_raw_factory: IssueFactory,
-    api_session: types.SimpleNamespace,
-) -> None:
-    session = api_session
-    issue = jira_raw_factory(
-        key='MOS-1',
-        assignee='Alice',
-        created='2026-01-01T00:00:00.000+0000',
-        updated='2026-01-05T10:00:00.000+0000',
-    )
-
-    monkeypatch.setattr(
-        models.Issue,
-        'get',
-        unittest.mock.AsyncMock(
-            return_value=[
-                types.SimpleNamespace(
-                    key='MOS-1',
-                    transitions_synced_at=None,
-                ),
-            ],
-        ),
-    )
-    monkeypatch.setattr(models.Issue, 'upsert', unittest.mock.AsyncMock())
-    monkeypatch.setattr(
-        models.Component,
-        'list_',
-        unittest.mock.AsyncMock(return_value=set()),
-    )
-    monkeypatch.setattr(
-        models.Component,
-        'delete_many',
-        unittest.mock.AsyncMock(),
-    )
-    monkeypatch.setattr(models.Component, 'upsert', unittest.mock.AsyncMock())
-    monkeypatch.setattr(
-        models.Label,
-        'list_',
-        unittest.mock.AsyncMock(return_value=set()),
-    )
-    monkeypatch.setattr(
-        models.Label,
-        'delete_many',
-        unittest.mock.AsyncMock(),
-    )
-    monkeypatch.setattr(models.Label, 'upsert', unittest.mock.AsyncMock())
-
-    transition_delete = unittest.mock.AsyncMock()
-    transition_upsert = unittest.mock.AsyncMock()
-    monkeypatch.setattr(models.IssueTransition, 'delete', transition_delete)
-    monkeypatch.setattr(models.IssueTransition, 'upsert', transition_upsert)
-
-    session.execute = unittest.mock.AsyncMock()
-    jira_client = types.SimpleNamespace(
-        issue=unittest.mock.AsyncMock(
-            return_value=types.SimpleNamespace(
-                raw={
-                    'changelog': {
-                        'histories': [
-                            {
-                                'created': '2026-01-05T10:00:00.000+0000',
-                                'items': [
-                                    {
-                                        'field': 'status',
-                                        'fromString': 'To Do',
-                                        'toString': 'In Progress',
-                                    },
-                                ],
-                            },
-                        ],
-                    },
-                },
-            ),
-        ),
-    )
-    monkeypatch.setattr('asyncio.to_thread', _to_thread_inline)
-
-    await _upsert_issue_graph(
-        issue,
-        session=session,
-        tracked_user_name='Alice',
-        jira_client=jira_client,
-    )
-
-    transition_delete.assert_awaited_once_with('MOS-1', session=session)
-    assert transition_upsert.await_count == 1
-
-
-async def test_upsert_issue_graph_skips_transitions_for_non_tracked_user(
-    monkeypatch: pytest.MonkeyPatch,
-    jira_raw_factory: IssueFactory,
-) -> None:
-    issue = jira_raw_factory(
-        key='MOS-1',
-        assignee='Bob',
-    )
-
-    monkeypatch.setattr(
-        models.Component,
-        'list_',
-        unittest.mock.AsyncMock(return_value=set()),
-    )
-    monkeypatch.setattr(
-        models.Component,
-        'delete_many',
-        unittest.mock.AsyncMock(),
-    )
-    monkeypatch.setattr(models.Component, 'upsert', unittest.mock.AsyncMock())
-    monkeypatch.setattr(
-        models.Label,
-        'list_',
-        unittest.mock.AsyncMock(return_value=set()),
-    )
-    monkeypatch.setattr(
-        models.Label,
-        'delete_many',
-        unittest.mock.AsyncMock(),
-    )
-    monkeypatch.setattr(models.Label, 'upsert', unittest.mock.AsyncMock())
-    monkeypatch.setattr(models.Issue, 'upsert', unittest.mock.AsyncMock())
-    transition_delete = unittest.mock.AsyncMock()
-    monkeypatch.setattr(models.IssueTransition, 'delete', transition_delete)
-
-    await _upsert_issue_graph(
-        issue,
-        session=object(),
-        tracked_user_name='Alice',
-        jira_client=types.SimpleNamespace(),
-    )
-
-    transition_delete.assert_not_awaited()
-
-
-async def test_upsert_issue_graph_only_mutates_changed_components_and_labels(
-    monkeypatch: pytest.MonkeyPatch,
-    jira_raw_factory: IssueFactory,
-) -> None:
-    issue = jira_raw_factory(
-        key='MOS-9',
-        assignee='Bob',
-        components=['A', 'B'],
-        labels=['x'],
-    )
-
-    component_delete_many = unittest.mock.AsyncMock()
-    component_upsert = unittest.mock.AsyncMock()
-    label_delete_many = unittest.mock.AsyncMock()
-    label_upsert = unittest.mock.AsyncMock()
-
-    monkeypatch.setattr(models.Issue, 'upsert', unittest.mock.AsyncMock())
-    monkeypatch.setattr(
-        models.Component,
-        'list_',
-        unittest.mock.AsyncMock(return_value={'A', 'C'}),
-    )
-    monkeypatch.setattr(models.Component, 'delete_many', component_delete_many)
-    monkeypatch.setattr(models.Component, 'upsert', component_upsert)
-    monkeypatch.setattr(
-        models.Label,
-        'list_',
-        unittest.mock.AsyncMock(return_value={'x', 'y'}),
-    )
-    monkeypatch.setattr(models.Label, 'delete_many', label_delete_many)
-    monkeypatch.setattr(models.Label, 'upsert', label_upsert)
-
-    await _upsert_issue_graph(
-        issue,
-        session=object(),
-        tracked_user_name='Alice',
-        jira_client=types.SimpleNamespace(),
-    )
-
-    component_delete_many.assert_awaited_once_with(
-        'MOS-9',
-        {'C'},
-        session=unittest.mock.ANY,
-    )
-    component_upsert.assert_awaited_once()
-    component_upsert_call = component_upsert.await_args
-    assert component_upsert_call is not None
-    assert component_upsert_call.args[0] == schemas.Component(
-        key='MOS-9',
-        component='B',
-    )
-    label_delete_many.assert_awaited_once_with(
-        'MOS-9',
-        {'y'},
-        session=unittest.mock.ANY,
-    )
-    label_upsert.assert_not_awaited()
-
-
-async def test_upsert_issue_graph_syncs_transitions_for_closed_issue(
-    monkeypatch: pytest.MonkeyPatch,
-    jira_raw_factory: IssueFactory,
-    api_session: types.SimpleNamespace,
-) -> None:
-    session = api_session
-    issue = jira_raw_factory(
-        key='MOS-2',
-        status='Done',
-        assignee='Alice',
-        created='2026-01-01T00:00:00.000+0000',
-        updated='2026-01-05T10:00:00.000+0000',
-    )
-
-    async def get_issue(
+    def __init__(
+        self,
+        issues: list[dict[str, Any]],
         *,
-        key: str | None = None,
-        closed: bool = False,
-        session: Any,
-    ) -> list[types.SimpleNamespace]:
-        _ = session
-        if key == 'MOS-2' and closed:
-            return [
-                types.SimpleNamespace(
-                    key='MOS-2',
-                    transitions_synced_at=None,
-                ),
-            ]
-        return []
+        histories: list[dict[str, Any]] | None = None,
+    ) -> None:
+        self._issues = issues
+        self._histories = histories or []
+        self.changelog_fetches: list[str] = []
 
-    issue_get = unittest.mock.AsyncMock(side_effect=get_issue)
-    monkeypatch.setattr(models.Issue, 'get', issue_get)
-    monkeypatch.setattr(models.Issue, 'upsert', unittest.mock.AsyncMock())
-    monkeypatch.setattr(
-        models.Component,
-        'list_',
-        unittest.mock.AsyncMock(return_value=set()),
-    )
-    monkeypatch.setattr(
-        models.Component,
-        'delete_many',
-        unittest.mock.AsyncMock(),
-    )
-    monkeypatch.setattr(models.Component, 'upsert', unittest.mock.AsyncMock())
-    monkeypatch.setattr(
-        models.Label,
-        'list_',
-        unittest.mock.AsyncMock(return_value=set()),
-    )
-    monkeypatch.setattr(
-        models.Label,
-        'delete_many',
-        unittest.mock.AsyncMock(),
-    )
-    monkeypatch.setattr(models.Label, 'upsert', unittest.mock.AsyncMock())
+    def enhanced_search_issues(
+        self, jql: str, **kwargs: Any,
+    ) -> dict[str, Any]:
+        _ = jql, kwargs
+        return {'issues': self._issues, 'isLast': True}
 
-    transition_delete = unittest.mock.AsyncMock()
-    transition_upsert = unittest.mock.AsyncMock()
-    monkeypatch.setattr(models.IssueTransition, 'delete', transition_delete)
-    monkeypatch.setattr(models.IssueTransition, 'upsert', transition_upsert)
+    def issue(self, key: str, **kwargs: Any) -> object:
+        _ = kwargs
+        self.changelog_fetches.append(key)
+        return types.SimpleNamespace(
+            raw={'changelog': {'histories': self._histories}},
+        )
 
-    session.execute = unittest.mock.AsyncMock()
-    jira_client = types.SimpleNamespace(
-        issue=unittest.mock.AsyncMock(
-            return_value=types.SimpleNamespace(
-                raw={
-                    'changelog': {
-                        'histories': [
-                            {
-                                'created': '2026-01-05T10:00:00.000+0000',
-                                'items': [
-                                    {
-                                        'field': 'status',
-                                        'fromString': 'To Do',
-                                        'toString': 'Done',
-                                    },
-                                ],
-                            },
-                        ],
-                    },
-                },
-            ),
+
+def _build_app(
+    jira_client: _FakeJiraClient,
+    *,
+    tracked_user_id: str = 'account-123',
+    tracked_user_name: str = 'Alice',
+) -> fastapi.FastAPI:
+    app = fastapi.FastAPI()
+    app.state.tracked_user_id = tracked_user_id
+    app.state.tracked_user_name = tracked_user_name
+    app.state.jira_client = jira_client
+    return app
+
+
+_STATUS_HISTORY = [
+    {
+        'created': '2026-01-05T10:00:00.000+0000',
+        'items': [
+            {
+                'field': 'status',
+                'fromString': 'To Do',
+                'toString': 'In Progress',
+            },
+        ],
+    },
+]
+
+
+async def _summary(
+    db_session: sqlalchemy.ext.asyncio.AsyncSession,
+    key: str,
+) -> str | None:
+    issues = await models.Issue.get(key=key, closed=True, session=db_session)
+    return issues[0].summary if issues else None
+
+
+async def test_unchanged_issue_skips_writes_and_changelog(
+    db_session: sqlalchemy.ext.asyncio.AsyncSession,
+    issue_create_factory: Callable[..., schemas.IssueCreate],
+    seed_issue: Callable[..., Awaitable[None]],
+    jira_raw_factory: IssueFactory,
+) -> None:
+    stored = datetime.datetime(2026, 1, 5, 10, 0, 0, tzinfo=datetime.UTC)
+    await seed_issue(
+        issue_create_factory(
+            'MOS-1',
+            status='In Progress',
+            assignee='Alice',
+            summary='stale summary',
+            updated=stored,
         ),
     )
-    monkeypatch.setattr('asyncio.to_thread', _to_thread_inline)
+    await db_session.commit()
 
-    await _upsert_issue_graph(
-        issue,
-        session=session,
-        tracked_user_name='Alice',
-        jira_client=jira_client,
+    jira_client = _FakeJiraClient(
+        [
+            jira_raw_factory(
+                key='MOS-1',
+                assignee='Alice',
+                summary='fresh summary',
+                updated='2026-01-05T10:00:00.000+0000',
+            ),
+        ],
+        histories=_STATUS_HISTORY,
     )
+    app = _build_app(jira_client)
 
-    print('Issue.get await calls:', issue_get.await_args_list)
-    issue_get.assert_awaited_once_with(
-        key='MOS-2',
-        closed=True,
-        session=session,
+    desired = await tasks.sync_desired_issues(app=app, session=db_session)
+    await db_session.commit()
+
+    assert desired == {'MOS-1'}
+    # A skipped issue is not re-upserted, so the stale summary survives.
+    assert await _summary(db_session, 'MOS-1') == 'stale summary'
+    assert not jira_client.changelog_fetches
+
+
+async def test_changed_issue_resyncs_graph_and_transitions(
+    db_session: sqlalchemy.ext.asyncio.AsyncSession,
+    issue_create_factory: Callable[..., schemas.IssueCreate],
+    seed_issue: Callable[..., Awaitable[None]],
+    jira_raw_factory: IssueFactory,
+) -> None:
+    stored = datetime.datetime(2026, 1, 5, 10, 0, 0, tzinfo=datetime.UTC)
+    await seed_issue(
+        issue_create_factory(
+            'MOS-1',
+            status='In Progress',
+            assignee='Alice',
+            summary='stale summary',
+            updated=stored,
+        ),
     )
-    transition_delete.assert_awaited_once_with('MOS-2', session=session)
-    assert transition_upsert.await_count == 1
+    await db_session.commit()
+
+    jira_client = _FakeJiraClient(
+        [
+            jira_raw_factory(
+                key='MOS-1',
+                assignee='Alice',
+                summary='fresh summary',
+                updated='2026-01-06T10:00:00.000+0000',
+            ),
+        ],
+        histories=_STATUS_HISTORY,
+    )
+    app = _build_app(jira_client)
+
+    await tasks.sync_desired_issues(app=app, session=db_session)
+    await db_session.commit()
+
+    assert await _summary(db_session, 'MOS-1') == 'fresh summary'
+    assert jira_client.changelog_fetches == ['MOS-1']
+    transitions = await models.IssueTransition.get_by_keys(
+        ['MOS-1'], session=db_session,
+    )
+    assert [t.to_status for t in transitions] == ['In Progress']
+
+
+async def test_cold_start_fully_syncs_new_issue(
+    db_session: sqlalchemy.ext.asyncio.AsyncSession,
+    jira_raw_factory: IssueFactory,
+) -> None:
+    jira_client = _FakeJiraClient(
+        [
+            jira_raw_factory(
+                key='MOS-1',
+                assignee='Alice',
+                summary='brand new',
+                components=['API'],
+                labels=['feature'],
+                updated='2026-01-06T10:00:00.000+0000',
+            ),
+        ],
+        histories=_STATUS_HISTORY,
+    )
+    app = _build_app(jira_client)
+
+    await tasks.sync_desired_issues(app=app, session=db_session)
+    await db_session.commit()
+
+    issues = await models.Issue.get(key='MOS-1', session=db_session)
+    assert len(issues) == 1
+    assert issues[0].summary == 'brand new'
+    assert [c.component for c in issues[0].components] == ['API']
+    assert [label.label for label in issues[0].labels] == ['feature']
+    assert jira_client.changelog_fetches == ['MOS-1']
+
+
+async def test_non_tracked_user_never_fetches_changelog(
+    db_session: sqlalchemy.ext.asyncio.AsyncSession,
+    jira_raw_factory: IssueFactory,
+) -> None:
+    jira_client = _FakeJiraClient(
+        [
+            jira_raw_factory(
+                key='MOS-1',
+                assignee='Bob',
+                summary='someone elses issue',
+                updated='2026-01-06T10:00:00.000+0000',
+            ),
+        ],
+        histories=_STATUS_HISTORY,
+    )
+    app = _build_app(jira_client)
+
+    await tasks.sync_desired_issues(app=app, session=db_session)
+    await db_session.commit()
+
+    # The graph is still synced for non-tracked users, but their timelines
+    # are never rendered, so the expensive changelog fetch is skipped.
+    assert await _summary(db_session, 'MOS-1') == 'someone elses issue'
+    assert not jira_client.changelog_fetches
+
+
+async def test_stale_issue_pruned_by_reconciliation(
+    db_session: sqlalchemy.ext.asyncio.AsyncSession,
+    issue_create_factory: Callable[..., schemas.IssueCreate],
+    seed_issue: Callable[..., Awaitable[None]],
+    jira_raw_factory: IssueFactory,
+) -> None:
+    await seed_issue(
+        issue_create_factory(
+            'MOS-gone',
+            status='In Progress',
+            assignee='Alice',
+        ),
+    )
+    await db_session.commit()
+
+    jira_client = _FakeJiraClient(
+        [
+            jira_raw_factory(
+                key='MOS-1',
+                assignee='Alice',
+                updated='2026-01-06T10:00:00.000+0000',
+            ),
+        ],
+    )
+    app = _build_app(jira_client)
+
+    desired = await tasks.sync_desired_issues(app=app, session=db_session)
+    pruned = await tasks.reconcile_stale_issues(
+        session=db_session, desired_keys=desired,
+    )
+    await db_session.commit()
+
+    assert pruned == {'MOS-gone'}
+    assert await models.Issue.list_keys(session=db_session) == ['MOS-1']
+
+
+async def test_naive_stored_timestamp_compares_against_aware_jira(
+    db_session: sqlalchemy.ext.asyncio.AsyncSession,
+    issue_create_factory: Callable[..., schemas.IssueCreate],
+    seed_issue: Callable[..., Awaitable[None]],
+    jira_raw_factory: IssueFactory,
+) -> None:
+    # SQLite hands back a naive datetime; Jira's timestamp is tz-aware. The
+    # gate must normalise both and decide "unchanged" without raising.
+    stored = datetime.datetime(2026, 1, 5, 10, 0, 0, tzinfo=datetime.UTC)
+    await seed_issue(
+        issue_create_factory(
+            'MOS-1',
+            status='In Progress',
+            assignee='Alice',
+            summary='stale summary',
+            updated=stored,
+        ),
+    )
+    await db_session.commit()
+
+    jira_client = _FakeJiraClient(
+        [
+            jira_raw_factory(
+                key='MOS-1',
+                assignee='Alice',
+                summary='fresh summary',
+                updated='2026-01-05T10:00:00.000+0000',
+            ),
+        ],
+    )
+    app = _build_app(jira_client)
+
+    await tasks.sync_desired_issues(app=app, session=db_session)
+    await db_session.commit()
+
+    assert await _summary(db_session, 'MOS-1') == 'stale summary'
 
 
 def test_parse_changelog_keeps_original_jira_status_names() -> None:
