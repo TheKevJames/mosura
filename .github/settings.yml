@@ -23,9 +23,8 @@ labels:
   - name: bug
     color: '#fc2929'
     description: Fix existing functionality
-  - name: enhancement
+  - name: feature
     color: '#84b6eb'
-    new_name: feature
     description: Add new functionality
   - name: task
     color: '#d93f0b'
@@ -37,17 +36,14 @@ labels:
   - name: low-priority
     color: '#fbca04'
 
-  - name: triage
+  - name: needs-triage
     color: '#ededed'
-    new_name: needs-triage
     description: Needs a maintainer to traige
-  - name: question
+  - name: needs-info
     color: '#cc317c'
-    new_name: needs-info
     description: Needs more information from the reporter
-  - name: backlog
+  - name: ready-for-human
     color: '#ededed'
-    new_name: ready-for-human
     description: Ticket ready for a human to tackle
   - name: ready-for-agent
     color: '#ededed'
