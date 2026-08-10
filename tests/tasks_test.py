@@ -30,7 +30,7 @@ def _build_app(
     return app
 
 
-async def test_sync_desired_issues_without_custom_jql(
+async def test_sync_desired_issues_appends_custom_jql(
     monkeypatch: pytest.MonkeyPatch,
     jira_raw_factory: IssueFactory,
 ) -> None:
@@ -41,71 +41,26 @@ async def test_sync_desired_issues_without_custom_jql(
         return_value=[jira_raw_factory(key='MOS-101')],
     )
     upsert = unittest.mock.AsyncMock()
-    setting_get = unittest.mock.AsyncMock(return_value=None)
+    setting_get = unittest.mock.AsyncMock(return_value='project = OPS')
+    updated_map = unittest.mock.AsyncMock(return_value={})
 
     monkeypatch.setattr(tasks, '_search_issues', search)
     monkeypatch.setattr(tasks, '_upsert_issue_graph', upsert)
     monkeypatch.setattr(models.Setting, 'get', setting_get)
+    monkeypatch.setattr(models.Issue, 'get_updated_map', updated_map)
 
-    desired = await tasks.sync_desired_issues(
-        app=app,
-        session=session,
-        transition_timeout=1,
-    )
+    desired = await tasks.sync_desired_issues(app=app, session=session)
 
     assert desired == {'MOS-101'}
     assert search.await_args_list == [
         unittest.mock.call(
             jira_client=app.state.jira_client,
-            jql='(assignee = "account-123")',
+            jql='(assignee = "account-123")OR(project = OPS)',
         ),
     ]
     assert [call.args[0]['key'] for call in upsert.await_args_list] == [
         'MOS-101',
     ]
-
-
-async def test_sync_desired_issues_limits_transition_sync_after_timeout(
-    monkeypatch: pytest.MonkeyPatch,
-    jira_raw_factory: IssueFactory,
-) -> None:
-    app = _build_app()
-    session = object()
-
-    search = unittest.mock.AsyncMock(
-        return_value=[
-            jira_raw_factory(key='MOS-1'),
-            jira_raw_factory(key='MOS-2'),
-            jira_raw_factory(key='MOS-3'),
-        ],
-    )
-    upsert = unittest.mock.AsyncMock()
-    setting_get = unittest.mock.AsyncMock(return_value=None)
-    monotonic = unittest.mock.Mock(side_effect=[100.0, 100.0, 100.2, 101.1])
-
-    monkeypatch.setattr(tasks, '_search_issues', search)
-    monkeypatch.setattr(tasks, '_upsert_issue_graph', upsert)
-    monkeypatch.setattr(models.Setting, 'get', setting_get)
-    monkeypatch.setattr(
-        tasks,
-        'time',
-        types.SimpleNamespace(monotonic=monotonic),
-    )
-
-    desired = await tasks.sync_desired_issues(
-        app=app,
-        session=session,
-        transition_timeout=1,
-    )
-
-    transition_flags = [
-        call.kwargs['sync_transitions']
-        for call in upsert.await_args_list
-    ]
-    print('sync_transitions flags:', transition_flags)
-
-    assert desired == {'MOS-1', 'MOS-2', 'MOS-3'}
-    assert transition_flags == [True, True, False]
 
 
 async def test_reconcile_stale_issues_deletes_stale_without_refetch(

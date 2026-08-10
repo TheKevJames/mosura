@@ -170,8 +170,7 @@ IssueRow = Row[
     tuple[
         str, str, str | None, str, str | None, str,
         datetime.datetime | None, datetime.datetime, datetime.datetime,
-        datetime.timedelta, int, datetime.datetime | None, str | None,
-        str | None,
+        datetime.timedelta, int, str | None, str | None,
     ]
 ]
 
@@ -190,14 +189,14 @@ def convert_component_response(
         key: str,
         results: Sequence[IssueRow],
 ) -> list[dict[str, str]]:
-    return convert_field_response(key, results, idx=12, name='component')
+    return convert_field_response(key, results, idx=11, name='component')
 
 
 def convert_label_response(
         key: str,
         results: Sequence[IssueRow],
 ) -> list[dict[str, str]]:
-    return convert_field_response(key, results, idx=13, name='label')
+    return convert_field_response(key, results, idx=12, name='label')
 
 
 def convert_issue_response(
@@ -248,9 +247,6 @@ class Issue(Base):
     updated: Mapped[datetime.datetime]
     timeestimate: Mapped[datetime.timedelta]
     votes: Mapped[int]
-    transitions_synced_at: Mapped[datetime.datetime | None] = mapped_column(
-        nullable=True,
-    )
 
     components: Mapped[list[Component]] = relationship()
     labels: Mapped[list[Label]] = relationship()
@@ -293,6 +289,22 @@ class Issue(Base):
         query = select(cls.key).order_by(cls.key)
         rows = await session.execute(query)
         return list(rows.scalars())
+
+    @classmethod
+    async def get_updated_map(
+        cls, *, session: AsyncSession,
+    ) -> dict[str, datetime.datetime]:
+        # Change-detection gate: only the stored ``updated`` timestamp is
+        # needed, so this deliberately skips the read model and its
+        # component/label joins. SQLite persists naive datetimes, so each
+        # value is UTC-normalised to stay comparable with tz-aware Jira
+        # timestamps.
+        query = select(cls.key, cls.updated)
+        rows = await session.execute(query)
+        return {
+            key: updated.replace(tzinfo=datetime.UTC)
+            for key, updated in rows.all()
+        }
 
     @classmethod
     async def hard_delete(

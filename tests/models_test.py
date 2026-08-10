@@ -26,7 +26,7 @@ async def test_convert_field_response_dedupes_and_sorts(
     converted = models.convert_field_response(
         'MOS-1',
         rows,
-        idx=12,
+        idx=11,
         name='component',
     )
 

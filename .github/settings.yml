@@ -38,7 +38,7 @@ labels:
 
   - name: needs-triage
     color: '#ededed'
-    description: Needs a maintainer to traige
+    description: Needs a maintainer to triage
   - name: needs-info
     color: '#cc317c'
     description: Needs more information from the reporter
