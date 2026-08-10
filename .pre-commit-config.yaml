@@ -10,6 +10,8 @@ default_install_hook_types:
 default_language_version:
     python: python3.14
 
+exclude: .agents/
+
 repos:
   - repo: https://github.com/compilerla/conventional-pre-commit
     rev: v4.4.0
