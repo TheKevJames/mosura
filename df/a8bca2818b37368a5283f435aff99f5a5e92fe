@@ -1,0 +1,21 @@
+tests/tasks_issue_graph_test.py
+  s_8f50a13b44aadc::t_83696f8758c411 356-388
+mosura/tasks.py
+  s_8f50a13b44aadc::t_3c38693a1776fd 58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "dfa8bca2818b37368a5283f435aff99f5a5e92fe",
+  "prompts": {},
+  "sessions": {
+    "s_8f50a13b44aadc": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019ffaa4-86b9-7074-b9cf-db71353fbfc4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Kevin James <KevinJames@thekev.in>"
+    }
+  }
+}
