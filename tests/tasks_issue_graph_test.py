@@ -353,3 +353,36 @@ def test_parse_changelog_keeps_original_jira_status_names() -> None:
     assert len(transitions) == 1
     assert transitions[0].from_status == 'To Do'
     assert transitions[0].to_status == 'Done'
+
+
+def test_parse_changelog_converts_non_utc_offset_to_utc() -> None:
+    # A west-of-UTC offset must be converted, not relabelled: the instant
+    # 2026-01-05T21:00-05:00 is 2026-01-06 in UTC, so the stored date must
+    # land on the 6th to stay consistent with the issue's ``created`` date.
+    parse_changelog = getattr(tasks, '_parse_changelog')
+    transitions = list(
+        parse_changelog(
+            {
+                'changelog': {
+                    'histories': [
+                        {
+                            'created': '2026-01-05T21:00:00.000-0500',
+                            'items': [
+                                {
+                                    'field': 'status',
+                                    'fromString': 'Open',
+                                    'toString': 'Needs Triage',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            },
+            'MOS-1',
+        ),
+    )
+
+    assert len(transitions) == 1
+    assert transitions[0].timestamp == datetime.datetime(
+        2026, 1, 6, 2, 0, 0, tzinfo=datetime.UTC,
+    )

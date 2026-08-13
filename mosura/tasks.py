@@ -54,11 +54,8 @@ def _parse_changelog(
         for item in history.get('items', []):
             if item.get('field') == 'status':
                 created_str = history.get('created', '')
-                # Parse ISO format from Jira: '2026-01-05T10:00:00.000+0000'
                 try:
-                    timestamp = datetime.datetime.fromisoformat(
-                        created_str.replace('+0000', '+00:00'),
-                    ).replace(tzinfo=datetime.UTC)
+                    timestamp = schemas.IssueCreate.parse_datetime(created_str)
                 except (ValueError, AttributeError):
                     logger.exception(
                         'sync(issue): failed to parse changelog timestamp '
