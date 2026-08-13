@@ -1,18 +1,48 @@
 import asyncio
+import contextlib
 import types
 import unittest.mock
+from collections.abc import AsyncIterator
 from collections.abc import Callable
 from typing import Any
 from typing import cast
 
 import fastapi
 import pytest
+import requests
 
+from mosura import database
 from mosura import models
 from mosura import tasks
 
 
 IssueFactory = Callable[..., dict[str, Any]]
+
+
+def _patch_fetch_loop(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    sync_side_effect: list[Any],
+    sleep_side_effect: Any = None,
+) -> unittest.mock.AsyncMock:
+    """Neutralise timing/db so a ``fetch_desired`` run is driven by mocks."""
+    @contextlib.asynccontextmanager
+    async def fake_session_from_app(
+        _app: fastapi.FastAPI,
+    ) -> AsyncIterator[object]:
+        yield object()
+
+    sync_once = unittest.mock.AsyncMock(side_effect=sync_side_effect)
+    monkeypatch.setattr(database, 'session_from_app', fake_session_from_app)
+    monkeypatch.setattr(
+        models.Task, 'get', unittest.mock.AsyncMock(return_value=None),
+    )
+    monkeypatch.setattr(tasks, '_sync_once', sync_once)
+    monkeypatch.setattr(
+        asyncio, 'sleep',
+        unittest.mock.AsyncMock(side_effect=sleep_side_effect),
+    )
+    return sync_once
 
 
 def _build_app(
@@ -152,6 +182,64 @@ async def test_reconcile_stale_issues_noops_when_no_stale_keys(
 
     assert not stale
     hard_delete.assert_not_awaited()
+
+
+async def test_fetch_desired_crashes_after_three_transient_failures(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = _build_app()
+    sync_once = _patch_fetch_loop(
+        monkeypatch,
+        sync_side_effect=[
+            requests.exceptions.ConnectionError(),
+            requests.exceptions.ConnectionError(),
+            requests.exceptions.ConnectionError(),
+        ],
+    )
+
+    with pytest.raises(requests.exceptions.ConnectionError):
+        await tasks.fetch_desired(app)
+
+    assert sync_once.await_count == 3
+
+
+async def test_fetch_desired_survives_transient_failures_below_threshold(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = _build_app()
+    # A success between transient failures must reset the streak: without the
+    # reset this pattern would hit three in a row and crash.
+    sync_once = _patch_fetch_loop(
+        monkeypatch,
+        sync_side_effect=[
+            requests.exceptions.ConnectionError(),
+            requests.exceptions.ConnectionError(),
+            None,
+            requests.exceptions.ConnectionError(),
+            requests.exceptions.ConnectionError(),
+        ],
+        sleep_side_effect=[None, None, None, None, asyncio.CancelledError()],
+    )
+
+    with pytest.raises(asyncio.CancelledError):
+        await tasks.fetch_desired(app)
+
+    assert sync_once.await_count == 5
+
+
+async def test_fetch_desired_crashes_immediately_on_non_transient(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = _build_app()
+    sync_once = _patch_fetch_loop(
+        monkeypatch,
+        sync_side_effect=[ValueError('boom')],
+    )
+
+    with pytest.raises(ValueError, match='boom'):
+        await tasks.fetch_desired(app)
+
+    assert sync_once.await_count == 1
 
 
 async def test_spawn_creates_single_desired_worker(

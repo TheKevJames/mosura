@@ -5,6 +5,7 @@ from collections.abc import Iterator
 from typing import Any
 
 import fastapi
+import requests
 
 from . import database
 from . import models
@@ -12,6 +13,17 @@ from . import schemas
 
 
 logger = logging.getLogger(__name__)
+
+# Network hiccups the poll loop should ride out rather than treat as fatal
+# (Jira/LB connection resets, read timeouts). A run that raises anything else
+# is a real failure and propagates immediately.
+_TRANSIENT_ERRORS = (
+    requests.exceptions.ConnectionError,
+    requests.exceptions.Timeout,
+)
+# Consecutive transient failures tolerated before we stop skipping runs and let
+# the error propagate, crashing the process for the orchestrator to restart.
+_MAX_CONSECUTIVE_TRANSIENT = 3
 
 
 async def _search_issues(
@@ -340,6 +352,33 @@ def _next_sleep_seconds(
     return int((next_run - now).total_seconds()) + 1
 
 
+async def _sync_once(
+    app: fastapi.FastAPI,
+    *,
+    variant: str,
+) -> None:
+    async with database.session_from_app(app) as session:
+        logger.info('fetch(%s): fetching data', variant)
+        desired_keys = await sync_desired_issues(app=app, session=session)
+        pruned_keys = await reconcile_stale_issues(
+            session=session,
+            desired_keys=desired_keys,
+        )
+        logger.debug(
+            'fetch(%s): desired=%d pruned=%d',
+            variant,
+            len(desired_keys),
+            len(pruned_keys),
+        )
+        task = schemas.Task.model_validate({
+            'key': 'fetch',
+            'variant': variant,
+            'latest': datetime.datetime.now(datetime.UTC),
+        })
+        await models.Task.upsert(task, session=session)
+        await session.commit()
+
+
 async def fetch_desired(
     app: fastapi.FastAPI,
 ) -> None:
@@ -353,6 +392,7 @@ async def fetch_desired(
         interval.seconds,
     )
 
+    consecutive_failures = 0
     while True:
         async with database.session_from_app(app) as session:
             now = datetime.datetime.now(datetime.UTC)
@@ -363,29 +403,26 @@ async def fetch_desired(
             logger.debug('fetch(%s): too soon, sleeping %ds', variant, sleep)
             await asyncio.sleep(sleep)
 
-        async with database.session_from_app(app) as session:
-            logger.info('fetch(%s): fetching data', variant)
-            desired_keys = await sync_desired_issues(
-                app=app,
-                session=session,
-            )
-            pruned_keys = await reconcile_stale_issues(
-                session=session,
-                desired_keys=desired_keys,
-            )
-            logger.debug(
-                'fetch(%s): desired=%d pruned=%d',
+        try:
+            await _sync_once(app, variant=variant)
+        except _TRANSIENT_ERRORS:
+            consecutive_failures += 1
+            if consecutive_failures >= _MAX_CONSECUTIVE_TRANSIENT:
+                logger.exception(
+                    'fetch(%s): transient failure %d in a row, giving up',
+                    variant,
+                    consecutive_failures,
+                )
+                raise
+            logger.warning(
+                'fetch(%s): transient failure %d/%d, skipping this run',
                 variant,
-                len(desired_keys),
-                len(pruned_keys),
+                consecutive_failures,
+                _MAX_CONSECUTIVE_TRANSIENT,
+                exc_info=True,
             )
-            task = schemas.Task.model_validate({
-                'key': 'fetch',
-                'variant': variant,
-                'latest': datetime.datetime.now(datetime.UTC),
-            })
-            await models.Task.upsert(task, session=session)
-            await session.commit()
+        else:
+            consecutive_failures = 0
 
         await asyncio.sleep(interval.total_seconds())
 
