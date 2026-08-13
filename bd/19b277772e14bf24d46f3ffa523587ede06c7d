@@ -1,0 +1,30 @@
+pyproject.toml
+  s_d11749adc3bd4f::t_f614496a58abca 19
+.pre-commit-config.yaml
+  s_d11749adc3bd4f::t_c1a2bab6c584ae 111
+mosura/tasks.py
+  s_d11749adc3bd4f::t_0582f7f2940700 8,17-27,355-381,395,406-413,415-418,420-422,424-425
+  s_d11749adc3bd4f::t_b81e9492a4c649 414
+tests/tasks_test.py
+  s_d11749adc3bd4f::t_764dae90ddaa8d 221,224
+  s_d11749adc3bd4f::t_b3c33b6fbbe60a 2,5,12,14,22-47,187-220,222-223,225-242
+  s_d11749adc3bd4f::t_f90296e1d6f053 243-244
+poetry.lock
+  s_d11749adc3bd4f::t_0864b9f8f0e80e 1,1525
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "bd19b277772e14bf24d46f3ffa523587ede06c7d",
+  "prompts": {},
+  "sessions": {
+    "s_d11749adc3bd4f": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019ffaa1-5c56-7ba1-8e46-b5339467098a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Kevin James <KevinJames@thekev.in>"
+    }
+  }
+}
