@@ -16,7 +16,7 @@ dependencies = [
     "jira==3.10.5",
     "pydantic==2.13.4",
     "pydantic-settings==2.15.0",
-    "requests==2.33.1",
+    "requests==2.34.2",
     "sqlalchemy[aiosqlite]==2.0.52",
     # NOTE: On arm64, Poetry can omit transitive greenlet from
     # sqlalchemy[aiosqlite] due marker evaluation (arm64 vs aarch64).
