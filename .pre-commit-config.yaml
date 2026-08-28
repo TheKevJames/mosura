@@ -104,7 +104,7 @@ repos:
           - fastapi==0.141.1
           - niquests==3.21.0
           - jira==3.10.5
-          - pydantic==2.13.4
+          - pydantic==2.13.5
           - pydantic-settings==2.15.0
           - pytest==9.1.1
           - sqlalchemy==2.0.52
@@ -171,7 +171,7 @@ repos:
           - '3.11'
         language: python
         additional_dependencies:
-          - pydantic==2.13.4
+          - pydantic==2.13.5
   - repo: local
     hooks:
       - id: poetry-check
