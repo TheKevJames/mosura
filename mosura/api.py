@@ -10,7 +10,6 @@ from . import models
 from . import schemas
 from . import tasks
 
-
 logger = logging.getLogger(__name__)
 router = fastapi.APIRouter(tags=['api'])
 
@@ -28,7 +27,7 @@ async def read_issue(request: fastapi.Request, key: str) -> schemas.Issue:
 
     if not issues:
         raise fastapi.HTTPException(
-            status_code=fastapi.status.HTTP_404_NOT_FOUND,
+            status_code=fastapi.status.HTTP_404_NOT_FOUND
         )
 
     return issues[0]
@@ -36,15 +35,13 @@ async def read_issue(request: fastapi.Request, key: str) -> schemas.Issue:
 
 @router.patch('/issues/{key}', status_code=fastapi.status.HTTP_204_NO_CONTENT)
 async def patch_issue(
-        request: fastapi.Request,
-        key: str,
-        issue: schemas.IssuePatch,
+    request: fastapi.Request, key: str, issue: schemas.IssuePatch
 ) -> None:
     async with database.session_from_app(request.app) as session:
         issues = await models.Issue.get(key=key, closed=True, session=session)
         if not issues:
             raise fastapi.HTTPException(
-                status_code=fastapi.status.HTTP_404_NOT_FOUND,
+                status_code=fastapi.status.HTTP_404_NOT_FOUND
             )
 
         cached_issue = issues[0]
@@ -55,10 +52,7 @@ async def patch_issue(
             expand='renderedFields',
         )
         if cached_issue != live_issue:
-            tasks.schedule_issue_refresh(
-                app=request.app,
-                key=cached_issue.key,
-            )
+            tasks.schedule_issue_refresh(app=request.app, key=cached_issue.key)
             raise fastapi.HTTPException(
                 status_code=fastapi.status.HTTP_409_CONFLICT,
                 detail=(
@@ -72,16 +66,13 @@ async def patch_issue(
 
         await asyncio.to_thread(live_issue.update, fields=issue.to_jira())
         await models.Issue.upsert(
-            cached_issue.model_copy(update=new_data),
-            session=session,
+            cached_issue.model_copy(update=new_data), session=session
         )
         await session.commit()
 
 
 @router.get('/settings')
-async def read_settings(
-        request: fastapi.Request,
-) -> dict[str, str | None]:
+async def read_settings(request: fastapi.Request) -> dict[str, str | None]:
     async with database.session_from_app(request.app) as session:
         value = await models.Setting.get('custom_jql', session=session)
     return {'custom_jql': value}
@@ -89,8 +80,7 @@ async def read_settings(
 
 @router.patch('/settings')
 async def patch_settings(
-        request: fastapi.Request,
-        body: dict[str, Any],
+    request: fastapi.Request, body: dict[str, Any]
 ) -> dict[str, Any]:
     custom_jql: str | None = body.get('custom_jql')
 
@@ -102,19 +92,13 @@ async def patch_settings(
 
     try:
         issue_count: int = await asyncio.to_thread(
-            request.app.state.jira_client.approximate_issue_count,
-            custom_jql,
+            request.app.state.jira_client.approximate_issue_count, custom_jql
         )
     except jira.JIRAError as exc:
-        raise fastapi.HTTPException(
-            status_code=422,
-            detail=exc.text,
-        ) from exc
+        raise fastapi.HTTPException(status_code=422, detail=exc.text) from exc
 
     async with database.session_from_app(request.app) as session:
-        await models.Setting.upsert(
-            'custom_jql', custom_jql, session=session,
-        )
+        await models.Setting.upsert('custom_jql', custom_jql, session=session)
         await session.commit()
 
     return {

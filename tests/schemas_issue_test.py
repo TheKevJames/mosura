@@ -61,8 +61,7 @@ def test_issuecreate_from_jira_uses_timeestimate_when_due_date_is_missing(
 
 def test_issuepatch_to_jira_wraps_priority_name() -> None:
     patch = schemas.IssuePatch(
-        priority=schemas.Priority.high,
-        summary='Re-run schema mapping',
+        priority=schemas.Priority.high, summary='Re-run schema mapping'
     )
 
     assert patch.to_jira() == {
@@ -102,8 +101,7 @@ def test_issue_equality_logs_mismatch_for_jira_issue(
 
     assert 'attempted update on out-of-sync issue MOS-123' in caplog.text
     assert (
-        'summary: Changed summary locally != Canonical summary'
-        in caplog.text
+        'summary: Changed summary locally != Canonical summary' in caplog.text
     )
 
 
@@ -118,10 +116,10 @@ def test_issuecreate_from_jira_parses_created_and_updated(
     issue = schemas.IssueCreate.from_jira(raw)
 
     expected_created = datetime.datetime(
-        2026, 1, 1, 10, 30, 0, tzinfo=datetime.UTC,
+        2026, 1, 1, 10, 30, 0, tzinfo=datetime.UTC
     )
     expected_updated = datetime.datetime(
-        2026, 1, 15, 14, 45, 0, tzinfo=datetime.UTC,
+        2026, 1, 15, 14, 45, 0, tzinfo=datetime.UTC
     )
     assert issue.created == expected_created
     assert issue.updated == expected_updated

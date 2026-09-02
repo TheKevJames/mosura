@@ -49,7 +49,7 @@ def test_from_issues_does_not_shorten_open_segment_before_current_date(
                 from_status='Backlog',
                 to_status='In Progress',
                 timestamp=datetime.datetime(
-                    2024, 1, 5, 10, 0, tzinfo=datetime.UTC,
+                    2024, 1, 5, 10, 0, tzinfo=datetime.UTC
                 ),
             ),
             transition_factory(
@@ -57,7 +57,7 @@ def test_from_issues_does_not_shorten_open_segment_before_current_date(
                 from_status='In Progress',
                 to_status='Code Review',
                 timestamp=datetime.datetime(
-                    2024, 1, 8, 10, 0, tzinfo=datetime.UTC,
+                    2024, 1, 8, 10, 0, tzinfo=datetime.UTC
                 ),
             ),
             transition_factory(
@@ -65,10 +65,10 @@ def test_from_issues_does_not_shorten_open_segment_before_current_date(
                 from_status='Code Review',
                 to_status='Ready for Testing',
                 timestamp=datetime.datetime(
-                    2024, 1, 9, 10, 0, tzinfo=datetime.UTC,
+                    2024, 1, 9, 10, 0, tzinfo=datetime.UTC
                 ),
             ),
-        ],
+        ]
     }
 
     timeline = schemas.Timeline.from_issues(

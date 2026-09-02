@@ -2,17 +2,16 @@ import datetime
 import enum
 import logging
 from typing import Any
-from typing import assert_never
 from typing import Self
+from typing import assert_never
 
 import jira
 import pydantic
 
-
 logger = logging.getLogger(__name__)
 
 
-class Priority(str, enum.Enum):
+class Priority(enum.StrEnum):
     # TODO: un-break support for jiras with non-default priorities
     unknown = 'No priority'
     low = 'Low'
@@ -185,7 +184,7 @@ class IssueCreate(pydantic.BaseModel):
             timeestimate = duedate - startdate
         else:
             timeestimate = cls.parse_timeestimate(
-                data['fields'].get('timeoriginalestimate') or '0',
+                data['fields'].get('timeoriginalestimate') or '0'
             )
 
         # TODO: handle relative links in description, eg. for <img src="/rest
@@ -244,13 +243,14 @@ class Issue(IssueCreate):
             if not check:
                 mismatches.append(
                     f'{field}: {getattr(self, field)} != '
-                    f'{getattr(parsed, field)}',
+                    f'{getattr(parsed, field)}'
                 )
 
         if mismatches:
             logger.error(
                 'attempted update on out-of-sync issue %s:\n\t%s',
-                self.key, '\n\t'.join(mismatches),
+                self.key,
+                '\n\t'.join(mismatches),
             )
             return False
 

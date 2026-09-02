@@ -15,7 +15,6 @@ from mosura import database
 from mosura import models
 from mosura import tasks
 
-
 IssueFactory = Callable[..., dict[str, Any]]
 
 
@@ -26,6 +25,7 @@ def _patch_fetch_loop(
     sleep_side_effect: Any = None,
 ) -> unittest.mock.AsyncMock:
     """Neutralise timing/db so a ``fetch_desired`` run is driven by mocks."""
+
     @contextlib.asynccontextmanager
     async def fake_session_from_app(
         _app: fastapi.FastAPI,
@@ -35,11 +35,12 @@ def _patch_fetch_loop(
     sync_once = unittest.mock.AsyncMock(side_effect=sync_side_effect)
     monkeypatch.setattr(database, 'session_from_app', fake_session_from_app)
     monkeypatch.setattr(
-        models.Task, 'get', unittest.mock.AsyncMock(return_value=None),
+        models.Task, 'get', unittest.mock.AsyncMock(return_value=None)
     )
     monkeypatch.setattr(tasks, '_sync_once', sync_once)
     monkeypatch.setattr(
-        asyncio, 'sleep',
+        asyncio,
+        'sleep',
         unittest.mock.AsyncMock(side_effect=sleep_side_effect),
     )
     return sync_once
@@ -51,9 +52,7 @@ def _build_app(
     tracked_user_name: str = 'Test User',
 ) -> fastapi.FastAPI:
     app = fastapi.FastAPI()
-    app.state.settings = types.SimpleNamespace(
-        mosura_poll_interval=60,
-    )
+    app.state.settings = types.SimpleNamespace(mosura_poll_interval=60)
     app.state.tracked_user_id = tracked_user_id
     app.state.tracked_user_name = tracked_user_name
     app.state.jira_client = types.SimpleNamespace()
@@ -61,14 +60,13 @@ def _build_app(
 
 
 async def test_sync_desired_issues_appends_custom_jql(
-    monkeypatch: pytest.MonkeyPatch,
-    jira_raw_factory: IssueFactory,
+    monkeypatch: pytest.MonkeyPatch, jira_raw_factory: IssueFactory
 ) -> None:
     app = _build_app()
     session = object()
 
     search = unittest.mock.AsyncMock(
-        return_value=[jira_raw_factory(key='MOS-101')],
+        return_value=[jira_raw_factory(key='MOS-101')]
     )
     upsert = unittest.mock.AsyncMock()
     setting_get = unittest.mock.AsyncMock(return_value='project = OPS')
@@ -86,10 +84,10 @@ async def test_sync_desired_issues_appends_custom_jql(
         unittest.mock.call(
             jira_client=app.state.jira_client,
             jql='(assignee = "account-123")OR(project = OPS)',
-        ),
+        )
     ]
     assert [call.args[0]['key'] for call in upsert.await_args_list] == [
-        'MOS-101',
+        'MOS-101'
     ]
 
 
@@ -99,7 +97,7 @@ async def test_reconcile_stale_issues_deletes_stale_without_refetch(
     session = object()
 
     list_keys = unittest.mock.AsyncMock(
-        return_value=['OPS-9', 'MOS-2', 'MOS-1'],
+        return_value=['OPS-9', 'MOS-2', 'MOS-1']
     )
     final_fetch = unittest.mock.AsyncMock()
     upsert = unittest.mock.AsyncMock()
@@ -111,8 +109,7 @@ async def test_reconcile_stale_issues_deletes_stale_without_refetch(
     monkeypatch.setattr(models.Issue, 'hard_delete', hard_delete)
 
     stale = await tasks.reconcile_stale_issues(
-        session=session,
-        desired_keys={'MOS-2'},
+        session=session, desired_keys={'MOS-2'}
     )
 
     assert stale == {'MOS-1', 'OPS-9'}
@@ -136,8 +133,7 @@ async def test_reconcile_stale_issues_deletes_single_stale_key(
     monkeypatch.setattr(models.Issue, 'hard_delete', hard_delete)
 
     stale = await tasks.reconcile_stale_issues(
-        session=session,
-        desired_keys=set(),
+        session=session, desired_keys=set()
     )
 
     assert stale == {'MOS-404'}
@@ -156,8 +152,7 @@ async def test_reconcile_stale_issues_keeps_desired_keys(
     monkeypatch.setattr(models.Issue, 'hard_delete', hard_delete)
 
     stale = await tasks.reconcile_stale_issues(
-        session=session,
-        desired_keys={'OPS-9'},
+        session=session, desired_keys={'OPS-9'}
     )
 
     assert stale == {'MOS-1'}
@@ -176,8 +171,7 @@ async def test_reconcile_stale_issues_noops_when_no_stale_keys(
     monkeypatch.setattr(models.Issue, 'hard_delete', hard_delete)
 
     stale = await tasks.reconcile_stale_issues(
-        session=session,
-        desired_keys={'MOS-1', 'MOS-2'},
+        session=session, desired_keys={'MOS-1', 'MOS-2'}
     )
 
     assert not stale
@@ -232,8 +226,7 @@ async def test_fetch_desired_crashes_immediately_on_non_transient(
 ) -> None:
     app = _build_app()
     sync_once = _patch_fetch_loop(
-        monkeypatch,
-        sync_side_effect=[ValueError('boom')],
+        monkeypatch, sync_side_effect=[ValueError('boom')]
     )
 
     with pytest.raises(ValueError, match='boom'):
@@ -250,24 +243,15 @@ async def test_spawn_creates_single_desired_worker(
 
     fetched: list[fastapi.FastAPI] = []
 
-    def fake_fetch_desired(
-        app_: fastapi.FastAPI,
-    ) -> object:
+    def fake_fetch_desired(app_: fastapi.FastAPI) -> object:
         fetched.append(app_)
         return 'desired'
 
     created: list[asyncio.Task[None]] = []
 
-    def fake_create_task(
-        _payload: object,
-        *,
-        name: str,
-    ) -> asyncio.Task[None]:
+    def fake_create_task(_payload: object, *, name: str) -> asyncio.Task[None]:
         assert name == 'fetch_desired'
-        task = cast(
-            asyncio.Task[None],
-            unittest.mock.Mock(spec=asyncio.Task),
-        )
+        task = cast(asyncio.Task[None], unittest.mock.Mock(spec=asyncio.Task))
         created.append(task)
         return task
 

@@ -11,7 +11,6 @@ from mosura import models
 from mosura import schemas
 from mosura import tasks
 
-
 IssueFactory = Callable[..., dict[str, Any]]
 
 
@@ -34,7 +33,7 @@ class _FakeJiraClient:
         self.changelog_fetches: list[str] = []
 
     def enhanced_search_issues(
-        self, jql: str, **kwargs: Any,
+        self, jql: str, **kwargs: Any
     ) -> dict[str, Any]:
         _ = jql, kwargs
         return {'issues': self._issues, 'isLast': True}
@@ -43,7 +42,7 @@ class _FakeJiraClient:
         _ = kwargs
         self.changelog_fetches.append(key)
         return types.SimpleNamespace(
-            raw={'changelog': {'histories': self._histories}},
+            raw={'changelog': {'histories': self._histories}}
         )
 
 
@@ -68,15 +67,14 @@ _STATUS_HISTORY = [
                 'field': 'status',
                 'fromString': 'To Do',
                 'toString': 'In Progress',
-            },
+            }
         ],
-    },
+    }
 ]
 
 
 async def _summary(
-    db_session: sqlalchemy.ext.asyncio.AsyncSession,
-    key: str,
+    db_session: sqlalchemy.ext.asyncio.AsyncSession, key: str
 ) -> str | None:
     issues = await models.Issue.get(key=key, closed=True, session=db_session)
     return issues[0].summary if issues else None
@@ -96,7 +94,7 @@ async def test_unchanged_issue_skips_writes_and_changelog(
             assignee='Alice',
             summary='stale summary',
             updated=stored,
-        ),
+        )
     )
     await db_session.commit()
 
@@ -107,7 +105,7 @@ async def test_unchanged_issue_skips_writes_and_changelog(
                 assignee='Alice',
                 summary='fresh summary',
                 updated='2026-01-05T10:00:00.000+0000',
-            ),
+            )
         ],
         histories=_STATUS_HISTORY,
     )
@@ -168,7 +166,7 @@ async def test_changed_issue_resyncs_graph_and_transitions(
             assignee='Alice',
             summary='stale summary',
             updated=stored,
-        ),
+        )
     )
     await db_session.commit()
 
@@ -179,7 +177,7 @@ async def test_changed_issue_resyncs_graph_and_transitions(
                 assignee='Alice',
                 summary='fresh summary',
                 updated='2026-01-06T10:00:00.000+0000',
-            ),
+            )
         ],
         histories=_STATUS_HISTORY,
     )
@@ -191,7 +189,7 @@ async def test_changed_issue_resyncs_graph_and_transitions(
     assert await _summary(db_session, 'MOS-1') == 'fresh summary'
     assert jira_client.changelog_fetches == ['MOS-1']
     transitions = await models.IssueTransition.get_by_keys(
-        ['MOS-1'], session=db_session,
+        ['MOS-1'], session=db_session
     )
     assert [t.to_status for t in transitions] == ['In Progress']
 
@@ -209,7 +207,7 @@ async def test_cold_start_fully_syncs_new_issue(
                 components=['API'],
                 labels=['feature'],
                 updated='2026-01-06T10:00:00.000+0000',
-            ),
+            )
         ],
         histories=_STATUS_HISTORY,
     )
@@ -237,7 +235,7 @@ async def test_non_tracked_user_never_fetches_changelog(
                 assignee='Bob',
                 summary='someone elses issue',
                 updated='2026-01-06T10:00:00.000+0000',
-            ),
+            )
         ],
         histories=_STATUS_HISTORY,
     )
@@ -260,10 +258,8 @@ async def test_stale_issue_pruned_by_reconciliation(
 ) -> None:
     await seed_issue(
         issue_create_factory(
-            'MOS-gone',
-            status='In Progress',
-            assignee='Alice',
-        ),
+            'MOS-gone', status='In Progress', assignee='Alice'
+        )
     )
     await db_session.commit()
 
@@ -273,14 +269,14 @@ async def test_stale_issue_pruned_by_reconciliation(
                 key='MOS-1',
                 assignee='Alice',
                 updated='2026-01-06T10:00:00.000+0000',
-            ),
-        ],
+            )
+        ]
     )
     app = _build_app(jira_client)
 
     desired = await tasks.sync_desired_issues(app=app, session=db_session)
     pruned = await tasks.reconcile_stale_issues(
-        session=db_session, desired_keys=desired,
+        session=db_session, desired_keys=desired
     )
     await db_session.commit()
 
@@ -304,7 +300,7 @@ async def test_naive_stored_timestamp_compares_against_aware_jira(
             assignee='Alice',
             summary='stale summary',
             updated=stored,
-        ),
+        )
     )
     await db_session.commit()
 
@@ -315,8 +311,8 @@ async def test_naive_stored_timestamp_compares_against_aware_jira(
                 assignee='Alice',
                 summary='fresh summary',
                 updated='2026-01-05T10:00:00.000+0000',
-            ),
-        ],
+            )
+        ]
     )
     app = _build_app(jira_client)
 
@@ -340,14 +336,14 @@ def test_parse_changelog_keeps_original_jira_status_names() -> None:
                                     'field': 'status',
                                     'fromString': 'To Do',
                                     'toString': 'Done',
-                                },
+                                }
                             ],
-                        },
-                    ],
-                },
+                        }
+                    ]
+                }
             },
             'MOS-1',
-        ),
+        )
     )
 
     assert len(transitions) == 1
@@ -372,17 +368,17 @@ def test_parse_changelog_converts_non_utc_offset_to_utc() -> None:
                                     'field': 'status',
                                     'fromString': 'Open',
                                     'toString': 'Needs Triage',
-                                },
+                                }
                             ],
-                        },
-                    ],
-                },
+                        }
+                    ]
+                }
             },
             'MOS-1',
-        ),
+        )
     )
 
     assert len(transitions) == 1
     assert transitions[0].timestamp == datetime.datetime(
-        2026, 1, 6, 2, 0, 0, tzinfo=datetime.UTC,
+        2026, 1, 6, 2, 0, 0, tzinfo=datetime.UTC
     )

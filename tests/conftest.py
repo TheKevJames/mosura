@@ -35,9 +35,7 @@ class SyncSessionAdapter:
 
 @pytest.fixture(scope='function')
 async def client() -> AsyncIterator[niquests.AsyncSession]:
-    async with niquests.AsyncSession(
-        app=mosura.app.app,
-    ) as c:
+    async with niquests.AsyncSession(app=mosura.app.app) as c:
         yield c
 
 
@@ -65,13 +63,10 @@ def jira_raw_factory() -> Callable[..., dict[str, Any]]:
             'key': key,
             'fields': {
                 'assignee': (
-                    {'displayName': assignee}
-                    if assignee is not None
-                    else None
+                    {'displayName': assignee} if assignee is not None else None
                 ),
                 'components': [
-                    {'name': component}
-                    for component in components or []
+                    {'name': component} for component in components or []
                 ],
                 'created': created,
                 'customfield_12133': calendar_start,
@@ -85,9 +80,7 @@ def jira_raw_factory() -> Callable[..., dict[str, Any]]:
                 'updated': updated,
                 'votes': {'votes': votes},
             },
-            'renderedFields': {
-                'description': description,
-            },
+            'renderedFields': {'description': description},
         }
 
     return _build
@@ -115,10 +108,10 @@ def issue_factory() -> Callable[..., schemas.Issue]:
         priority: schemas.Priority = schemas.Priority.medium,
         startdate: datetime.date | None = datetime.date(2024, 1, 1),
         created: datetime.datetime = datetime.datetime(
-            2024, 1, 1, 0, 0, 0, tzinfo=datetime.UTC,
+            2024, 1, 1, 0, 0, 0, tzinfo=datetime.UTC
         ),
         updated: datetime.datetime = datetime.datetime(
-            2024, 1, 2, 0, 0, 0, tzinfo=datetime.UTC,
+            2024, 1, 2, 0, 0, 0, tzinfo=datetime.UTC
         ),
         timeestimate: datetime.timedelta = datetime.timedelta(days=7),
         votes: int = 0,
@@ -142,8 +135,7 @@ def issue_factory() -> Callable[..., schemas.Issue]:
                 for component in components or []
             ],
             labels=[
-                schemas.Label(key=key, label=label)
-                for label in labels or []
+                schemas.Label(key=key, label=label) for label in labels or []
             ],
         )
 
@@ -171,8 +163,7 @@ def issue_from_jira_factory() -> Callable[..., schemas.Issue]:
                 for component in components or []
             ],
             labels=[
-                schemas.Label(key=key, label=label)
-                for label in labels or []
+                schemas.Label(key=key, label=label) for label in labels or []
             ],
         )
 
@@ -191,10 +182,10 @@ def issue_create_factory() -> Callable[..., schemas.IssueCreate]:
         priority: schemas.Priority = schemas.Priority.medium,
         startdate: datetime.date | None = datetime.date(2026, 1, 1),
         created: datetime.datetime = datetime.datetime(
-            2026, 1, 1, 0, 0, 0, tzinfo=datetime.UTC,
+            2026, 1, 1, 0, 0, 0, tzinfo=datetime.UTC
         ),
         updated: datetime.datetime = datetime.datetime(
-            2026, 1, 2, 0, 0, 0, tzinfo=datetime.UTC,
+            2026, 1, 2, 0, 0, 0, tzinfo=datetime.UTC
         ),
         timeestimate: datetime.timedelta = datetime.timedelta(days=2),
         votes: int = 1,
@@ -224,7 +215,7 @@ def transition_factory() -> Callable[..., schemas.IssueTransition]:
         from_status: str | None = 'Backlog',
         to_status: str = 'In Progress',
         timestamp: datetime.datetime = datetime.datetime(
-            2026, 1, 5, 10, 0, 0, tzinfo=datetime.UTC,
+            2026, 1, 5, 10, 0, 0, tzinfo=datetime.UTC
         ),
     ) -> schemas.IssueTransition:
         return schemas.IssueTransition(
@@ -248,8 +239,7 @@ async def fixture_db_session(
     factory = sqlalchemy.orm.sessionmaker(bind=engine)
     with factory() as db_session:
         adapter = cast(
-            sqlalchemy.ext.asyncio.AsyncSession,
-            SyncSessionAdapter(db_session),
+            sqlalchemy.ext.asyncio.AsyncSession, SyncSessionAdapter(db_session)
         )
         yield adapter
 
@@ -274,8 +264,7 @@ def seed_issue(
             )
         for label in labels or []:
             await models.Label.upsert(
-                schemas.Label(key=issue.key, label=label),
-                session=db_session,
+                schemas.Label(key=issue.key, label=label), session=db_session
             )
 
     return _seed
@@ -328,16 +317,10 @@ def api_session(monkeypatch: pytest.MonkeyPatch) -> types.SimpleNamespace:
         yield session
 
     async def run_inline(
-        func: Callable[..., Any],
-        *args: Any,
-        **kwargs: Any,
+        func: Callable[..., Any], *args: Any, **kwargs: Any
     ) -> Any:
         return func(*args, **kwargs)
 
-    monkeypatch.setattr(
-        database,
-        'session_from_app',
-        fake_session_from_app,
-    )
+    monkeypatch.setattr(database, 'session_from_app', fake_session_from_app)
     monkeypatch.setattr('mosura.api.asyncio.to_thread', run_inline)
     return session

@@ -27,9 +27,7 @@ async def test_read_issue_success(
     assert response.status_code == 200
     assert response.json()['key'] == 'MOS-101'
     get_mock.assert_awaited_once_with(
-        key='MOS-101',
-        closed=True,
-        session=api_session,
+        key='MOS-101', closed=True, session=api_session
     )
 
 
@@ -46,9 +44,7 @@ async def test_read_issue_not_found(
 
     assert response.status_code == 404
     get_mock.assert_awaited_once_with(
-        key='MOS-404',
-        closed=True,
-        session=api_session,
+        key='MOS-404', closed=True, session=api_session
     )
 
 
@@ -63,16 +59,13 @@ async def test_patch_issue_not_found(
     monkeypatch.setattr(models.Issue, 'upsert', upsert_mock)
 
     response = await client.patch(
-        '/api/v0/issues/MOS-404',
-        json={'summary': 'X'},
+        '/api/v0/issues/MOS-404', json={'summary': 'X'}
     )
     print('PATCH missing:', response.status_code, response.text)
 
     assert response.status_code == 404
     get_mock.assert_awaited_once_with(
-        key='MOS-404',
-        closed=True,
-        session=api_session,
+        key='MOS-404', closed=True, session=api_session
     )
     upsert_mock.assert_not_awaited()
     api_session.commit.assert_not_awaited()
@@ -88,8 +81,7 @@ async def test_patch_issue_conflict(
 ) -> None:
     raw = jira_raw_factory(key='MOS-777', summary='Canonical summary')
     cached_issue = issue_from_jira_factory(
-        raw,
-        summary='Changed summary locally',
+        raw, summary='Changed summary locally'
     )
 
     get_mock = unittest.mock.AsyncMock(return_value=[cached_issue])
@@ -97,27 +89,20 @@ async def test_patch_issue_conflict(
 
     live_issue = jira_issue_factory(raw)
     update_mock = unittest.mock.Mock()
-    monkeypatch.setattr(
-        live_issue,
-        'update',
-        update_mock,
-        raising=False,
-    )
+    monkeypatch.setattr(live_issue, 'update', update_mock, raising=False)
 
     jira_issue = unittest.mock.MagicMock(return_value=live_issue)
     mosura.app.app.state.jira_client = types.SimpleNamespace(issue=jira_issue)
 
     schedule_refresh_mock = unittest.mock.Mock()
     monkeypatch.setattr(
-        'mosura.api.tasks.schedule_issue_refresh',
-        schedule_refresh_mock,
+        'mosura.api.tasks.schedule_issue_refresh', schedule_refresh_mock
     )
     monkeypatch.setattr(models.Issue, 'get', get_mock)
     monkeypatch.setattr(models.Issue, 'upsert', upsert_mock)
 
     response = await client.patch(
-        '/api/v0/issues/MOS-777',
-        json={'summary': 'New'},
+        '/api/v0/issues/MOS-777', json={'summary': 'New'}
     )
     print('PATCH conflict:', response.status_code, response.text)
 
@@ -132,8 +117,7 @@ async def test_patch_issue_conflict(
         expand='renderedFields',
     )
     schedule_refresh_mock.assert_called_once_with(
-        app=mosura.app.app,
-        key='MOS-777',
+        app=mosura.app.app, key='MOS-777'
     )
     update_mock.assert_not_called()
     upsert_mock.assert_not_awaited()
@@ -150,9 +134,7 @@ async def test_patch_issue_success(  # pylint: disable=too-many-locals
 ) -> None:
     raw = jira_raw_factory(key='MOS-204', summary='Current summary')
     cached_issue = issue_from_jira_factory(
-        raw,
-        components=['Platform'],
-        labels=['okr'],
+        raw, components=['Platform'], labels=['okr']
     )
 
     get_mock = unittest.mock.AsyncMock(return_value=[cached_issue])
@@ -160,12 +142,7 @@ async def test_patch_issue_success(  # pylint: disable=too-many-locals
 
     live_issue = jira_issue_factory(raw)
     update_mock = unittest.mock.Mock()
-    monkeypatch.setattr(
-        live_issue,
-        'update',
-        update_mock,
-        raising=False,
-    )
+    monkeypatch.setattr(live_issue, 'update', update_mock, raising=False)
 
     jira_issue = unittest.mock.MagicMock(return_value=live_issue)
     mosura.app.app.state.jira_client = types.SimpleNamespace(issue=jira_issue)
@@ -186,10 +163,7 @@ async def test_patch_issue_success(  # pylint: disable=too-many-locals
         expand='renderedFields',
     )
     update_mock.assert_called_once_with(
-        fields={
-            'summary': 'Updated summary',
-            'priority': {'name': 'High'},
-        },
+        fields={'summary': 'Updated summary', 'priority': {'name': 'High'}}
     )
     upsert_mock.assert_awaited_once()
     await_args = upsert_mock.await_args
@@ -246,12 +220,11 @@ async def test_patch_settings_valid_jql_persists_and_returns_count(
     monkeypatch.setattr(models.Setting, 'upsert', upsert_mock)
 
     mosura.app.app.state.jira_client = types.SimpleNamespace(
-        approximate_issue_count=unittest.mock.Mock(return_value=42),
+        approximate_issue_count=unittest.mock.Mock(return_value=42)
     )
 
     response = await client.patch(
-        '/api/v0/settings',
-        json={'custom_jql': 'project = MOS'},
+        '/api/v0/settings', json={'custom_jql': 'project = MOS'}
     )
     print('PATCH settings (valid):', response.status_code, response.text)
 
@@ -262,7 +235,7 @@ async def test_patch_settings_valid_jql_persists_and_returns_count(
         'issue_count': 42,
     }
     upsert_mock.assert_awaited_once_with(
-        'custom_jql', 'project = MOS', session=api_session,
+        'custom_jql', 'project = MOS', session=api_session
     )
     api_session.commit.assert_awaited_once()
 
@@ -277,13 +250,12 @@ async def test_patch_settings_invalid_jql_returns_422(
 
     mosura.app.app.state.jira_client = types.SimpleNamespace(
         approximate_issue_count=unittest.mock.Mock(
-            side_effect=jira.JIRAError(text='bad JQL query'),
-        ),
+            side_effect=jira.JIRAError(text='bad JQL query')
+        )
     )
 
     response = await client.patch(
-        '/api/v0/settings',
-        json={'custom_jql': 'invalid!!!'},
+        '/api/v0/settings', json={'custom_jql': 'invalid!!!'}
     )
     print('PATCH settings (invalid):', response.status_code, response.text)
 
@@ -301,10 +273,7 @@ async def test_patch_settings_empty_clears_setting(
     delete_mock = unittest.mock.AsyncMock()
     monkeypatch.setattr(models.Setting, 'delete', delete_mock)
 
-    response = await client.patch(
-        '/api/v0/settings',
-        json={'custom_jql': ''},
-    )
+    response = await client.patch('/api/v0/settings', json={'custom_jql': ''})
     print('PATCH settings (empty):', response.status_code, response.text)
 
     assert response.status_code == 200
@@ -326,8 +295,7 @@ async def test_patch_settings_null_clears_setting(
     monkeypatch.setattr(models.Setting, 'delete', delete_mock)
 
     response = await client.patch(
-        '/api/v0/settings',
-        json={'custom_jql': None},
+        '/api/v0/settings', json={'custom_jql': None}
     )
     print('PATCH settings (null):', response.status_code, response.text)
 

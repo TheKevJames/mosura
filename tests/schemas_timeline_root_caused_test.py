@@ -22,10 +22,10 @@ def test_from_issues_treats_root_caused_as_closed_for_end_dates(
                 from_status='In Progress',
                 to_status='Root Caused',
                 timestamp=datetime.datetime(
-                    2024, 1, 8, 12, 0, tzinfo=datetime.UTC,
+                    2024, 1, 8, 12, 0, tzinfo=datetime.UTC
                 ),
-            ),
-        ],
+            )
+        ]
     }
 
     timeline = schemas.Timeline.from_issues(

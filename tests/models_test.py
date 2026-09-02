@@ -24,10 +24,7 @@ async def test_convert_field_response_dedupes_and_sorts(
     rows = await issue_rows_fetcher(key='MOS-1')
 
     converted = models.convert_field_response(
-        'MOS-1',
-        rows,
-        idx=11,
-        name='component',
+        'MOS-1', rows, idx=11, name='component'
     )
 
     assert converted == [
@@ -129,37 +126,25 @@ async def test_issue_get_filters_closed_assignee_and_needs_triage(
         ),
         (
             issue_create_factory(
-                'MOS-2',
-                status='In Progress',
-                assignee='Ada',
+                'MOS-2', status='In Progress', assignee='Ada'
             ),
             ['API'],
             ['feature'],
         ),
         (
             issue_create_factory(
-                'MOS-3',
-                status='Needs Triage',
-                assignee='Bob',
+                'MOS-3', status='Needs Triage', assignee='Bob'
             ),
             ['API'],
             ['feature'],
         ),
         (
-            issue_create_factory(
-                'MOS-4',
-                status='Backlog',
-                assignee='Bob',
-            ),
+            issue_create_factory('MOS-4', status='Backlog', assignee='Bob'),
             [],
             ['feature'],
         ),
         (
-            issue_create_factory(
-                'MOS-5',
-                status='Backlog',
-                assignee='Bob',
-            ),
+            issue_create_factory('MOS-5', status='Backlog', assignee='Bob'),
             ['API'],
             [],
         ),
@@ -185,16 +170,10 @@ async def test_issue_get_filters_closed_assignee_and_needs_triage(
     ]
 
     triage = await models.Issue.get(needs_triage=True, session=db_session)
-    assert sorted(issue.key for issue in triage) == [
-        'MOS-3',
-        'MOS-4',
-        'MOS-5',
-    ]
+    assert sorted(issue.key for issue in triage) == ['MOS-3', 'MOS-4', 'MOS-5']
 
     all_for_ada = await models.Issue.get(
-        assignee='Ada',
-        closed=True,
-        session=db_session,
+        assignee='Ada', closed=True, session=db_session
     )
     assert sorted(issue.key for issue in all_for_ada) == ['MOS-1', 'MOS-2']
 
@@ -248,23 +227,20 @@ async def test_issue_hard_delete_removes_only_target_issue_graph(
 
     remaining_issues = await models.Issue.get(closed=True, session=db_session)
     component_rows = await db_session.execute(
-        sqlalchemy.select(models.Component),
+        sqlalchemy.select(models.Component)
     )
-    label_rows = await db_session.execute(
-        sqlalchemy.select(models.Label),
-    )
+    label_rows = await db_session.execute(sqlalchemy.select(models.Label))
     components = component_rows.scalars().all()
     labels = label_rows.scalars().all()
     print(
         f'remaining issue keys={[x.key for x in remaining_issues]}, '
         f'components={[(x.key, x.component) for x in components]}, '
-        f'labels={[(x.key, x.label) for x in labels]}',
+        f'labels={[(x.key, x.label) for x in labels]}'
     )
 
     issue_keys = [issue.key for issue in remaining_issues]
     component_pairs = [
-        (component.key, component.component)
-        for component in components
+        (component.key, component.component) for component in components
     ]
     label_pairs = [(label.key, label.label) for label in labels]
 
@@ -309,9 +285,7 @@ async def test_issue_upsert_updates_existing_issue(
     await db_session.commit()
 
     fetched = await models.Issue.get(
-        key='MOS-9',
-        closed=True,
-        session=db_session,
+        key='MOS-9', closed=True, session=db_session
     )
 
     assert len(fetched) == 1
@@ -322,7 +296,7 @@ async def test_issue_upsert_updates_existing_issue(
     assert fetched[0].startdate == datetime.date(2026, 2, 1)
 
     rows = await db_session.execute(
-        sqlalchemy.select(models.Issue).where(models.Issue.key == 'MOS-9'),
+        sqlalchemy.select(models.Issue).where(models.Issue.key == 'MOS-9')
     )
     assert len(rows.scalars().all()) == 1
 
@@ -338,7 +312,7 @@ async def test_setting_upsert_inserts_new_and_updates_existing(
     db_session: sqlalchemy.ext.asyncio.AsyncSession,
 ) -> None:
     await models.Setting.upsert(
-        'custom_jql', 'project = MOS', session=db_session,
+        'custom_jql', 'project = MOS', session=db_session
     )
     await db_session.commit()
 
@@ -346,7 +320,7 @@ async def test_setting_upsert_inserts_new_and_updates_existing(
     assert result == 'project = MOS'
 
     await models.Setting.upsert(
-        'custom_jql', 'project = MOS AND status != Closed', session=db_session,
+        'custom_jql', 'project = MOS AND status != Closed', session=db_session
     )
     await db_session.commit()
 
@@ -376,11 +350,7 @@ async def test_task_get_returns_utc_and_none_for_missing(
 ) -> None:
     latest = datetime.datetime(2026, 2, 2, 10, 15, 0)
     await models.Task.upsert(
-        schemas.Task(
-            key='MOS',
-            variant='open',
-            latest=latest,
-        ),
+        schemas.Task(key='MOS', variant='open', latest=latest),
         session=db_session,
     )
     await db_session.commit()

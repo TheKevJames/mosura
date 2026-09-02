@@ -27,7 +27,7 @@ def test_enrich_draws_markers_only_for_same_color_off_left_edge(
                 from_status='Backlog',
                 to_status='In Progress',
                 timestamp=datetime.datetime(
-                    2024, 1, 1, 9, 0, tzinfo=datetime.UTC,
+                    2024, 1, 1, 9, 0, tzinfo=datetime.UTC
                 ),
             ),
             transition_factory(
@@ -35,7 +35,7 @@ def test_enrich_draws_markers_only_for_same_color_off_left_edge(
                 from_status='In Progress',
                 to_status='Code Review',
                 timestamp=datetime.datetime(
-                    2024, 1, 3, 9, 0, tzinfo=datetime.UTC,
+                    2024, 1, 3, 9, 0, tzinfo=datetime.UTC
                 ),
             ),
             transition_factory(
@@ -43,7 +43,7 @@ def test_enrich_draws_markers_only_for_same_color_off_left_edge(
                 from_status='Code Review',
                 to_status='Ready for Testing',
                 timestamp=datetime.datetime(
-                    2024, 1, 4, 9, 0, tzinfo=datetime.UTC,
+                    2024, 1, 4, 9, 0, tzinfo=datetime.UTC
                 ),
             ),
             transition_factory(
@@ -51,10 +51,10 @@ def test_enrich_draws_markers_only_for_same_color_off_left_edge(
                 from_status='Ready for Testing',
                 to_status='Closed',
                 timestamp=datetime.datetime(
-                    2024, 1, 6, 9, 0, tzinfo=datetime.UTC,
+                    2024, 1, 6, 9, 0, tzinfo=datetime.UTC
                 ),
             ),
-        ],
+        ]
     }
 
     timeline = schemas.Timeline.from_issues(
@@ -66,8 +66,7 @@ def test_enrich_draws_markers_only_for_same_color_off_left_edge(
         weeks_after=1,
     )
     ui._enrich_timeline_for_template(
-        timeline,
-        current_date=datetime.date(2024, 1, 8),
+        timeline, current_date=datetime.date(2024, 1, 8)
     )
 
     segments = timeline.issues[0].segments
@@ -82,8 +81,7 @@ def test_enrich_draws_markers_only_for_same_color_off_left_edge(
     assert markers['Closed'] is False
 
     in_progress_segment = next(
-        segment for segment in segments
-        if segment.status == 'In Progress'
+        segment for segment in segments if segment.status == 'In Progress'
     )
     assert getattr(in_progress_segment, 'left_percent') == 0
 
@@ -95,9 +93,7 @@ def test_enrich_renders_segment_end_date_inclusively(
         'TEST-INCLUSIVE-END',
         status='In Progress',
         startdate=datetime.date(2026, 2, 16),
-        created=datetime.datetime(
-            2026, 2, 16, 9, 0, tzinfo=datetime.UTC,
-        ),
+        created=datetime.datetime(2026, 2, 16, 9, 0, tzinfo=datetime.UTC),
         timeestimate=datetime.timedelta(days=8),
     )
 
@@ -109,8 +105,7 @@ def test_enrich_renders_segment_end_date_inclusively(
         weeks_after=1,
     )
     ui._enrich_timeline_for_template(
-        timeline,
-        current_date=datetime.date(2026, 2, 23),
+        timeline, current_date=datetime.date(2026, 2, 23)
     )
 
     segment = timeline.issues[0].segments[0]

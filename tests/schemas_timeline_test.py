@@ -62,7 +62,7 @@ def test_timeline_issue_creation() -> None:
             start=datetime.date(2024, 1, 1),
             end=datetime.date(2024, 1, 5),
             status='Backlog',
-        ),
+        )
     ]
     issue = schemas.TimelineIssue(
         key='TEST-1',
@@ -136,7 +136,7 @@ def test_from_issues_builds_segments_from_transitions(
                 from_status='Backlog',
                 to_status='In Progress',
                 timestamp=datetime.datetime(
-                    2024, 1, 3, 10, 0, tzinfo=datetime.UTC,
+                    2024, 1, 3, 10, 0, tzinfo=datetime.UTC
                 ),
             ),
             schemas.IssueTransition(
@@ -144,7 +144,7 @@ def test_from_issues_builds_segments_from_transitions(
                 from_status='In Progress',
                 to_status='Code Review',
                 timestamp=datetime.datetime(
-                    2024, 1, 8, 10, 0, tzinfo=datetime.UTC,
+                    2024, 1, 8, 10, 0, tzinfo=datetime.UTC
                 ),
             ),
             schemas.IssueTransition(
@@ -152,10 +152,10 @@ def test_from_issues_builds_segments_from_transitions(
                 from_status='Code Review',
                 to_status='Closed',
                 timestamp=datetime.datetime(
-                    2024, 1, 10, 10, 0, tzinfo=datetime.UTC,
+                    2024, 1, 10, 10, 0, tzinfo=datetime.UTC
                 ),
             ),
-        ],
+        ]
     }
 
     timeline = schemas.Timeline.from_issues(
@@ -223,10 +223,10 @@ def test_from_issues_day_counting_with_in_progress_transition(
                 from_status='Backlog',
                 to_status='In Progress',
                 timestamp=datetime.datetime(
-                    2024, 1, 5, 10, 0, tzinfo=datetime.UTC,
+                    2024, 1, 5, 10, 0, tzinfo=datetime.UTC
                 ),
-            ),
-        ],
+            )
+        ]
     }
 
     timeline = schemas.Timeline.from_issues(
@@ -286,10 +286,10 @@ def test_from_issues_no_overdue_when_closed(
                 from_status='Backlog',
                 to_status='Closed',
                 timestamp=datetime.datetime(
-                    2024, 1, 4, 10, 0, tzinfo=datetime.UTC,
+                    2024, 1, 4, 10, 0, tzinfo=datetime.UTC
                 ),
-            ),
-        ],
+            )
+        ]
     }
 
     timeline = schemas.Timeline.from_issues(
@@ -350,10 +350,10 @@ def test_from_issues_no_overdue_start_when_in_progress(
                 from_status='Backlog',
                 to_status='In Progress',
                 timestamp=datetime.datetime(
-                    2024, 1, 5, 10, 0, tzinfo=datetime.UTC,
+                    2024, 1, 5, 10, 0, tzinfo=datetime.UTC
                 ),
-            ),
-        ],
+            )
+        ]
     }
 
     timeline = schemas.Timeline.from_issues(
@@ -391,8 +391,8 @@ def test_from_issues_clamping_to_view_window(
 
     tli = timeline.issues[0]
     view_start = timeline.selected_monday - datetime.timedelta(days=7 * 2)
-    view_end = (
-        timeline.selected_monday + datetime.timedelta(days=7 * 3)
+    view_end = timeline.selected_monday + datetime.timedelta(
+        days=7 * 3
     )  # 2 after
 
     for segment in tli.segments:

@@ -36,15 +36,15 @@ def test_resolve_tracked_user_falls_back_to_jira_auth_user() -> None:
         )
     app.state.jira_client = types.SimpleNamespace(
         search_users=unittest.mock.Mock(
-            return_value=[types.SimpleNamespace(accountId='account-123')],
-        ),
+            return_value=[types.SimpleNamespace(accountId='account-123')]
+        )
     )
 
     resolved = mosura.app.resolve_tracked_user(app)
 
     assert resolved.accountId == 'account-123'
     app.state.jira_client.search_users.assert_called_once_with(
-        query='auth@example.com',
+        query='auth@example.com'
     )
 
 
@@ -56,8 +56,8 @@ def test_resolve_tracked_user_raises_on_ambiguous_matches() -> None:
             return_value=[
                 types.SimpleNamespace(accountId='acct-1'),
                 types.SimpleNamespace(accountId='acct-2'),
-            ],
-        ),
+            ]
+        )
     )
 
     with pytest.raises(RuntimeError, match='is ambiguous'):
@@ -72,8 +72,8 @@ def test_resolve_tracked_user_prefers_matching_account_id() -> None:
             return_value=[
                 types.SimpleNamespace(accountId='acct-1', displayName='Alice'),
                 types.SimpleNamespace(accountId='acct-2', displayName='Bob'),
-            ],
-        ),
+            ]
+        )
     )
 
     resolved = mosura.app.resolve_tracked_user(app)
@@ -86,7 +86,7 @@ async def test_lifespan_fails_fast_if_tracked_user_is_unresolvable(
 ) -> None:
     settings = types.SimpleNamespace(jira_tracked_user='missing-user')
     jira_client = types.SimpleNamespace(
-        search_users=unittest.mock.Mock(return_value=[]),
+        search_users=unittest.mock.Mock(return_value=[])
     )
     load_settings = unittest.mock.Mock(return_value=settings)
     from_settings = unittest.mock.Mock(return_value=jira_client)
@@ -110,9 +110,7 @@ async def test_lifespan_starts_background_tasks(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     app = fastapi.FastAPI()
-    settings = types.SimpleNamespace(
-        jira_tracked_user='account-123',
-    )
+    settings = types.SimpleNamespace(jira_tracked_user='account-123')
     jira_client = types.SimpleNamespace()
 
     class FakeConn:
@@ -124,10 +122,7 @@ async def test_lifespan_starts_background_tasks(
             return FakeConn()
 
         async def __aexit__(
-            self,
-            _exc_type: object,
-            _exc: object,
-            _tb: object,
+            self, _exc_type: object, _exc: object, _tb: object
         ) -> None:
             return None
 
@@ -142,35 +137,24 @@ async def test_lifespan_starts_background_tasks(
     spawn = unittest.mock.AsyncMock(return_value={background_task})
 
     monkeypatch.setattr(
-        config,
-        'load_settings',
-        unittest.mock.Mock(
-            return_value=settings,
-        ),
+        config, 'load_settings', unittest.mock.Mock(return_value=settings)
     )
     monkeypatch.setattr(
         config.Jira,
         'from_settings',
-        unittest.mock.Mock(
-            return_value=jira_client,
-        ),
+        unittest.mock.Mock(return_value=jira_client),
     )
     monkeypatch.setattr(
         mosura.app,
         'resolve_tracked_user',
         unittest.mock.Mock(
             return_value=types.SimpleNamespace(
-                accountId='account-123',
-                displayName='Alice Example',
-            ),
+                accountId='account-123', displayName='Alice Example'
+            )
         ),
     )
     monkeypatch.setattr(
-        database,
-        'build_engine',
-        unittest.mock.Mock(
-            return_value=FakeEngine(),
-        ),
+        database, 'build_engine', unittest.mock.Mock(return_value=FakeEngine())
     )
     monkeypatch.setattr(database, 'build_sessionmaker', unittest.mock.Mock())
     monkeypatch.setattr('mosura.app.tasks.spawn', spawn)
@@ -201,9 +185,7 @@ def _mock_issue_get(
     if timeline_issues is None:
         timeline_issues = []
 
-    async def _get(
-        **kwargs: object,
-    ) -> list[schemas.Issue]:
+    async def _get(**kwargs: object) -> list[schemas.Issue]:
         # Handle assignee + closed combination
         if kwargs.get('assignee'):
             if kwargs.get('closed') is False:
@@ -227,19 +209,16 @@ async def test_home_returns_200_with_section_headings(
 ) -> None:
     my = [issue_factory('MY-1', assignee='TestUser')]
     timeline_issues = [
-        issue_factory(
-            'TL-1',
-            status='In Progress',
-            assignee='TestUser',
-        ),
+        issue_factory('TL-1', status='In Progress', assignee='TestUser')
     ]
     monkeypatch.setattr(
-        models.Issue, 'get', _mock_issue_get(
-            my_issues=my, timeline_issues=timeline_issues,
-        ),
+        models.Issue,
+        'get',
+        _mock_issue_get(my_issues=my, timeline_issues=timeline_issues),
     )
     monkeypatch.setattr(
-        models.IssueTransition, 'get_by_keys',
+        models.IssueTransition,
+        'get_by_keys',
         unittest.mock.AsyncMock(return_value=[]),
     )
     mosura.app.app.state.tracked_user_name = 'TestUser'
@@ -263,12 +242,11 @@ async def test_home_limits_my_issues_to_5(
 ) -> None:
     my = [issue_factory(f'MY-{i}', assignee='TestUser') for i in range(8)]
     monkeypatch.setattr(
-        models.Issue, 'get', _mock_issue_get(
-            my_issues=my, timeline_issues=[],
-        ),
+        models.Issue, 'get', _mock_issue_get(my_issues=my, timeline_issues=[])
     )
     monkeypatch.setattr(
-        models.IssueTransition, 'get_by_keys',
+        models.IssueTransition,
+        'get_by_keys',
         unittest.mock.AsyncMock(return_value=[]),
     )
     mosura.app.app.state.tracked_user_name = 'TestUser'
@@ -297,12 +275,11 @@ async def test_home_sorts_my_issues_by_priority_descending(
         issue_factory('MY-H', priority=schemas.Priority.high),
     ]
     monkeypatch.setattr(
-        models.Issue, 'get', _mock_issue_get(
-            my_issues=my, timeline_issues=[],
-        ),
+        models.Issue, 'get', _mock_issue_get(my_issues=my, timeline_issues=[])
     )
     monkeypatch.setattr(
-        models.IssueTransition, 'get_by_keys',
+        models.IssueTransition,
+        'get_by_keys',
         unittest.mock.AsyncMock(return_value=[]),
     )
     mosura.app.app.state.tracked_user_name = 'TestUser'
@@ -313,9 +290,8 @@ async def test_home_sorts_my_issues_by_priority_descending(
     html = response.text
     # Find the order of issue keys in the rendered HTML
     positions = {
-        key: html.index(key) for key in [
-            'MY-U', 'MY-H', 'MY-M', 'MY-L', 'MY-N',
-        ]
+        key: html.index(key)
+        for key in ['MY-U', 'MY-H', 'MY-M', 'MY-L', 'MY-N']
     }
     print(f'Priority order positions: {positions}')
     assert positions['MY-U'] < positions['MY-H']
@@ -326,16 +302,14 @@ async def test_home_sorts_my_issues_by_priority_descending(
 
 @pytest.mark.usefixtures('api_session')
 async def test_home_empty_states(
-    client: niquests.AsyncSession,
-    monkeypatch: pytest.MonkeyPatch,
+    client: niquests.AsyncSession, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(
-        models.Issue, 'get', _mock_issue_get(
-            my_issues=[], timeline_issues=[],
-        ),
+        models.Issue, 'get', _mock_issue_get(my_issues=[], timeline_issues=[])
     )
     monkeypatch.setattr(
-        models.IssueTransition, 'get_by_keys',
+        models.IssueTransition,
+        'get_by_keys',
         unittest.mock.AsyncMock(return_value=[]),
     )
     mosura.app.app.state.tracked_user_name = 'TestUser'
@@ -361,12 +335,8 @@ async def test_home_timeline_renders_gantt_chart(
         status='In Progress',
         assignee='TestUser',
         startdate=datetime.date(2026, 3, 2),
-        created=datetime.datetime(
-            2026, 3, 1, 0, 0, 0, tzinfo=datetime.UTC,
-        ),
-        updated=datetime.datetime(
-            2026, 3, 4, 8, 0, 0, tzinfo=datetime.UTC,
-        ),
+        created=datetime.datetime(2026, 3, 1, 0, 0, 0, tzinfo=datetime.UTC),
+        updated=datetime.datetime(2026, 3, 4, 8, 0, 0, tzinfo=datetime.UTC),
         timeestimate=datetime.timedelta(days=5),
     )
     transitions = [
@@ -375,18 +345,19 @@ async def test_home_timeline_renders_gantt_chart(
             from_status='Backlog',
             to_status='In Progress',
             timestamp=datetime.datetime(
-                2026, 3, 2, 10, 0, 0, tzinfo=datetime.UTC,
+                2026, 3, 2, 10, 0, 0, tzinfo=datetime.UTC
             ),
-        ),
+        )
     ]
 
     monkeypatch.setattr(
-        models.Issue, 'get', _mock_issue_get(
-            my_issues=[], timeline_issues=[issue],
-        ),
+        models.Issue,
+        'get',
+        _mock_issue_get(my_issues=[], timeline_issues=[issue]),
     )
     monkeypatch.setattr(
-        models.IssueTransition, 'get_by_keys',
+        models.IssueTransition,
+        'get_by_keys',
         unittest.mock.AsyncMock(return_value=transitions),
     )
     mosura.app.app.state.tracked_user_name = 'TestUser'
@@ -411,17 +382,16 @@ async def test_home_timeline_has_no_date_navigation(
     issue_factory: Callable[..., schemas.Issue],
 ) -> None:
     issue = issue_factory(
-        'NAV-1',
-        status='Ready for Testing',
-        assignee='TestUser',
+        'NAV-1', status='Ready for Testing', assignee='TestUser'
     )
     monkeypatch.setattr(
-        models.Issue, 'get', _mock_issue_get(
-            my_issues=[], timeline_issues=[issue],
-        ),
+        models.Issue,
+        'get',
+        _mock_issue_get(my_issues=[], timeline_issues=[issue]),
     )
     monkeypatch.setattr(
-        models.IssueTransition, 'get_by_keys',
+        models.IssueTransition,
+        'get_by_keys',
         unittest.mock.AsyncMock(return_value=[]),
     )
     mosura.app.app.state.tracked_user_name = 'TestUser'
@@ -437,8 +407,7 @@ async def test_home_timeline_has_no_date_navigation(
 
 @pytest.mark.usefixtures('api_session')
 async def test_timeline_header_shows_full_range(
-    client: niquests.AsyncSession,
-    monkeypatch: pytest.MonkeyPatch,
+    client: niquests.AsyncSession, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     issue_get = unittest.mock.AsyncMock(return_value=[])
     monkeypatch.setattr(models.Issue, 'get', issue_get)
@@ -467,12 +436,8 @@ async def test_timeline_uses_issue_transitions_for_segments(
         status='Ready for Testing',
         assignee='TestUser',
         startdate=None,
-        created=datetime.datetime(
-            2026, 1, 20, 10, 0, 0, tzinfo=datetime.UTC,
-        ),
-        updated=datetime.datetime(
-            2026, 3, 4, 7, 42, 1, tzinfo=datetime.UTC,
-        ),
+        created=datetime.datetime(2026, 1, 20, 10, 0, 0, tzinfo=datetime.UTC),
+        updated=datetime.datetime(2026, 3, 4, 7, 42, 1, tzinfo=datetime.UTC),
         timeestimate=datetime.timedelta(days=14),
     )
     transitions = [
@@ -481,7 +446,7 @@ async def test_timeline_uses_issue_transitions_for_segments(
             from_status='Needs Triage',
             to_status='In Progress',
             timestamp=datetime.datetime(
-                2026, 2, 23, 11, 25, 40, tzinfo=datetime.UTC,
+                2026, 2, 23, 11, 25, 40, tzinfo=datetime.UTC
             ),
         ),
         transition_factory(
@@ -489,7 +454,7 @@ async def test_timeline_uses_issue_transitions_for_segments(
             from_status='In Progress',
             to_status='Code Review',
             timestamp=datetime.datetime(
-                2026, 3, 2, 7, 48, 56, tzinfo=datetime.UTC,
+                2026, 3, 2, 7, 48, 56, tzinfo=datetime.UTC
             ),
         ),
         transition_factory(
@@ -497,7 +462,7 @@ async def test_timeline_uses_issue_transitions_for_segments(
             from_status='Code Review',
             to_status='Ready for Testing',
             timestamp=datetime.datetime(
-                2026, 3, 2, 7, 50, 3, tzinfo=datetime.UTC,
+                2026, 3, 2, 7, 50, 3, tzinfo=datetime.UTC
             ),
         ),
     ]
@@ -505,11 +470,7 @@ async def test_timeline_uses_issue_transitions_for_segments(
     issue_get = unittest.mock.AsyncMock(return_value=[issue])
     transition_get = unittest.mock.AsyncMock(return_value=transitions)
     monkeypatch.setattr(models.Issue, 'get', issue_get)
-    monkeypatch.setattr(
-        models.IssueTransition,
-        'get_by_keys',
-        transition_get,
-    )
+    monkeypatch.setattr(models.IssueTransition, 'get_by_keys', transition_get)
     mosura.app.app.state.tracked_user_name = 'TestUser'
 
     frozen = datetime.datetime(2026, 3, 4, 12, 0, 0, tzinfo=datetime.UTC)
@@ -519,9 +480,7 @@ async def test_timeline_uses_issue_transitions_for_segments(
         return frozen if tz is not None else original_now()
 
     fake_cls = type(
-        'FakeDatetime',
-        (datetime.datetime,),
-        {'now': staticmethod(_fake_now)},
+        'FakeDatetime', (datetime.datetime,), {'now': staticmethod(_fake_now)}
     )
     monkeypatch.setattr('mosura.ui.datetime.datetime', fake_cls)
 
@@ -550,23 +509,15 @@ async def test_timeline_overdue_tooltip_includes_status(
         status='In Progress',
         assignee='TestUser',
         startdate=datetime.date(2026, 3, 1),
-        created=datetime.datetime(
-            2026, 2, 20, 10, 0, 0, tzinfo=datetime.UTC,
-        ),
-        updated=datetime.datetime(
-            2026, 3, 4, 8, 0, 0, tzinfo=datetime.UTC,
-        ),
+        created=datetime.datetime(2026, 2, 20, 10, 0, 0, tzinfo=datetime.UTC),
+        updated=datetime.datetime(2026, 3, 4, 8, 0, 0, tzinfo=datetime.UTC),
         timeestimate=datetime.timedelta(days=1),
     )
 
     issue_get = unittest.mock.AsyncMock(return_value=[issue])
     transition_get = unittest.mock.AsyncMock(return_value=[])
     monkeypatch.setattr(models.Issue, 'get', issue_get)
-    monkeypatch.setattr(
-        models.IssueTransition,
-        'get_by_keys',
-        transition_get,
-    )
+    monkeypatch.setattr(models.IssueTransition, 'get_by_keys', transition_get)
     mosura.app.app.state.tracked_user_name = 'TestUser'
 
     response = await client.get('/timeline?date=2026-03-04')

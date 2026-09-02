@@ -15,7 +15,6 @@ from . import models
 from . import tasks
 from . import ui
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -35,7 +34,7 @@ def resolve_tracked_user(app_: fastapi.FastAPI) -> jira.resources.User:
     users = jira_client.search_users(query=tracked_user)
     if not users:
         raise RuntimeError(
-            f'could not resolve tracked Jira user "{tracked_user}"',
+            f'could not resolve tracked Jira user "{tracked_user}"'
         )
 
     for user in users:
@@ -46,7 +45,7 @@ def resolve_tracked_user(app_: fastapi.FastAPI) -> jira.resources.User:
 
     raise RuntimeError(
         f'tracked Jira user "{tracked_user}" is ambiguous; set MOSURA_USER to '
-        'a unique value',
+        'a unique value'
     )
 
 
@@ -95,15 +94,15 @@ app.include_router(ui.router)
 app.include_router(api.router, prefix='/api/v0')
 app.include_router(api.router, prefix='/api/latest')
 app.mount(
-    '/static', fastapi.staticfiles.StaticFiles(directory='static'),
+    '/static',
+    fastapi.staticfiles.StaticFiles(directory='static'),
     name='static',
 )
 
 
 @app.exception_handler(fastapi.exceptions.RequestValidationError)
 async def handle_validation_errors(
-        _request: fastapi.Request,
-        exc: fastapi.exceptions.RequestValidationError,
+    _request: fastapi.Request, exc: fastapi.exceptions.RequestValidationError
 ) -> fastapi.responses.JSONResponse:
     logger.error('could not parse payload', exc_info=exc)
     return fastapi.responses.JSONResponse(

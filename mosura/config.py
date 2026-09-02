@@ -19,14 +19,14 @@ class LogConfig(pydantic.BaseModel):
             '()': 'uvicorn.logging.DefaultFormatter',
             'fmt': LOG_FORMAT,
             'datefmt': '%Y-%m-%d %H:%M:%S',
-        },
+        }
     }
     handlers: dict[str, dict[str, str]] = {
         'default': {
             'formatter': 'default',
             'class': 'logging.StreamHandler',
             'stream': 'ext://sys.stderr',
-        },
+        }
     }
 
     @pydantic.computed_field
@@ -51,7 +51,7 @@ class Settings(pydantic_settings.BaseSettings):
 
     # support docker compose secrets by default
     model_config = pydantic_settings.SettingsConfigDict(
-        secrets_dir='/run/secrets',
+        secrets_dir='/run/secrets'
     )
 
     @pydantic.field_validator('mosura_user')
@@ -78,8 +78,7 @@ class Jira(jira.JIRA):
     def from_settings(cls, s: Settings) -> Self:
         auth = (s.jira_auth_user, s.jira_auth_token.get_secret_value())
         return cls(
-            s.jira_domain, basic_auth=auth, max_retries=0,
-            validate=True,
+            s.jira_domain, basic_auth=auth, max_retries=0, validate=True
         )
 
 
@@ -87,6 +86,6 @@ def load_settings() -> Settings:
     with warnings.catch_warnings():
         # don't warn on secrets_dir being missing
         warnings.filterwarnings(
-            'ignore', 'directory ".*" does not exist', UserWarning,
+            'ignore', 'directory ".*" does not exist', UserWarning
         )
         return Settings()

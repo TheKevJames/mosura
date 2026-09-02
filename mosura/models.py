@@ -11,22 +11,18 @@ from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.orm import Mapped
-from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import MappedAsDataclass
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import delete
 from sqlalchemy.sql import select
 
 from . import schemas
 
-
 strpk = Annotated[str, mapped_column(primary_key=True)]
 strpkindex = Annotated[str, mapped_column(primary_key=True, index=True)]
 strfk = Annotated[
-    str, mapped_column(
-        ForeignKey('issues.key'),
-        primary_key=True,
-    ),
+    str, mapped_column(ForeignKey('issues.key'), primary_key=True)
 ]
 
 
@@ -53,11 +49,7 @@ class Component(Base):
 
     @classmethod
     async def delete_many(
-        cls,
-        key: str,
-        components: set[str],
-        *,
-        session: AsyncSession,
+        cls, key: str, components: set[str], *, session: AsyncSession
     ) -> None:
         if not components:
             return
@@ -71,8 +63,7 @@ class Component(Base):
 
     @classmethod
     async def upsert(
-        cls, component: schemas.Component, *,
-        session: AsyncSession,
+        cls, component: schemas.Component, *, session: AsyncSession
     ) -> None:
         stmt = insert(cls).values(**component.model_dump())
         await session.execute(stmt.on_conflict_do_nothing())
@@ -97,26 +88,17 @@ class Label(Base):
 
     @classmethod
     async def delete_many(
-        cls,
-        key: str,
-        labels: set[str],
-        *,
-        session: AsyncSession,
+        cls, key: str, labels: set[str], *, session: AsyncSession
     ) -> None:
         if not labels:
             return
 
-        query = (
-            delete(cls)
-            .where(cls.key == key)
-            .where(cls.label.in_(labels))
-        )
+        query = delete(cls).where(cls.key == key).where(cls.label.in_(labels))
         await session.execute(query)
 
     @classmethod
     async def upsert(
-        cls, label: schemas.Label, *,
-        session: AsyncSession,
+        cls, label: schemas.Label, *, session: AsyncSession
     ) -> None:
         stmt = insert(cls).values(**label.model_dump())
         await session.execute(stmt.on_conflict_do_nothing())
@@ -129,10 +111,7 @@ class IssueTransition(Base):
     from_status: Mapped[str | None]
     to_status: Mapped[str]
     timestamp: Mapped[
-        Annotated[
-            datetime.datetime,
-            mapped_column(primary_key=True),
-        ]
+        Annotated[datetime.datetime, mapped_column(primary_key=True)]
     ]
 
     @classmethod
@@ -142,43 +121,47 @@ class IssueTransition(Base):
 
     @classmethod
     async def upsert(
-        cls, transition: schemas.IssueTransition, *,
-        session: AsyncSession,
+        cls, transition: schemas.IssueTransition, *, session: AsyncSession
     ) -> None:
         stmt = insert(cls).values(**transition.model_dump())
         await session.execute(stmt.on_conflict_do_nothing())
 
     @classmethod
     async def get_by_keys(
-        cls, keys: list[str], *, session: AsyncSession,
+        cls, keys: list[str], *, session: AsyncSession
     ) -> list[schemas.IssueTransition]:
-        query = select(cls).where(
-            cls.key.in_(keys),
-        ).order_by(
-            cls.key,
-            cls.timestamp,
+        query = (
+            select(cls)
+            .where(cls.key.in_(keys))
+            .order_by(cls.key, cls.timestamp)
         )
         results = await session.execute(query)
         rows = results.scalars().all()
-        return [
-            schemas.IssueTransition.model_validate(row)
-            for row in rows
-        ]
+        return [schemas.IssueTransition.model_validate(row) for row in rows]
 
 
 IssueRow = Row[
     tuple[
-        str, str, str | None, str, str | None, str,
-        datetime.datetime | None, datetime.datetime, datetime.datetime,
-        datetime.timedelta, int, str | None, str | None,
+        str,
+        str,
+        str | None,
+        str,
+        str | None,
+        str,
+        datetime.datetime | None,
+        datetime.datetime,
+        datetime.datetime,
+        datetime.timedelta,
+        int,
+        str | None,
+        str | None,
     ]
 ]
 
 
 # TODO: nuke the convert_* methods, see dataclass?
 def convert_field_response(
-    key: str, results: Sequence[IssueRow], *,
-    idx: int, name: str,
+    key: str, results: Sequence[IssueRow], *, idx: int, name: str
 ) -> list[dict[str, str]]:
     deduped = {x for x in {x[idx] for x in results} if x}
     ordered = sorted(deduped)
@@ -186,48 +169,45 @@ def convert_field_response(
 
 
 def convert_component_response(
-        key: str,
-        results: Sequence[IssueRow],
+    key: str, results: Sequence[IssueRow]
 ) -> list[dict[str, str]]:
     return convert_field_response(key, results, idx=11, name='component')
 
 
 def convert_label_response(
-        key: str,
-        results: Sequence[IssueRow],
+    key: str, results: Sequence[IssueRow]
 ) -> list[dict[str, str]]:
     return convert_field_response(key, results, idx=12, name='label')
 
 
-def convert_issue_response(
-        results: Sequence[IssueRow],
-) -> list[schemas.Issue]:
+def convert_issue_response(results: Sequence[IssueRow]) -> list[schemas.Issue]:
     xs = []
     for key, group in itertools.groupby(results, operator.attrgetter('key')):
         fields = list(group)
         # TODO: store tzinfo in db
         startdate = (
-            fields[0][6].replace(tzinfo=datetime.UTC)
-            if fields[0][6] else None
+            fields[0][6].replace(tzinfo=datetime.UTC) if fields[0][6] else None
         )
         created = fields[0][7].replace(tzinfo=datetime.UTC)
         updated = fields[0][8].replace(tzinfo=datetime.UTC)
         xs.append(
-            schemas.Issue.model_validate({
-                'key': key,
-                'summary': fields[0][1],
-                'description': fields[0][2],
-                'status': fields[0][3],
-                'assignee': fields[0][4],
-                'priority': fields[0][5],
-                'startdate': startdate,
-                'created': created,
-                'updated': updated,
-                'timeestimate': fields[0][9],
-                'votes': fields[0][10],
-                'components': convert_component_response(key, fields),
-                'labels': convert_label_response(key, fields),
-            }),
+            schemas.Issue.model_validate(
+                {
+                    'key': key,
+                    'summary': fields[0][1],
+                    'description': fields[0][2],
+                    'status': fields[0][3],
+                    'assignee': fields[0][4],
+                    'priority': fields[0][5],
+                    'startdate': startdate,
+                    'created': created,
+                    'updated': updated,
+                    'timeestimate': fields[0][9],
+                    'votes': fields[0][10],
+                    'components': convert_component_response(key, fields),
+                    'labels': convert_label_response(key, fields),
+                }
+            )
         )
 
     return xs
@@ -253,8 +233,12 @@ class Issue(Base):
 
     @classmethod
     async def get(
-        cls, *, key: str | None = None, assignee: str | None = None,
-        closed: bool = False, needs_triage: bool = False,
+        cls,
+        *,
+        key: str | None = None,
+        assignee: str | None = None,
+        closed: bool = False,
+        needs_triage: bool = False,
         session: AsyncSession,
     ) -> list[schemas.Issue]:
         query = (
@@ -275,7 +259,8 @@ class Issue(Base):
             # TODO: make this configurable
             # TODO: merge this into sql query
             issues = [
-                iss for iss in issues
+                iss
+                for iss in issues
                 if iss.status == 'Needs Triage'
                 or not iss.components
                 or not iss.labels
@@ -283,16 +268,14 @@ class Issue(Base):
         return issues
 
     @classmethod
-    async def list_keys(
-        cls, *, session: AsyncSession,
-    ) -> list[str]:
+    async def list_keys(cls, *, session: AsyncSession) -> list[str]:
         query = select(cls.key).order_by(cls.key)
         rows = await session.execute(query)
         return list(rows.scalars())
 
     @classmethod
     async def get_updated_map(
-        cls, *, session: AsyncSession,
+        cls, *, session: AsyncSession
     ) -> dict[str, datetime.datetime]:
         # Change-detection gate: only the stored ``updated`` timestamp is
         # needed, so this deliberately skips the read model and its
@@ -307,9 +290,7 @@ class Issue(Base):
         }
 
     @classmethod
-    async def hard_delete(
-        cls, key: str, *, session: AsyncSession,
-    ) -> None:
+    async def hard_delete(cls, key: str, *, session: AsyncSession) -> None:
         # TODO(perf): group these into a single operation?
         await Component.delete(key, session=session)
         await Label.delete(key, session=session)
@@ -319,8 +300,7 @@ class Issue(Base):
 
     @classmethod
     async def upsert(
-        cls, issue: schemas.IssueCreate, *,
-        session: AsyncSession,
+        cls, issue: schemas.IssueCreate, *, session: AsyncSession
     ) -> None:
         # TODO: fix upserts, then avoid the deletion here
         deletion = delete(cls).where(cls.key == issue.key)
@@ -329,8 +309,8 @@ class Issue(Base):
         # N.B. set "include" explicitly to support subclasses of IssueCreate
         stmt = insert(cls).values(
             **issue.model_dump(
-                include=set(schemas.IssueCreate.model_fields.keys()),
-            ),
+                include=set(schemas.IssueCreate.model_fields.keys())
+            )
         )
         query = stmt.on_conflict_do_update(
             index_elements=['key'],
@@ -357,28 +337,23 @@ class Setting(Base):
     value: Mapped[str]
 
     @classmethod
-    async def get(
-        cls, key: str, *, session: AsyncSession,
-    ) -> str | None:
+    async def get(cls, key: str, *, session: AsyncSession) -> str | None:
         query = select(cls.value).where(cls.key == key)
         result = (await session.execute(query)).scalar_one_or_none()
         return result
 
     @classmethod
     async def upsert(
-        cls, key: str, value: str, *, session: AsyncSession,
+        cls, key: str, value: str, *, session: AsyncSession
     ) -> None:
         stmt = insert(cls).values(key=key, value=value)
         query = stmt.on_conflict_do_update(
-            index_elements=['key'],
-            set_={'value': stmt.excluded.value},
+            index_elements=['key'], set_={'value': stmt.excluded.value}
         )
         await session.execute(query)
 
     @classmethod
-    async def delete(
-        cls, key: str, *, session: AsyncSession,
-    ) -> None:
+    async def delete(cls, key: str, *, session: AsyncSession) -> None:
         query = delete(cls).where(cls.key == key)
         await session.execute(query)
 
@@ -392,8 +367,7 @@ class Task(Base):
 
     @classmethod
     async def upsert(
-        cls, task: schemas.Task, *,
-        session: AsyncSession,
+        cls, task: schemas.Task, *, session: AsyncSession
     ) -> None:
         stmt = insert(cls).values(**task.model_dump())
         query = stmt.on_conflict_do_update(
@@ -404,8 +378,7 @@ class Task(Base):
 
     @classmethod
     async def get(
-        cls, key: str, variant: str, *,
-        session: AsyncSession,
+        cls, key: str, variant: str, *, session: AsyncSession
     ) -> schemas.Task | None:
         query = (
             select(cls.__table__)
@@ -417,8 +390,10 @@ class Task(Base):
             return None
 
         # TODO: any way to store tz in sqlite?
-        return schemas.Task.model_validate({
-            'key': result.key,
-            'variant': result.variant,
-            'latest': result.latest.replace(tzinfo=datetime.UTC),
-        })
+        return schemas.Task.model_validate(
+            {
+                'key': result.key,
+                'variant': result.variant,
+                'latest': result.latest.replace(tzinfo=datetime.UTC),
+            }
+        )

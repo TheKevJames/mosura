@@ -10,7 +10,6 @@ from mosura.schemas.issue import IssueCreate
 from mosura.schemas.issue import IssueTransition
 from mosura.schemas.issue import Status
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -30,7 +29,7 @@ class TimelineSegment:
     status: str
 
     # rendering
-    left_percent: float = 0.
+    left_percent: float = 0.0
     width_percent: float | None = None
     show_transition_marker: bool = False
 
@@ -39,7 +38,9 @@ class TimelineSegment:
         if self.start > self.end:
             logger.error(
                 'timeline segment has inverted dates for %s: %s > %s',
-                self.status, self.start, self.end,
+                self.status,
+                self.start,
+                self.end,
             )
         return self
 
@@ -48,25 +49,19 @@ class TimelineSegment:
         return f'status-{Status.normalize_status(self.status)}'
 
     def calculate_rendering(
-            self,
-            previous: Self | None,
-            total_days: int,
-            view_start: datetime.date,
+        self, previous: Self | None, total_days: int, view_start: datetime.date
     ) -> None:
         segment_start_offset = (self.start - view_start).days
         # Render segment end date inclusively so a segment ending on a
         # given date still fills that date on the chart.
         segment_width = (self.end - self.start).days + 1
         self.left_percent = segment_start_offset / total_days * 100
-        self.width_percent = max(
-            segment_width / total_days * 100,
-            0.1,
-        )
+        self.width_percent = max(segment_width / total_days * 100, 0.1)
 
         self.show_transition_marker = bool(
             previous
             and previous.status_css_class == self.status_css_class
-            and self.left_percent > 0,
+            and self.left_percent > 0
         )
 
 
@@ -99,16 +94,16 @@ class TimelineIssue:
     overdue_start: bool
 
     # rendering
-    estimated_completion_percent: float = 0.
-    overdue_start_width_percent: float = 0.
-    overdue_width_percent: float = 0.
-    startdate_percent: float = 0.
+    estimated_completion_percent: float = 0.0
+    overdue_start_width_percent: float = 0.0
+    overdue_width_percent: float = 0.0
+    startdate_percent: float = 0.0
 
     def calculate_rendering(
-            self,
-            total_days: int,
-            view_start: datetime.date,
-            current_date: datetime.date,
+        self,
+        total_days: int,
+        view_start: datetime.date,
+        current_date: datetime.date,
     ) -> None:
         if self.estimated_completion:
             days_from_start = (self.estimated_completion - view_start).days
@@ -118,9 +113,7 @@ class TimelineIssue:
 
         if self.overdue and self.estimated_completion:
             days_overdue = (current_date - self.estimated_completion).days
-            self.overdue_width_percent = (
-                days_overdue / total_days * 100
-            )
+            self.overdue_width_percent = days_overdue / total_days * 100
 
         if self.overdue_start and self.startdate:
             days_not_started = (current_date - self.startdate).days
@@ -142,14 +135,14 @@ class Timeline:
 
     @classmethod
     def from_issues(
-            cls,
-            issues: list[Issue],
-            *,
-            selected_date: datetime.date,
-            current_date: datetime.date,
-            transitions: dict[str, list[IssueTransition]] | None = None,
-            weeks_before: int = 3,
-            weeks_after: int = 5,
+        cls,
+        issues: list[Issue],
+        *,
+        selected_date: datetime.date,
+        current_date: datetime.date,
+        transitions: dict[str, list[IssueTransition]] | None = None,
+        weeks_before: int = 3,
+        weeks_after: int = 5,
     ) -> 'Timeline':
         """
         Build a timeline from issues and their status transitions.
@@ -209,11 +202,11 @@ class Timeline:
 
     @classmethod
     def _should_attend(
-            cls,
-            issue: Issue,
-            trans: list[IssueTransition],
-            current_date: datetime.date,
-            view_start: datetime.date,
+        cls,
+        issue: Issue,
+        trans: list[IssueTransition],
+        current_date: datetime.date,
+        view_start: datetime.date,
     ) -> bool:
         """
         Determine if an issue should be in the attention list.
@@ -240,9 +233,7 @@ class Timeline:
 
     @staticmethod
     def _overdue_start(
-            issue: Issue,
-            trans: list[IssueTransition],
-            current_date: datetime.date,
+        issue: Issue, trans: list[IssueTransition], current_date: datetime.date
     ) -> bool:
         # An issue is overdue for having started work if it has an estimated
         # start date in the past, but has not yet transitioned through a
@@ -255,15 +246,15 @@ class Timeline:
             issue.startdate
             and issue.startdate < current_date
             and not has_started
-            and Status.normalize_status(issue.status) != 'closed',
+            and Status.normalize_status(issue.status) != 'closed'
         )
 
     @classmethod
     def _build_timeline_issue_segments(
-            cls,
-            issue: Issue,
-            trans: list[IssueTransition],
-            current_date: datetime.date,
+        cls,
+        issue: Issue,
+        trans: list[IssueTransition],
+        current_date: datetime.date,
     ) -> Iterator[TimelineSegment]:
         """Build timeline segments for an issue from status transitions."""
         created_date = issue.created.date()
@@ -277,9 +268,7 @@ class Timeline:
                 segment_end = segment_end or current_date
 
             yield TimelineSegment(
-                start=created_date,
-                end=segment_end,
-                status=issue.status,
+                start=created_date, end=segment_end, status=issue.status
             )
             return
 
@@ -313,17 +302,17 @@ class Timeline:
 
     @classmethod
     def _build_timeline_issue(
-            cls,
-            issue: Issue,
-            trans: list[IssueTransition],
-            current_date: datetime.date,
-            view_start: datetime.date,
-            view_end: datetime.date,
+        cls,
+        issue: Issue,
+        trans: list[IssueTransition],
+        current_date: datetime.date,
+        view_start: datetime.date,
+        view_end: datetime.date,
     ) -> TimelineIssue | None:
         """Build a TimelineIssue from an issue and its transitions."""
         issue_status = IssueCreate.parse_status(issue.status)
         segments = cls._build_timeline_issue_segments(
-            issue, trans, current_date,
+            issue, trans, current_date
         )
 
         clamped_segments: list[TimelineSegment] = []
@@ -340,7 +329,7 @@ class Timeline:
         overdue = bool(
             est_completion
             and est_completion < current_date
-            and Status.normalize_status(issue.status) != 'closed',
+            and Status.normalize_status(issue.status) != 'closed'
         )
 
         return TimelineIssue(
@@ -357,15 +346,15 @@ class Timeline:
 
     @staticmethod
     def _compute_estimated_completion(
-            issue: Issue,
-            trans: list[IssueTransition],
+        issue: Issue, trans: list[IssueTransition]
     ) -> datetime.date | None:
         """Compute estimated completion date for an issue."""
         if Status.normalize_status(issue.status) == 'closed':
             # Closed issues: find close transition date
             return next(
                 (
-                    t.timestamp.date() for t in trans
+                    t.timestamp.date()
+                    for t in trans
                     if Status.normalize_status(t.to_status) == 'closed'
                 ),
                 None,
@@ -374,7 +363,8 @@ class Timeline:
         # Look for first in-progress transition
         in_prog_trans = next(
             (
-                t for t in trans
+                t
+                for t in trans
                 if Status.normalize_status(t.to_status) == 'in-progress'
             ),
             None,
@@ -393,16 +383,16 @@ class Timeline:
 
     @staticmethod
     def get_boxes(
-            selected_date: datetime.date,
-            current_date: datetime.date,
-            weeks_before: int,
-            weeks_after: int,
+        selected_date: datetime.date,
+        current_date: datetime.date,
+        weeks_before: int,
+        weeks_after: int,
     ) -> tuple[datetime.date, list[tuple[datetime.date, bool]]]:
         selected_monday = selected_date - datetime.timedelta(
-            days=selected_date.weekday(),
+            days=selected_date.weekday()
         )
         current_monday = current_date - datetime.timedelta(
-            days=current_date.weekday(),
+            days=current_date.weekday()
         )
 
         weeks = weeks_before + 1 + weeks_after

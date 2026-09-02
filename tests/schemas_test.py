@@ -15,8 +15,7 @@ from mosura.schemas.issue import IssueCreate
     ],
 )
 def test_parse_timeestimate(
-    original: str,
-    expected: datetime.timedelta,
+    original: str, expected: datetime.timedelta
 ) -> None:
     x = IssueCreate.parse_timeestimate(original)
     assert x == expected
