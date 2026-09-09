@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1
 
-# renovate: datasource=repology depName=debian_11/curl versioning=loose
-ARG CURL_VERSION=7.74.0-1.3+deb11u16
+# renovate: datasource=repology depName=debian_12/curl versioning=loose
+ARG CURL_VERSION=7.88.1-10+deb12u15
 # renovate: datasource=pypi depName=poetry
 ARG POETRY_VERSION=2.4.3
 
 
-FROM python:3.13.6-slim-bullseye AS base
+FROM python:3.13.6-slim-bookworm AS base
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
