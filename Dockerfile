@@ -6,7 +6,7 @@ ARG CURL_VERSION=7.88.1-10+deb12u15
 ARG POETRY_VERSION=2.4.3
 
 
-FROM python:3.13.6-slim-bookworm AS base
+FROM python:3.14.7-slim-bookworm AS base
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
