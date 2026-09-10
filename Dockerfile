@@ -4,7 +4,7 @@
 FROM ghcr.io/astral-sh/uv:0.12.9 AS uv
 
 
-FROM python:3.13.6-slim-bookworm AS base
+FROM python:3.13.15-slim-bookworm AS base
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
