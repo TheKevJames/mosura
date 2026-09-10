@@ -18,8 +18,8 @@ dependencies = [
     "pydantic-settings==2.15.0",
     "requests==2.34.2",
     "sqlalchemy[aiosqlite]==2.0.52",
-    # NOTE: On arm64, Poetry can omit transitive greenlet from
-    # sqlalchemy[aiosqlite] due marker evaluation (arm64 vs aarch64).
+    # NOTE: sqlalchemy's greenlet requirement is gated on markers that list
+    # aarch64 but not arm64, so Apple Silicon misses the transitive install.
     # TODO: Remove once greenlet is reliably installed transitively on arm64.
     "greenlet==3.5.5; platform_machine == 'arm64'",
     "uvicorn==0.52.4",
@@ -29,31 +29,32 @@ dependencies = [
 [project.urls]
 repository = "https://github.com/TheKevJames/mosura"
 
-[tool.poetry]
-requires-poetry = ">=2.0"
-package-mode = true
-
-[tool.poetry.dependencies]
-python = ">=3.11,<4.0"
-
-[tool.poetry.group.dev.dependencies]
-niquests = "3.21.1"
-pytest = "9.1.1"
-pytest-asyncio = "1.4.0"
-
-[tool.mypy]
-plugins = [
-    "pydantic.mypy",
+[dependency-groups]
+dev = [
+    "flake8-broken-line==1.0.0",
+    "flake8-complicated-walrus==2.1.0",
+    "flake8-import-restrictions==2.1",
+    "flake8-requirements==2.3.0",
+    "flake8==7.3.0",
+    "niquests==3.21.1",
+    "pylint==4.0.8",
+    "pytest-asyncio==1.4.0",
+    "pytest==9.1.1",
 ]
 
-[[tool.mypy.overrides]]
-module = 'uvicorn.*'
-ignore_missing_imports = true
+[tool.hatch.build.targets.wheel]
+packages = ["mosura"]
 
 [tool.pytest]
 addopts = ["-Werror"]
 asyncio_mode = "auto"
 
+[tool.ty.rules]
+dynamic-function-decorator-return = "error"
+missing-type-argument = "error"
+possibly-unresolved-reference = "warn"
+unsound-return-statement = "error"
+
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"

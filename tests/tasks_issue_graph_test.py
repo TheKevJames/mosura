@@ -33,12 +33,12 @@ class _FakeJiraClient:
         self.changelog_fetches: list[str] = []
 
     def enhanced_search_issues(
-        self, jql: str, **kwargs: Any
+        self, jql: str, **kwargs: object
     ) -> dict[str, Any]:
         _ = jql, kwargs
         return {'issues': self._issues, 'isLast': True}
 
-    def issue(self, key: str, **kwargs: Any) -> object:
+    def issue(self, key: str, **kwargs: object) -> object:
         _ = kwargs
         self.changelog_fetches.append(key)
         return types.SimpleNamespace(

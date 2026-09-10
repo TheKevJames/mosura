@@ -6,7 +6,7 @@ import signal
 from collections.abc import AsyncIterator
 
 import fastapi.staticfiles
-import jira
+import jira.resources
 
 from . import api
 from . import config

@@ -1,8 +1,7 @@
 import datetime
-from typing import Any
 
 import fastapi.templating
-import starlette
+import sqlalchemy.ext.asyncio
 
 from . import database
 from . import models
@@ -43,7 +42,7 @@ templates.env.filters['timeformat'] = timeformat
 
 async def _build_timeline(
     request: fastapi.Request,
-    session: Any,
+    session: sqlalchemy.ext.asyncio.AsyncSession,
     selected_date: datetime.date,
     current_date: datetime.date,
     weeks_before: int,
@@ -82,7 +81,7 @@ async def _build_timeline(
 
 
 @router.get('/', response_class=fastapi.responses.HTMLResponse)
-async def home(request: fastapi.Request) -> starlette.responses.Response:
+async def home(request: fastapi.Request) -> fastapi.responses.Response:
     current_date = datetime.datetime.now(datetime.UTC).date()
 
     async with database.session_from_app(request.app) as session:
@@ -107,9 +106,7 @@ async def home(request: fastapi.Request) -> starlette.responses.Response:
 
 
 @router.get('/issues', response_class=fastapi.responses.HTMLResponse)
-async def list_issues(
-    request: fastapi.Request,
-) -> starlette.responses.Response:
+async def list_issues(request: fastapi.Request) -> fastapi.responses.Response:
     async with database.session_from_app(request.app) as session:
         issues = await models.Issue.get(closed=False, session=session)
 
@@ -121,7 +118,7 @@ async def list_issues(
 @router.get('/mine', response_class=fastapi.responses.HTMLResponse)
 async def list_my_issues(
     request: fastapi.Request,
-) -> starlette.responses.Response:
+) -> fastapi.responses.Response:
     tracked_user_name = request.app.state.tracked_user_name
 
     async with database.session_from_app(request.app) as session:
@@ -137,7 +134,7 @@ async def list_my_issues(
 @router.get('/issues/{key}', response_class=fastapi.responses.HTMLResponse)
 async def show_issue(
     request: fastapi.Request, key: str
-) -> starlette.responses.Response:
+) -> fastapi.responses.Response:
     async with database.session_from_app(request.app) as session:
         issues = await models.Issue.get(key=key, closed=True, session=session)
 
@@ -155,7 +152,7 @@ async def show_issue(
 @router.get('/settings', response_class=fastapi.responses.HTMLResponse)
 async def show_settings(
     request: fastapi.Request,
-) -> starlette.responses.Response:
+) -> fastapi.responses.Response:
     async with database.session_from_app(request.app) as session:
         custom_jql = await models.Setting.get('custom_jql', session=session)
     context = {
@@ -188,7 +185,7 @@ def _enrich_timeline_for_template(
 @router.get('/timeline', response_class=fastapi.responses.HTMLResponse)
 async def show_timeline(
     request: fastapi.Request, date: str | None = None
-) -> starlette.responses.Response:
+) -> fastapi.responses.Response:
     current_date = datetime.datetime.now(datetime.UTC).date()
     selected_date = datetime.date.fromisoformat(date) if date else current_date
 
@@ -209,7 +206,7 @@ async def show_timeline(
 @router.get('/triage', response_class=fastapi.responses.HTMLResponse)
 async def list_triagable_issues(
     request: fastapi.Request,
-) -> starlette.responses.Response:
+) -> fastapi.responses.Response:
     async with database.session_from_app(request.app) as session:
         issues = await models.Issue.get(needs_triage=True, session=session)
 

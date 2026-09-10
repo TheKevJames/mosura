@@ -5,7 +5,9 @@ from collections.abc import Iterator
 from typing import Any
 
 import fastapi
+import jira
 import requests
+import sqlalchemy.ext.asyncio
 
 from . import database
 from . import models
@@ -26,7 +28,7 @@ _MAX_CONSECUTIVE_TRANSIENT = 3
 
 
 async def _search_issues(
-    *, jira_client: Any, jql: str, page_size: int = 100
+    *, jira_client: jira.JIRA, jql: str, page_size: int = 100
 ) -> list[dict[str, Any]]:
     issues: list[dict[str, Any]] = []
     page_token: str | None = None
@@ -84,7 +86,9 @@ def _parse_changelog(
 
 
 async def _sync_issue_transitions(
-    issue: dict[str, Any], app: fastapi.FastAPI, session: Any
+    issue: dict[str, Any],
+    app: fastapi.FastAPI,
+    session: sqlalchemy.ext.asyncio.AsyncSession,
 ) -> None:
     """
     Sync transitions for a single issue from Jira changelog.
@@ -120,7 +124,10 @@ async def _sync_issue_transitions(
 
 
 async def _upsert_issue_graph(
-    issue: dict[str, Any], *, app: fastapi.FastAPI, session: Any
+    issue: dict[str, Any],
+    *,
+    app: fastapi.FastAPI,
+    session: sqlalchemy.ext.asyncio.AsyncSession,
 ) -> None:
     key = issue['key']
 
@@ -170,7 +177,7 @@ def _issue_changed(
 
 
 async def sync_desired_issues(
-    *, app: fastapi.FastAPI, session: Any
+    *, app: fastapi.FastAPI, session: sqlalchemy.ext.asyncio.AsyncSession
 ) -> set[str]:
     jql = f'(assignee = "{app.state.tracked_user_id}")'
     custom_jql = await models.Setting.get('custom_jql', session=session)
@@ -208,13 +215,13 @@ async def sync_desired_issues(
 
 
 async def _fetch_issue_by_key(
-    *, jira_client: Any, key: str
+    *, jira_client: jira.JIRA, key: str
 ) -> dict[str, Any] | None:
     try:
         issue: object = await asyncio.to_thread(
             jira_client.issue,
             id=key,
-            fields=schemas.Issue.jira_fields(),
+            fields=','.join(schemas.Issue.jira_fields()),
             expand='renderedFields',
         )
     except Exception:
@@ -270,7 +277,7 @@ def schedule_issue_refresh(*, app: fastapi.FastAPI, key: str) -> None:
 
 
 async def reconcile_stale_issues(
-    *, session: Any, desired_keys: set[str]
+    *, session: sqlalchemy.ext.asyncio.AsyncSession, desired_keys: set[str]
 ) -> set[str]:
     tracked_keys = set(await models.Issue.list_keys(session=session))
     stale_keys = sorted(tracked_keys - desired_keys)

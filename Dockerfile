@@ -1,40 +1,36 @@
 # syntax=docker/dockerfile:1
 
-# renovate: datasource=repology depName=debian_12/curl versioning=loose
-ARG CURL_VERSION=7.88.1-10+deb12u15
-# renovate: datasource=pypi depName=poetry
-ARG POETRY_VERSION=2.4.3
+
+FROM ghcr.io/astral-sh/uv:0.12.9 AS uv
 
 
 FROM python:3.13.6-slim-bookworm AS base
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-ARG CURL_VERSION
-ARG POETRY_VERSION
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    apt-get update -qy && \
-    apt-get install -qy --no-install-recommends \
-        "curl=${CURL_VERSION}" && \
-    curl -sSL https://install.python-poetry.org | POETRY_VERSION="${POETRY_VERSION}" python3 -
-ENV PATH="/root/.local/bin:${PATH}"
+COPY --from=uv /uv /uvx /bin/
 
-RUN poetry config virtualenvs.create false
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PROJECT_ENVIRONMENT=/usr/local
 
 WORKDIR /app
-COPY pyproject.toml poetry.lock ./
-RUN --mount=type=cache,target=/root/.cache \
-    poetry install --no-root --only main
+COPY pyproject.toml uv.lock ./
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-install-project --no-dev
 
 COPY mosura ./mosura
 COPY static ./static
 COPY templates ./templates
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev
 
 
 FROM base AS test
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen
 COPY tests ./tests
-ENTRYPOINT ["poetry", "run", "pytest"]
+ENTRYPOINT ["uv", "run", "--no-sync", "pytest"]
 CMD ["tests/"]
 
 

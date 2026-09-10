@@ -1,3 +1,4 @@
+# flake8: noqa: IMR241
 from mosura.schemas.issue import Component
 from mosura.schemas.issue import Issue
 from mosura.schemas.issue import IssueCreate

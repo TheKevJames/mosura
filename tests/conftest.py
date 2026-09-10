@@ -26,7 +26,9 @@ class SyncSessionAdapter:
     def __init__(self, db_session: sqlalchemy.orm.Session) -> None:
         self._db_session = db_session
 
-    async def execute(self, statement: Any) -> Any:
+    async def execute(
+        self, statement: sqlalchemy.Executable
+    ) -> sqlalchemy.Result[Any]:
         return self._db_session.execute(statement)
 
     async def commit(self) -> None:
@@ -317,8 +319,8 @@ def api_session(monkeypatch: pytest.MonkeyPatch) -> types.SimpleNamespace:
         yield session
 
     async def run_inline(
-        func: Callable[..., Any], *args: Any, **kwargs: Any
-    ) -> Any:
+        func: Callable[..., object], *args: object, **kwargs: object
+    ) -> object:
         return func(*args, **kwargs)
 
     monkeypatch.setattr(database, 'session_from_app', fake_session_from_app)

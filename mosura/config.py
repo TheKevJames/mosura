@@ -62,9 +62,7 @@ class Settings(pydantic_settings.BaseSettings):
         normalized = value.strip()
         return normalized or None
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
-
+    def model_post_init(self, context: object, /) -> None:
         log_config = LogConfig(LOG_LEVEL=self.mosura_log_level).model_dump()
         logging.config.dictConfig(log_config)
 

@@ -5,6 +5,7 @@ import re
 import types
 import unittest.mock
 import warnings
+from collections.abc import Awaitable
 from collections.abc import Callable
 
 import fastapi
@@ -174,7 +175,7 @@ def _mock_issue_get(
     *,
     my_issues: list[schemas.Issue],
     timeline_issues: list[schemas.Issue] | None = None,
-) -> Callable[..., list[schemas.Issue]]:
+) -> Callable[..., Awaitable[list[schemas.Issue]]]:
     """
     Build a mock for ``models.Issue.get`` that dispatches on kwargs.
 
@@ -198,7 +199,7 @@ def _mock_issue_get(
             return []
         return []
 
-    return _get  # type: ignore[return-value]
+    return _get
 
 
 @pytest.mark.usefixtures('api_session')

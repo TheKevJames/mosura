@@ -2,7 +2,7 @@ import datetime
 
 import pytest
 
-from mosura.schemas.issue import IssueCreate
+from mosura import schemas
 
 
 @pytest.mark.parametrize(
@@ -17,5 +17,5 @@ from mosura.schemas.issue import IssueCreate
 def test_parse_timeestimate(
     original: str, expected: datetime.timedelta
 ) -> None:
-    x = IssueCreate.parse_timeestimate(original)
+    x = schemas.IssueCreate.parse_timeestimate(original)
     assert x == expected

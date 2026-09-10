@@ -5,10 +5,7 @@ from typing import Self
 
 import pydantic
 
-from mosura.schemas.issue import Issue
-from mosura.schemas.issue import IssueCreate
-from mosura.schemas.issue import IssueTransition
-from mosura.schemas.issue import Status
+from mosura.schemas import issue as schemas
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +43,7 @@ class TimelineSegment:
 
     @property
     def status_css_class(self) -> str:
-        return f'status-{Status.normalize_status(self.status)}'
+        return f'status-{schemas.Status.normalize_status(self.status)}'
 
     def calculate_rendering(
         self, previous: Self | None, total_days: int, view_start: datetime.date
@@ -129,18 +126,18 @@ class TimelineIssue:
 @pydantic.dataclasses.dataclass
 class Timeline:
     issues: list[TimelineIssue]
-    attention: list[Issue]
+    attention: list[schemas.Issue]
     selected_monday: datetime.date
     boxes: list[tuple[datetime.date, bool]]
 
     @classmethod
     def from_issues(
         cls,
-        issues: list[Issue],
+        issues: list[schemas.Issue],
         *,
         selected_date: datetime.date,
         current_date: datetime.date,
-        transitions: dict[str, list[IssueTransition]] | None = None,
+        transitions: dict[str, list[schemas.IssueTransition]] | None = None,
         weeks_before: int = 3,
         weeks_after: int = 5,
     ) -> 'Timeline':
@@ -169,7 +166,7 @@ class Timeline:
 
         # Partition issues into timeline and attention
         timeline_issues: list[TimelineIssue] = []
-        attention_issues: list[Issue] = []
+        attention_issues: list[schemas.Issue] = []
 
         for issue in issues:
             # Determine if issue should be in attention list
@@ -203,8 +200,8 @@ class Timeline:
     @classmethod
     def _should_attend(
         cls,
-        issue: Issue,
-        trans: list[IssueTransition],
+        issue: schemas.Issue,
+        trans: list[schemas.IssueTransition],
         current_date: datetime.date,
         view_start: datetime.date,
     ) -> bool:
@@ -215,7 +212,7 @@ class Timeline:
         - They have no timeestimate (zero timedelta)
         - OR they have overdue_start AND startdate < view_start
         """
-        if Status.normalize_status(issue.status) == 'closed':
+        if schemas.Status.normalize_status(issue.status) == 'closed':
             return False
 
         # No timeestimate: needs attention
@@ -233,27 +230,29 @@ class Timeline:
 
     @staticmethod
     def _overdue_start(
-        issue: Issue, trans: list[IssueTransition], current_date: datetime.date
+        issue: schemas.Issue,
+        trans: list[schemas.IssueTransition],
+        current_date: datetime.date,
     ) -> bool:
         # An issue is overdue for having started work if it has an estimated
         # start date in the past, but has not yet transitioned through a
         # working state.
         has_started = any(
-            Status.normalize_status(s) == 'in-progress'
+            schemas.Status.normalize_status(s) == 'in-progress'
             for s in [t.to_status for t in trans] + [issue.status]
         )
         return bool(
             issue.startdate
             and issue.startdate < current_date
             and not has_started
-            and Status.normalize_status(issue.status) != 'closed'
+            and schemas.Status.normalize_status(issue.status) != 'closed'
         )
 
     @classmethod
     def _build_timeline_issue_segments(
         cls,
-        issue: Issue,
-        trans: list[IssueTransition],
+        issue: schemas.Issue,
+        trans: list[schemas.IssueTransition],
         current_date: datetime.date,
     ) -> Iterator[TimelineSegment]:
         """Build timeline segments for an issue from status transitions."""
@@ -262,7 +261,7 @@ class Timeline:
         if not trans:
             # TODO: consider scheduling a fetch here
             segment_end = cls._compute_estimated_completion(issue, trans)
-            if Status.normalize_status(issue.status) == 'closed':
+            if schemas.Status.normalize_status(issue.status) == 'closed':
                 segment_end = segment_end or issue.updated.date()
             else:
                 segment_end = segment_end or current_date
@@ -288,7 +287,7 @@ class Timeline:
             )
 
         last_trans = trans[-1]
-        if Status.normalize_status(last_trans.to_status) == 'closed':
+        if schemas.Status.normalize_status(last_trans.to_status) == 'closed':
             segment_end = last_trans.timestamp.date()
         else:
             est_complete = cls._compute_estimated_completion(issue, trans)
@@ -303,14 +302,14 @@ class Timeline:
     @classmethod
     def _build_timeline_issue(
         cls,
-        issue: Issue,
-        trans: list[IssueTransition],
+        issue: schemas.Issue,
+        trans: list[schemas.IssueTransition],
         current_date: datetime.date,
         view_start: datetime.date,
         view_end: datetime.date,
     ) -> TimelineIssue | None:
         """Build a TimelineIssue from an issue and its transitions."""
-        issue_status = IssueCreate.parse_status(issue.status)
+        issue_status = schemas.IssueCreate.parse_status(issue.status)
         segments = cls._build_timeline_issue_segments(
             issue, trans, current_date
         )
@@ -329,7 +328,7 @@ class Timeline:
         overdue = bool(
             est_completion
             and est_completion < current_date
-            and Status.normalize_status(issue.status) != 'closed'
+            and schemas.Status.normalize_status(issue.status) != 'closed'
         )
 
         return TimelineIssue(
@@ -346,16 +345,16 @@ class Timeline:
 
     @staticmethod
     def _compute_estimated_completion(
-        issue: Issue, trans: list[IssueTransition]
+        issue: schemas.Issue, trans: list[schemas.IssueTransition]
     ) -> datetime.date | None:
         """Compute estimated completion date for an issue."""
-        if Status.normalize_status(issue.status) == 'closed':
+        if schemas.Status.normalize_status(issue.status) == 'closed':
             # Closed issues: find close transition date
             return next(
                 (
                     t.timestamp.date()
                     for t in trans
-                    if Status.normalize_status(t.to_status) == 'closed'
+                    if schemas.Status.normalize_status(t.to_status) == 'closed'
                 ),
                 None,
             )
@@ -365,7 +364,8 @@ class Timeline:
             (
                 t
                 for t in trans
-                if Status.normalize_status(t.to_status) == 'in-progress'
+                if schemas.Status.normalize_status(t.to_status)
+                == 'in-progress'
             ),
             None,
         )

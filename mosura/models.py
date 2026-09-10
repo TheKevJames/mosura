@@ -1,61 +1,72 @@
+from __future__ import annotations
+
 import datetime
 import itertools
 import operator
 from collections.abc import Sequence
 from typing import Annotated
 
-from sqlalchemy import ForeignKey
-from sqlalchemy.dialects.sqlite import insert
-from sqlalchemy.engine.row import Row
-from sqlalchemy.ext.asyncio import AsyncAttrs
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.orm import Mapped
-from sqlalchemy.orm import MappedAsDataclass
-from sqlalchemy.orm import mapped_column
-from sqlalchemy.orm import relationship
-from sqlalchemy.sql import delete
-from sqlalchemy.sql import select
+import sqlalchemy
+import sqlalchemy.dialects.sqlite
+import sqlalchemy.ext.asyncio
+import sqlalchemy.orm
 
 from . import schemas
 
-strpk = Annotated[str, mapped_column(primary_key=True)]
-strpkindex = Annotated[str, mapped_column(primary_key=True, index=True)]
+strpk = Annotated[str, sqlalchemy.orm.mapped_column(primary_key=True)]
+strpkindex = Annotated[
+    str, sqlalchemy.orm.mapped_column(primary_key=True, index=True)
+]
 strfk = Annotated[
-    str, mapped_column(ForeignKey('issues.key'), primary_key=True)
+    str,
+    sqlalchemy.orm.mapped_column(
+        sqlalchemy.ForeignKey('issues.key'), primary_key=True
+    ),
 ]
 
 
-class Base(AsyncAttrs, DeclarativeBase, MappedAsDataclass):
+class Base(
+    sqlalchemy.ext.asyncio.AsyncAttrs,
+    sqlalchemy.orm.DeclarativeBase,
+    sqlalchemy.orm.MappedAsDataclass,
+):
     pass
 
 
 class Component(Base):
     __tablename__ = 'components'
 
-    key: Mapped[strfk]
-    component: Mapped[strpk]
+    key: sqlalchemy.orm.Mapped[strfk]
+    component: sqlalchemy.orm.Mapped[strpk]
 
     @classmethod
-    async def list_(cls, key: str, *, session: AsyncSession) -> set[str]:
-        query = select(cls.component).where(cls.key == key)
+    async def list_(
+        cls, key: str, *, session: sqlalchemy.ext.asyncio.AsyncSession
+    ) -> set[str]:
+        query = sqlalchemy.select(cls.component).where(cls.key == key)
         rows = await session.execute(query)
         return set(rows.scalars())
 
     @classmethod
-    async def delete(cls, key: str, *, session: AsyncSession) -> None:
-        query = delete(cls).where(cls.key == key)
+    async def delete(
+        cls, key: str, *, session: sqlalchemy.ext.asyncio.AsyncSession
+    ) -> None:
+        query = sqlalchemy.delete(cls).where(cls.key == key)
         await session.execute(query)
 
     @classmethod
     async def delete_many(
-        cls, key: str, components: set[str], *, session: AsyncSession
+        cls,
+        key: str,
+        components: set[str],
+        *,
+        session: sqlalchemy.ext.asyncio.AsyncSession,
     ) -> None:
         if not components:
             return
 
         query = (
-            delete(cls)
+            sqlalchemy.delete(cls)
             .where(cls.key == key)
             .where(cls.component.in_(components))
         )
@@ -63,75 +74,106 @@ class Component(Base):
 
     @classmethod
     async def upsert(
-        cls, component: schemas.Component, *, session: AsyncSession
+        cls,
+        component: schemas.Component,
+        *,
+        session: sqlalchemy.ext.asyncio.AsyncSession,
     ) -> None:
-        stmt = insert(cls).values(**component.model_dump())
+        stmt = sqlalchemy.dialects.sqlite.insert(cls).values(
+            **component.model_dump()
+        )
         await session.execute(stmt.on_conflict_do_nothing())
 
 
 class Label(Base):
     __tablename__ = 'labels'
 
-    key: Mapped[strfk]
-    label: Mapped[strpk]
+    key: sqlalchemy.orm.Mapped[strfk]
+    label: sqlalchemy.orm.Mapped[strpk]
 
     @classmethod
-    async def list_(cls, key: str, *, session: AsyncSession) -> set[str]:
-        query = select(cls.label).where(cls.key == key)
+    async def list_(
+        cls, key: str, *, session: sqlalchemy.ext.asyncio.AsyncSession
+    ) -> set[str]:
+        query = sqlalchemy.select(cls.label).where(cls.key == key)
         rows = await session.execute(query)
         return set(rows.scalars())
 
     @classmethod
-    async def delete(cls, key: str, *, session: AsyncSession) -> None:
-        query = delete(cls).where(cls.key == key)
+    async def delete(
+        cls, key: str, *, session: sqlalchemy.ext.asyncio.AsyncSession
+    ) -> None:
+        query = sqlalchemy.delete(cls).where(cls.key == key)
         await session.execute(query)
 
     @classmethod
     async def delete_many(
-        cls, key: str, labels: set[str], *, session: AsyncSession
+        cls,
+        key: str,
+        labels: set[str],
+        *,
+        session: sqlalchemy.ext.asyncio.AsyncSession,
     ) -> None:
         if not labels:
             return
 
-        query = delete(cls).where(cls.key == key).where(cls.label.in_(labels))
+        query = (
+            sqlalchemy.delete(cls)
+            .where(cls.key == key)
+            .where(cls.label.in_(labels))
+        )
         await session.execute(query)
 
     @classmethod
     async def upsert(
-        cls, label: schemas.Label, *, session: AsyncSession
+        cls,
+        label: schemas.Label,
+        *,
+        session: sqlalchemy.ext.asyncio.AsyncSession,
     ) -> None:
-        stmt = insert(cls).values(**label.model_dump())
+        stmt = sqlalchemy.dialects.sqlite.insert(cls).values(
+            **label.model_dump()
+        )
         await session.execute(stmt.on_conflict_do_nothing())
 
 
 class IssueTransition(Base):
     __tablename__ = 'issue_transitions'
 
-    key: Mapped[strfk]
-    from_status: Mapped[str | None]
-    to_status: Mapped[str]
-    timestamp: Mapped[
-        Annotated[datetime.datetime, mapped_column(primary_key=True)]
+    key: sqlalchemy.orm.Mapped[strfk]
+    from_status: sqlalchemy.orm.Mapped[str | None]
+    to_status: sqlalchemy.orm.Mapped[str]
+    timestamp: sqlalchemy.orm.Mapped[
+        Annotated[
+            datetime.datetime, sqlalchemy.orm.mapped_column(primary_key=True)
+        ]
     ]
 
     @classmethod
-    async def delete(cls, key: str, *, session: AsyncSession) -> None:
-        query = delete(cls).where(cls.key == key)
+    async def delete(
+        cls, key: str, *, session: sqlalchemy.ext.asyncio.AsyncSession
+    ) -> None:
+        query = sqlalchemy.delete(cls).where(cls.key == key)
         await session.execute(query)
 
     @classmethod
     async def upsert(
-        cls, transition: schemas.IssueTransition, *, session: AsyncSession
+        cls,
+        transition: schemas.IssueTransition,
+        *,
+        session: sqlalchemy.ext.asyncio.AsyncSession,
     ) -> None:
-        stmt = insert(cls).values(**transition.model_dump())
+        stmt = sqlalchemy.dialects.sqlite.insert(cls).values(
+            **transition.model_dump()
+        )
         await session.execute(stmt.on_conflict_do_nothing())
 
     @classmethod
     async def get_by_keys(
-        cls, keys: list[str], *, session: AsyncSession
+        cls, keys: list[str], *, session: sqlalchemy.ext.asyncio.AsyncSession
     ) -> list[schemas.IssueTransition]:
         query = (
-            select(cls)
+            sqlalchemy.select(cls)
             .where(cls.key.in_(keys))
             .order_by(cls.key, cls.timestamp)
         )
@@ -140,7 +182,7 @@ class IssueTransition(Base):
         return [schemas.IssueTransition.model_validate(row) for row in rows]
 
 
-IssueRow = Row[
+IssueRow = sqlalchemy.Row[
     tuple[
         str,
         str,
@@ -216,20 +258,22 @@ def convert_issue_response(results: Sequence[IssueRow]) -> list[schemas.Issue]:
 class Issue(Base):
     __tablename__ = 'issues'
 
-    key: Mapped[strpkindex]
-    summary: Mapped[str]
-    description: Mapped[str | None]
-    status: Mapped[str]
-    assignee: Mapped[str | None]
-    priority: Mapped[str]
-    startdate: Mapped[datetime.datetime | None]
-    created: Mapped[datetime.datetime]
-    updated: Mapped[datetime.datetime]
-    timeestimate: Mapped[datetime.timedelta]
-    votes: Mapped[int]
+    key: sqlalchemy.orm.Mapped[strpkindex]
+    summary: sqlalchemy.orm.Mapped[str]
+    description: sqlalchemy.orm.Mapped[str | None]
+    status: sqlalchemy.orm.Mapped[str]
+    assignee: sqlalchemy.orm.Mapped[str | None]
+    priority: sqlalchemy.orm.Mapped[str]
+    startdate: sqlalchemy.orm.Mapped[datetime.datetime | None]
+    created: sqlalchemy.orm.Mapped[datetime.datetime]
+    updated: sqlalchemy.orm.Mapped[datetime.datetime]
+    timeestimate: sqlalchemy.orm.Mapped[datetime.timedelta]
+    votes: sqlalchemy.orm.Mapped[int]
 
-    components: Mapped[list[Component]] = relationship()
-    labels: Mapped[list[Label]] = relationship()
+    components: sqlalchemy.orm.Mapped[list[Component]] = (
+        sqlalchemy.orm.relationship()
+    )
+    labels: sqlalchemy.orm.Mapped[list[Label]] = sqlalchemy.orm.relationship()
 
     @classmethod
     async def get(
@@ -239,10 +283,10 @@ class Issue(Base):
         assignee: str | None = None,
         closed: bool = False,
         needs_triage: bool = False,
-        session: AsyncSession,
+        session: sqlalchemy.ext.asyncio.AsyncSession,
     ) -> list[schemas.Issue]:
         query = (
-            select(cls.__table__, Component.component, Label.label)
+            sqlalchemy.select(cls.__table__, Component.component, Label.label)
             .join(Component.__table__, cls.key == Component.key, isouter=True)
             .join(Label, cls.key == Label.key, isouter=True)
         )
@@ -268,21 +312,23 @@ class Issue(Base):
         return issues
 
     @classmethod
-    async def list_keys(cls, *, session: AsyncSession) -> list[str]:
-        query = select(cls.key).order_by(cls.key)
+    async def list_keys(
+        cls, *, session: sqlalchemy.ext.asyncio.AsyncSession
+    ) -> list[str]:
+        query = sqlalchemy.select(cls.key).order_by(cls.key)
         rows = await session.execute(query)
         return list(rows.scalars())
 
     @classmethod
     async def get_updated_map(
-        cls, *, session: AsyncSession
+        cls, *, session: sqlalchemy.ext.asyncio.AsyncSession
     ) -> dict[str, datetime.datetime]:
         # Change-detection gate: only the stored ``updated`` timestamp is
         # needed, so this deliberately skips the read model and its
         # component/label joins. SQLite persists naive datetimes, so each
         # value is UTC-normalised to stay comparable with tz-aware Jira
         # timestamps.
-        query = select(cls.key, cls.updated)
+        query = sqlalchemy.select(cls.key, cls.updated)
         rows = await session.execute(query)
         return {
             key: updated.replace(tzinfo=datetime.UTC)
@@ -290,24 +336,29 @@ class Issue(Base):
         }
 
     @classmethod
-    async def hard_delete(cls, key: str, *, session: AsyncSession) -> None:
+    async def hard_delete(
+        cls, key: str, *, session: sqlalchemy.ext.asyncio.AsyncSession
+    ) -> None:
         # TODO(perf): group these into a single operation?
         await Component.delete(key, session=session)
         await Label.delete(key, session=session)
         await IssueTransition.delete(key, session=session)
-        query = delete(cls).where(cls.key == key)
+        query = sqlalchemy.delete(cls).where(cls.key == key)
         await session.execute(query)
 
     @classmethod
     async def upsert(
-        cls, issue: schemas.IssueCreate, *, session: AsyncSession
+        cls,
+        issue: schemas.IssueCreate,
+        *,
+        session: sqlalchemy.ext.asyncio.AsyncSession,
     ) -> None:
         # TODO: fix upserts, then avoid the deletion here
-        deletion = delete(cls).where(cls.key == issue.key)
+        deletion = sqlalchemy.delete(cls).where(cls.key == issue.key)
         await session.execute(deletion)
 
         # N.B. set "include" explicitly to support subclasses of IssueCreate
-        stmt = insert(cls).values(
+        stmt = sqlalchemy.dialects.sqlite.insert(cls).values(
             **issue.model_dump(
                 include=set(schemas.IssueCreate.model_fields.keys())
             )
@@ -333,43 +384,58 @@ class Issue(Base):
 class Setting(Base):
     __tablename__ = 'settings'
 
-    key: Mapped[strpk]
-    value: Mapped[str]
+    key: sqlalchemy.orm.Mapped[strpk]
+    value: sqlalchemy.orm.Mapped[str]
 
     @classmethod
-    async def get(cls, key: str, *, session: AsyncSession) -> str | None:
-        query = select(cls.value).where(cls.key == key)
+    async def get(
+        cls, key: str, *, session: sqlalchemy.ext.asyncio.AsyncSession
+    ) -> str | None:
+        query = sqlalchemy.select(cls.value).where(cls.key == key)
         result = (await session.execute(query)).scalar_one_or_none()
         return result
 
     @classmethod
     async def upsert(
-        cls, key: str, value: str, *, session: AsyncSession
+        cls,
+        key: str,
+        value: str,
+        *,
+        session: sqlalchemy.ext.asyncio.AsyncSession,
     ) -> None:
-        stmt = insert(cls).values(key=key, value=value)
+        stmt = sqlalchemy.dialects.sqlite.insert(cls).values(
+            key=key, value=value
+        )
         query = stmt.on_conflict_do_update(
             index_elements=['key'], set_={'value': stmt.excluded.value}
         )
         await session.execute(query)
 
     @classmethod
-    async def delete(cls, key: str, *, session: AsyncSession) -> None:
-        query = delete(cls).where(cls.key == key)
+    async def delete(
+        cls, key: str, *, session: sqlalchemy.ext.asyncio.AsyncSession
+    ) -> None:
+        query = sqlalchemy.delete(cls).where(cls.key == key)
         await session.execute(query)
 
 
 class Task(Base):
     __tablename__ = 'tasks'
 
-    key: Mapped[strpkindex]
-    variant: Mapped[strpkindex]
-    latest: Mapped[datetime.datetime | None]
+    key: sqlalchemy.orm.Mapped[strpkindex]
+    variant: sqlalchemy.orm.Mapped[strpkindex]
+    latest: sqlalchemy.orm.Mapped[datetime.datetime | None]
 
     @classmethod
     async def upsert(
-        cls, task: schemas.Task, *, session: AsyncSession
+        cls,
+        task: schemas.Task,
+        *,
+        session: sqlalchemy.ext.asyncio.AsyncSession,
     ) -> None:
-        stmt = insert(cls).values(**task.model_dump())
+        stmt = sqlalchemy.dialects.sqlite.insert(cls).values(
+            **task.model_dump()
+        )
         query = stmt.on_conflict_do_update(
             index_elements=['key', 'variant'],
             set_={'latest': stmt.excluded.latest},
@@ -378,10 +444,14 @@ class Task(Base):
 
     @classmethod
     async def get(
-        cls, key: str, variant: str, *, session: AsyncSession
+        cls,
+        key: str,
+        variant: str,
+        *,
+        session: sqlalchemy.ext.asyncio.AsyncSession,
     ) -> schemas.Task | None:
         query = (
-            select(cls.__table__)
+            sqlalchemy.select(cls.__table__)
             .where(cls.key == key)
             .where(cls.variant == variant)
         )

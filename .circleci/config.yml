@@ -2,7 +2,6 @@ version: 2.1
 
 orbs:
   docker: https://raw.githubusercontent.com/TheKevJames/tools/refs/heads/master/circleci-orbs/docker.yml
-  poetry: https://raw.githubusercontent.com/TheKevJames/tools/refs/heads/master/circleci-orbs/poetry.yml
   pre-commit: https://raw.githubusercontent.com/TheKevJames/tools/refs/heads/master/circleci-orbs/pre-commit.yml
 
 executors:
@@ -51,6 +50,14 @@ commands:
 
 
 jobs:
+  test:
+    executor: python
+    steps:
+      - checkout
+      - run: curl -LsSf https://astral.sh/uv/install.sh | sh
+      - run: ~/.local/bin/uv sync --frozen
+      - run: ~/.local/bin/uv run pytest
+
   docker-workflow:
     executor: docker
     steps:
@@ -80,11 +87,7 @@ workflows:
     jobs:
       - pre-commit/pre-commit:
           executor: python
-      - poetry/run:
-          name: test
-          executor: python
-          commands:
-            - run: poetry run pytest
+      - test
       - docker-build-readme:
           requires:
             - pre-commit/pre-commit

@@ -10,6 +10,7 @@ from typing import cast
 import fastapi
 import pytest
 import requests
+import sqlalchemy.ext.asyncio
 
 from mosura import database
 from mosura import models
@@ -22,7 +23,7 @@ def _patch_fetch_loop(
     monkeypatch: pytest.MonkeyPatch,
     *,
     sync_side_effect: list[Any],
-    sleep_side_effect: Any = None,
+    sleep_side_effect: object = None,
 ) -> unittest.mock.AsyncMock:
     """Neutralise timing/db so a ``fetch_desired`` run is driven by mocks."""
 
@@ -63,7 +64,7 @@ async def test_sync_desired_issues_appends_custom_jql(
     monkeypatch: pytest.MonkeyPatch, jira_raw_factory: IssueFactory
 ) -> None:
     app = _build_app()
-    session = object()
+    session = cast(sqlalchemy.ext.asyncio.AsyncSession, object())
 
     search = unittest.mock.AsyncMock(
         return_value=[jira_raw_factory(key='MOS-101')]
@@ -94,7 +95,7 @@ async def test_sync_desired_issues_appends_custom_jql(
 async def test_reconcile_stale_issues_deletes_stale_without_refetch(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    session = object()
+    session = cast(sqlalchemy.ext.asyncio.AsyncSession, object())
 
     list_keys = unittest.mock.AsyncMock(
         return_value=['OPS-9', 'MOS-2', 'MOS-1']
@@ -124,7 +125,7 @@ async def test_reconcile_stale_issues_deletes_stale_without_refetch(
 async def test_reconcile_stale_issues_deletes_single_stale_key(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    session = object()
+    session = cast(sqlalchemy.ext.asyncio.AsyncSession, object())
 
     list_keys = unittest.mock.AsyncMock(return_value=['MOS-404'])
     hard_delete = unittest.mock.AsyncMock()
@@ -143,7 +144,7 @@ async def test_reconcile_stale_issues_deletes_single_stale_key(
 async def test_reconcile_stale_issues_keeps_desired_keys(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    session = object()
+    session = cast(sqlalchemy.ext.asyncio.AsyncSession, object())
 
     list_keys = unittest.mock.AsyncMock(return_value=['MOS-1', 'OPS-9'])
     hard_delete = unittest.mock.AsyncMock()
@@ -162,7 +163,7 @@ async def test_reconcile_stale_issues_keeps_desired_keys(
 async def test_reconcile_stale_issues_noops_when_no_stale_keys(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    session = object()
+    session = cast(sqlalchemy.ext.asyncio.AsyncSession, object())
 
     list_keys = unittest.mock.AsyncMock(return_value=['MOS-1', 'MOS-2'])
     hard_delete = unittest.mock.AsyncMock()

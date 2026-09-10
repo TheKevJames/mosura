@@ -48,8 +48,8 @@ Can also be run locally for development purposes:
 .. code-block:: console
 
     export ...
-    poetry sync
-    poetry run uvicorn mosura.app:app --reload
+    uv sync
+    uv run uvicorn mosura.app:app --reload
 
 In development mode, there's a few extra env vars you may want to set:
 

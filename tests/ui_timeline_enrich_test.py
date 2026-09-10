@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 import datetime
 from collections.abc import Callable
 
@@ -5,8 +6,6 @@ import pytest
 
 from mosura import schemas
 from mosura import ui
-
-# pylint: disable=protected-access
 
 
 def test_enrich_draws_markers_only_for_same_color_off_left_edge(

@@ -231,14 +231,14 @@ class Issue(IssueCreate):
     def body(self) -> str:
         return self.description or ''
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, jira.Issue):
             return super().__eq__(other)
 
         parsed = IssueCreate.from_jira(other.raw)
 
         mismatches: list[str] = []
-        for field in IssueCreate.model_fields:
+        for field in IssueCreate.model_fields.keys():
             check = getattr(self, field) == getattr(parsed, field)
             if not check:
                 mismatches.append(
@@ -267,10 +267,13 @@ class IssuePatch(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(use_enum_values=True)
 
     def to_jira(self) -> dict[str, str | dict[str, str]]:
-        data = self.model_dump(exclude_unset=True)
-        if data.get('priority'):
-            data['priority'] = {'name': data['priority']}
-        return data
+        result: dict[str, str | dict[str, str]] = dict(
+            self.model_dump(exclude_unset=True)
+        )
+        priority = result.get('priority')
+        if priority and not isinstance(priority, dict):
+            result['priority'] = {'name': priority}
+        return result
 
 
 @pydantic.dataclasses.dataclass
