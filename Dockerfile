@@ -26,13 +26,5 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev
 
 
-FROM base AS test
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen
-COPY tests ./tests
-ENTRYPOINT ["uv", "run", "--no-sync", "pytest"]
-CMD ["tests/"]
-
-
 FROM base AS app
 CMD exec uvicorn --host 0.0.0.0 --port $MOSURA_PORT --proxy-headers mosura.app:app

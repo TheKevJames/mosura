@@ -74,9 +74,10 @@ branches:
         strict: true
         contexts:
           - dependency-review
-          - docker-build-readme
-          - docker-workflow
+          - docker
           - lint
+          - readme
+          - test
           - wip
       enforce_admins: true
       required_linear_history: true
