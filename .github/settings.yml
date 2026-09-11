@@ -16,9 +16,10 @@ repository:
   allow_rebase_merge: true
   allow_squash_merge: true
 
-  enable_automated_security_fixes: false
+  enable_automated_security_fixes: true
   enable_vulnerability_alerts: true
 
+# TODO: https://github.com/marketplace/actions/label-sync
 labels:
   - name: bug
     color: '#fc2929'
@@ -65,13 +66,17 @@ labels:
 branches:
   - name: master
     protection:
+      required_pull_request_reviews:
+        required_approving_review_count: 1
+        dismiss_stale_reviews: false
+        require_code_owner_reviews: true
       required_status_checks:
-        strict: false
+        strict: true
         contexts:
-          - WIP
           - dependency-review
           - docker-build-readme
           - docker-workflow
-          - pre-commit
-      enforce_admins: false
+          - lint
+          - wip
+      enforce_admins: true
       required_linear_history: true
