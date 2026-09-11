@@ -100,4 +100,6 @@ jobs:
           username: ${{ secrets.QUAY_USER }}
           password: ${{ secrets.QUAY_PASS }}
       - run: docker pushrm thekevjames/mosura --file=README.md
-      - run: docker pushrm quay.io/thekevjames/mosura --file=README.md
+      - env:
+          APIKEY__QUAY_IO: ${{ secrets.QUAY_APIKEY }}
+        run: docker pushrm quay.io/thekevjames/mosura --file=README.md
