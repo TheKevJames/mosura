@@ -37,7 +37,7 @@ dev = [
     "flake8-requirements==2.3.0",
     "flake8==7.4.1",
     "niquests==3.21.1",
-    "pylint==4.0.8",
+    "pylint==4.0.9",
     "pytest-asyncio==1.4.0",
     "pytest==9.1.1",
 ]
