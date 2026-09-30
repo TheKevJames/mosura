@@ -63,6 +63,7 @@ repos:
         args:
           - --max-line-length=79
           - --max-module-lines=500
+          - --max-parents=8
           - --max-positional-arguments=10
           - --max-args=10
           - --score=n

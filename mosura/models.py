@@ -183,21 +183,19 @@ class IssueTransition(Base):
 
 
 IssueRow = sqlalchemy.Row[
-    tuple[
-        str,
-        str,
-        str | None,
-        str,
-        str | None,
-        str,
-        datetime.datetime | None,
-        datetime.datetime,
-        datetime.datetime,
-        datetime.timedelta,
-        int,
-        str | None,
-        str | None,
-    ]
+    str,
+    str,
+    str | None,
+    str,
+    str | None,
+    str,
+    datetime.datetime | None,
+    datetime.datetime,
+    datetime.datetime,
+    datetime.timedelta,
+    int,
+    str,
+    str,
 ]
 
 
