@@ -23,7 +23,7 @@ dependencies = [
     # TODO: Remove once greenlet is reliably installed transitively on arm64.
     "greenlet==3.5.6; platform_machine == 'arm64'",
     "uvicorn==0.54.0",
-    "uvloop==0.22.1",
+    "uvloop==0.23.0",
 ]
 
 [project.urls]
