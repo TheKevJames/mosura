@@ -1,0 +1,24 @@
+name: prune-tags
+
+on:
+  schedule:
+    - cron: '17 4 * * *'
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: log the would-delete tags without deleting them
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  prune:
+    uses: TheKevJames/tools/.github/workflows/_prune-tags.yml@master
+    secrets: inherit
+    with:
+      image: mosura
+      # Always a dry run except a manual dispatch that explicitly opts out. The
+      # `A && B || C` idiom is avoided here: it collapses when B is `false`.
+      dry-run: ${{ github.event_name != 'workflow_dispatch' || inputs.dry-run }}
