@@ -337,7 +337,6 @@ class Issue(Base):
     async def hard_delete(
         cls, key: str, *, session: sqlalchemy.ext.asyncio.AsyncSession
     ) -> None:
-        # TODO(perf): group these into a single operation?
         await Component.delete(key, session=session)
         await Label.delete(key, session=session)
         await IssueTransition.delete(key, session=session)
