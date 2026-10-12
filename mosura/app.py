@@ -18,7 +18,7 @@ from . import ui
 logger = logging.getLogger(__name__)
 
 
-def _log_task_exception(task: asyncio.Task[None]) -> None:
+def _handle_task_exception(task: asyncio.Task[None]) -> None:
     with contextlib.suppress(asyncio.CancelledError):
         exc = task.exception()
         if exc is not None:
@@ -70,12 +70,11 @@ async def lifespan(app_: fastapi.FastAPI) -> AsyncIterator[None]:
         await conn.run_sync(models.Base.metadata.create_all)
     logger.info('startup(): initialized db')
 
-    # TODO: catch errors in these tasks immediately and crash/retry
     app_.state.tasks = await tasks.spawn(app_)
     for t in app_.state.tasks:
-        t.add_done_callback(_log_task_exception)
+        t.add_done_callback(_handle_task_exception)
         if t.done():
-            _log_task_exception(t)
+            _handle_task_exception(t)
 
     logger.info('startup(): begun polling tasks')
 
