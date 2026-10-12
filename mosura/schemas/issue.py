@@ -221,7 +221,6 @@ class IssueCreate(pydantic.BaseModel):
 
 
 class Issue(IssueCreate):
-    # TODO: implement __hash__, use sets for perf throughout
     components: list[Component]
     labels: list[Label]
 
