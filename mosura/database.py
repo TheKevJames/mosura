@@ -1,5 +1,5 @@
 import contextlib
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 
 import fastapi
 import sqlalchemy.ext.asyncio
@@ -27,6 +27,6 @@ def build_sessionmaker(
 @contextlib.asynccontextmanager
 async def session_from_app(
     app: fastapi.FastAPI,
-) -> AsyncIterator[sqlalchemy.ext.asyncio.AsyncSession]:
+) -> AsyncGenerator[sqlalchemy.ext.asyncio.AsyncSession, None]:
     async with app.state.sessionmaker() as session:
         yield session

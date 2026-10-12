@@ -3,7 +3,7 @@ import contextlib
 import logging.config
 import os
 import signal
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 
 import fastapi.staticfiles
 import jira.resources
@@ -50,7 +50,7 @@ def resolve_tracked_user(app_: fastapi.FastAPI) -> jira.resources.User:
 
 
 @contextlib.asynccontextmanager
-async def lifespan(app_: fastapi.FastAPI) -> AsyncIterator[None]:
+async def lifespan(app_: fastapi.FastAPI) -> AsyncGenerator[None, None]:
     app_.state.settings = config.load_settings()
     app_.state.jira_client = config.Jira.from_settings(app_.state.settings)
 

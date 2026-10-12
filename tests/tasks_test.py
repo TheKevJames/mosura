@@ -2,7 +2,7 @@ import asyncio
 import contextlib
 import types
 import unittest.mock
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from collections.abc import Callable
 from typing import Any
 from typing import cast
@@ -30,7 +30,7 @@ def _patch_fetch_loop(
     @contextlib.asynccontextmanager
     async def fake_session_from_app(
         _app: fastapi.FastAPI,
-    ) -> AsyncIterator[object]:
+    ) -> AsyncGenerator[object, None]:
         yield object()
 
     sync_once = unittest.mock.AsyncMock(side_effect=sync_side_effect)

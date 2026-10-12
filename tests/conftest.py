@@ -3,6 +3,7 @@ import datetime
 import pathlib
 import types
 import unittest.mock
+from collections.abc import AsyncGenerator
 from collections.abc import AsyncIterator
 from collections.abc import Awaitable
 from collections.abc import Callable
@@ -315,7 +316,7 @@ def api_session(monkeypatch: pytest.MonkeyPatch) -> types.SimpleNamespace:
     @contextlib.asynccontextmanager
     async def fake_session_from_app(
         _app: fastapi.FastAPI,
-    ) -> AsyncIterator[types.SimpleNamespace]:
+    ) -> AsyncGenerator[types.SimpleNamespace, None]:
         yield session
 
     async def run_inline(
