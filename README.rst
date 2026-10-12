@@ -62,10 +62,6 @@ In development mode, there's a few extra env vars you may want to set:
 Workflow Assumptions
 --------------------
 
-We make the following assumptions about your workflow / project setup. Note
-that much of this section also doubles as a "TODO: make these configurable"
-list.
-
 Overall, we assume your project is configured at minimum with the following
 fields:
 
