@@ -13,109 +13,60 @@ PST = datetime.timedelta(hours=8)
 IST = datetime.timedelta(hours=5, minutes=30)
 
 
-async def test_convert_field_response_dedupes_and_sorts(
+async def test_issue_get_loads_sorted_components_and_labels(
     db_session: sqlalchemy.ext.asyncio.AsyncSession,
     issue_create_factory: Callable[..., schemas.IssueCreate],
     seed_issue: Callable[..., Awaitable[None]],
-    issue_rows_fetcher: Callable[..., Awaitable[list[models.IssueRow]]],
 ) -> None:
-    await seed_issue(
-        issue_create_factory('MOS-1', status='In Progress', assignee='Ada'),
-        components=['Platform', 'API'],
-        labels=['feature', 'maintenance'],
+    first = issue_create_factory(
+        'MOS-1',
+        status='In Progress',
+        assignee='Ada',
+        summary='first',
+        description='description',
+        priority=schemas.Priority.high,
+        startdate=datetime.date(2026, 1, 6),
+        timeestimate=datetime.timedelta(days=3),
+        votes=8,
     )
+    second = issue_create_factory(
+        'MOS-2',
+        status='Needs Triage',
+        assignee=None,
+        summary='second',
+        description=None,
+        priority=schemas.Priority.low,
+        startdate=None,
+        timeestimate=datetime.timedelta(days=1),
+        votes=0,
+    )
+    await seed_issue(
+        first, components=['Platform', 'API'], labels=['okr', 'feature']
+    )
+    await seed_issue(second, components=[], labels=['maintenance'])
     await db_session.commit()
 
-    rows = await issue_rows_fetcher(key='MOS-1')
+    issues = await models.Issue.get(session=db_session)
+    print(f'issues={issues!r}')
 
-    converted = models.convert_field_response(
-        'MOS-1', rows, idx=11, name='component'
-    )
-
-    assert converted == [
-        {'key': 'MOS-1', 'component': 'API'},
-        {'key': 'MOS-1', 'component': 'Platform'},
-    ]
-
-
-async def test_convert_component_and_label_helpers(
-    db_session: sqlalchemy.ext.asyncio.AsyncSession,
-    issue_create_factory: Callable[..., schemas.IssueCreate],
-    seed_issue: Callable[..., Awaitable[None]],
-    issue_rows_fetcher: Callable[..., Awaitable[list[models.IssueRow]]],
-) -> None:
-    await seed_issue(
-        issue_create_factory('MOS-1', status='In Progress', assignee='Ada'),
-        components=['Platform', 'API'],
-        labels=['bug', 'okr'],
-    )
-    await db_session.commit()
-
-    rows = await issue_rows_fetcher(key='MOS-1')
-
-    assert models.convert_component_response('MOS-1', rows) == [
-        {'key': 'MOS-1', 'component': 'API'},
-        {'key': 'MOS-1', 'component': 'Platform'},
-    ]
-    assert models.convert_label_response('MOS-1', rows) == [
-        {'key': 'MOS-1', 'label': 'bug'},
-        {'key': 'MOS-1', 'label': 'okr'},
-    ]
-
-
-async def test_convert_issue_response_groups_related_rows(
-    db_session: sqlalchemy.ext.asyncio.AsyncSession,
-    issue_create_factory: Callable[..., schemas.IssueCreate],
-    seed_issue: Callable[..., Awaitable[None]],
-    issue_rows_fetcher: Callable[..., Awaitable[list[models.IssueRow]]],
-) -> None:
-    await seed_issue(
-        issue_create_factory(
-            'MOS-1',
-            status='In Progress',
-            assignee='Ada',
-            summary='first',
-            description='description',
-            priority=schemas.Priority.high,
-            startdate=datetime.date(2026, 1, 6),
-            timeestimate=datetime.timedelta(days=3),
-            votes=8,
+    assert sorted(issues, key=lambda x: x.key) == [
+        schemas.Issue(
+            **first.model_dump(),
+            components=[
+                schemas.Component(key='MOS-1', component='API'),
+                schemas.Component(key='MOS-1', component='Platform'),
+            ],
+            labels=[
+                schemas.Label(key='MOS-1', label='feature'),
+                schemas.Label(key='MOS-1', label='okr'),
+            ],
         ),
-        components=['Platform', 'API'],
-        labels=['okr', 'feature'],
-    )
-    await seed_issue(
-        issue_create_factory(
-            'MOS-2',
-            status='Needs Triage',
-            assignee=None,
-            summary='second',
-            description=None,
-            priority=schemas.Priority.low,
-            startdate=None,
-            timeestimate=datetime.timedelta(days=1),
-            votes=0,
+        schemas.Issue(
+            **second.model_dump(),
+            components=[],
+            labels=[schemas.Label(key='MOS-2', label='maintenance')],
         ),
-        components=[],
-        labels=['maintenance'],
-    )
-    await db_session.commit()
-
-    rows = await issue_rows_fetcher()
-    issues = models.convert_issue_response(rows)
-
-    assert [issue.key for issue in issues] == ['MOS-1', 'MOS-2']
-    assert issues[0].startdate == datetime.date(2026, 1, 6)
-    assert issues[0].components == [
-        schemas.Component(key='MOS-1', component='API'),
-        schemas.Component(key='MOS-1', component='Platform'),
     ]
-    assert issues[0].labels == [
-        schemas.Label(key='MOS-1', label='feature'),
-        schemas.Label(key='MOS-1', label='okr'),
-    ]
-    assert issues[1].assignee is None
-    assert not issues[1].components
 
 
 async def test_issue_get_filters_closed_assignee_and_needs_triage(

@@ -1,9 +1,6 @@
 from __future__ import annotations
 
 import datetime
-import itertools
-import operator
-from collections.abc import Sequence
 from typing import Annotated
 
 import sqlalchemy
@@ -186,71 +183,6 @@ class IssueTransition(Base):
         return [schemas.IssueTransition.model_validate(row) for row in rows]
 
 
-IssueRow = sqlalchemy.Row[
-    str,
-    str,
-    str | None,
-    str,
-    str | None,
-    str,
-    datetime.date | None,
-    datetime.datetime,
-    datetime.datetime,
-    datetime.timedelta,
-    int,
-    str,
-    str,
-]
-
-
-# TODO: nuke the convert_* methods, see dataclass?
-def convert_field_response(
-    key: str, results: Sequence[IssueRow], *, idx: int, name: str
-) -> list[dict[str, str]]:
-    deduped = {x for x in {x[idx] for x in results} if x}
-    ordered = sorted(deduped)
-    return [{'key': key, name: x} for x in ordered]
-
-
-def convert_component_response(
-    key: str, results: Sequence[IssueRow]
-) -> list[dict[str, str]]:
-    return convert_field_response(key, results, idx=11, name='component')
-
-
-def convert_label_response(
-    key: str, results: Sequence[IssueRow]
-) -> list[dict[str, str]]:
-    return convert_field_response(key, results, idx=12, name='label')
-
-
-def convert_issue_response(results: Sequence[IssueRow]) -> list[schemas.Issue]:
-    xs = []
-    for key, group in itertools.groupby(results, operator.attrgetter('key')):
-        fields = list(group)
-        xs.append(
-            schemas.Issue.model_validate(
-                {
-                    'key': key,
-                    'summary': fields[0][1],
-                    'description': fields[0][2],
-                    'status': fields[0][3],
-                    'assignee': fields[0][4],
-                    'priority': fields[0][5],
-                    'startdate': fields[0][6],
-                    'created': fields[0][7],
-                    'updated': fields[0][8],
-                    'timeestimate': fields[0][9],
-                    'votes': fields[0][10],
-                    'components': convert_component_response(key, fields),
-                    'labels': convert_label_response(key, fields),
-                }
-            )
-        )
-
-    return xs
-
-
 class Issue(Base):
     __tablename__ = 'issues'
 
@@ -267,9 +199,11 @@ class Issue(Base):
     votes: sqlalchemy.orm.Mapped[int]
 
     components: sqlalchemy.orm.Mapped[list[Component]] = (
-        sqlalchemy.orm.relationship()
+        sqlalchemy.orm.relationship(order_by=Component.component)
     )
-    labels: sqlalchemy.orm.Mapped[list[Label]] = sqlalchemy.orm.relationship()
+    labels: sqlalchemy.orm.Mapped[list[Label]] = sqlalchemy.orm.relationship(
+        order_by=Label.label
+    )
 
     @classmethod
     async def get(
@@ -281,10 +215,9 @@ class Issue(Base):
         needs_triage: bool = False,
         session: sqlalchemy.ext.asyncio.AsyncSession,
     ) -> list[schemas.Issue]:
-        query = (
-            sqlalchemy.select(cls.__table__, Component.component, Label.label)
-            .join(Component.__table__, cls.key == Component.key, isouter=True)
-            .join(Label, cls.key == Label.key, isouter=True)
+        query = sqlalchemy.select(cls).options(
+            sqlalchemy.orm.selectinload(cls.components),
+            sqlalchemy.orm.selectinload(cls.labels),
         )
         if key:
             query = query.where(cls.key == key)
@@ -293,8 +226,8 @@ class Issue(Base):
         if not closed:
             query = query.where(cls.status != 'Closed')
 
-        results: Sequence[IssueRow] = (await session.execute(query)).all()
-        issues = convert_issue_response(results)
+        rows = (await session.execute(query)).scalars().all()
+        issues = [schemas.Issue.model_validate(row) for row in rows]
         if needs_triage:
             # TODO: make this configurable
             # TODO: merge this into sql query
