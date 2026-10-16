@@ -2,10 +2,15 @@ import datetime
 from collections.abc import Awaitable
 from collections.abc import Callable
 
+import pytest
+import sqlalchemy.exc
 import sqlalchemy.ext.asyncio
 
 from mosura import models
 from mosura import schemas
+
+PST = datetime.timedelta(hours=8)
+IST = datetime.timedelta(hours=5, minutes=30)
 
 
 async def test_convert_field_response_dedupes_and_sorts(
@@ -348,7 +353,9 @@ async def test_setting_delete_removes_key_and_is_idempotent(
 async def test_task_get_returns_utc_and_none_for_missing(
     db_session: sqlalchemy.ext.asyncio.AsyncSession,
 ) -> None:
-    latest = datetime.datetime(2026, 2, 2, 10, 15, 0)
+    latest = datetime.datetime(
+        2026, 2, 2, 10, 15, 0, tzinfo=datetime.timezone(-PST)
+    )
     await models.Task.upsert(
         schemas.Task(key='MOS', variant='open', latest=latest),
         session=db_session,
@@ -358,8 +365,66 @@ async def test_task_get_returns_utc_and_none_for_missing(
     task = await models.Task.get('MOS', 'open', session=db_session)
 
     assert task is not None
+    print(f'stored={latest!r} fetched={task.latest!r}')
     assert task.latest.tzinfo == datetime.UTC
-    assert task.latest == latest.replace(tzinfo=datetime.UTC)
+    assert task.latest == latest
 
     missing = await models.Task.get('MOS', 'closed', session=db_session)
     assert missing is None
+
+
+@pytest.mark.parametrize(
+    'tzinfo',
+    [datetime.UTC, datetime.timezone(-PST), datetime.timezone(IST)],
+    ids=['utc', 'pst', 'ist'],
+)
+async def test_issue_datetimes_round_trip_as_utc(
+    db_session: sqlalchemy.ext.asyncio.AsyncSession,
+    issue_create_factory: Callable[..., schemas.IssueCreate],
+    seed_issue: Callable[..., Awaitable[None]],
+    transition_factory: Callable[..., schemas.IssueTransition],
+    tzinfo: datetime.tzinfo,
+) -> None:
+    created = datetime.datetime(2026, 1, 1, 23, 30, 0, 123456, tzinfo=tzinfo)
+    updated = datetime.datetime(2026, 1, 2, 0, 30, 0, tzinfo=tzinfo)
+    timestamp = datetime.datetime(2026, 1, 3, 12, 0, 0, tzinfo=tzinfo)
+    startdate = datetime.date(2026, 1, 6)
+    await seed_issue(
+        issue_create_factory(
+            'MOS-1',
+            status='In Progress',
+            assignee='Ada',
+            startdate=startdate,
+            created=created,
+            updated=updated,
+        )
+    )
+    await models.IssueTransition.upsert(
+        transition_factory(key='MOS-1', timestamp=timestamp),
+        session=db_session,
+    )
+    await db_session.commit()
+
+    (issue,) = await models.Issue.get(key='MOS-1', session=db_session)
+    updated_map = await models.Issue.get_updated_map(session=db_session)
+    (transition,) = await models.IssueTransition.get_by_keys(
+        ['MOS-1'], session=db_session
+    )
+    fetched = [issue.created, issue.updated, updated_map['MOS-1']]
+    fetched.append(transition.timestamp)
+    print(f'issue={issue!r} transition={transition!r}')
+
+    assert issue.startdate == startdate
+    assert fetched == [created, updated, updated, timestamp]
+    assert all(x.tzinfo == datetime.UTC for x in fetched)
+
+
+async def test_naive_datetime_is_rejected(
+    db_session: sqlalchemy.ext.asyncio.AsyncSession,
+) -> None:
+    task = schemas.Task(
+        key='MOS', variant='open', latest=datetime.datetime(2026, 2, 2)
+    )
+
+    with pytest.raises(sqlalchemy.exc.StatementError, match='tz-aware'):
+        await models.Task.upsert(task, session=db_session)

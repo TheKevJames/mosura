@@ -12,6 +12,7 @@ import sqlalchemy.ext.asyncio
 import sqlalchemy.orm
 
 from . import schemas
+from . import sqltypes
 
 strpk = Annotated[str, sqlalchemy.orm.mapped_column(primary_key=True)]
 strpkindex = Annotated[
@@ -30,7 +31,10 @@ class Base(
     sqlalchemy.orm.DeclarativeBase,
     sqlalchemy.orm.MappedAsDataclass,
 ):
-    pass
+    type_annotation_map = {
+        datetime.date: sqltypes.DateAsDateTime(),
+        datetime.datetime: sqltypes.UTCDateTime(),
+    }
 
 
 class Component(Base):
@@ -189,7 +193,7 @@ IssueRow = sqlalchemy.Row[
     str,
     str | None,
     str,
-    datetime.datetime | None,
+    datetime.date | None,
     datetime.datetime,
     datetime.datetime,
     datetime.timedelta,
@@ -224,12 +228,6 @@ def convert_issue_response(results: Sequence[IssueRow]) -> list[schemas.Issue]:
     xs = []
     for key, group in itertools.groupby(results, operator.attrgetter('key')):
         fields = list(group)
-        # TODO: store tzinfo in db
-        startdate = (
-            fields[0][6].replace(tzinfo=datetime.UTC) if fields[0][6] else None
-        )
-        created = fields[0][7].replace(tzinfo=datetime.UTC)
-        updated = fields[0][8].replace(tzinfo=datetime.UTC)
         xs.append(
             schemas.Issue.model_validate(
                 {
@@ -239,9 +237,9 @@ def convert_issue_response(results: Sequence[IssueRow]) -> list[schemas.Issue]:
                     'status': fields[0][3],
                     'assignee': fields[0][4],
                     'priority': fields[0][5],
-                    'startdate': startdate,
-                    'created': created,
-                    'updated': updated,
+                    'startdate': fields[0][6],
+                    'created': fields[0][7],
+                    'updated': fields[0][8],
                     'timeestimate': fields[0][9],
                     'votes': fields[0][10],
                     'components': convert_component_response(key, fields),
@@ -262,7 +260,7 @@ class Issue(Base):
     status: sqlalchemy.orm.Mapped[str]
     assignee: sqlalchemy.orm.Mapped[str | None]
     priority: sqlalchemy.orm.Mapped[str]
-    startdate: sqlalchemy.orm.Mapped[datetime.datetime | None]
+    startdate: sqlalchemy.orm.Mapped[datetime.date | None]
     created: sqlalchemy.orm.Mapped[datetime.datetime]
     updated: sqlalchemy.orm.Mapped[datetime.datetime]
     timeestimate: sqlalchemy.orm.Mapped[datetime.timedelta]
@@ -323,15 +321,10 @@ class Issue(Base):
     ) -> dict[str, datetime.datetime]:
         # Change-detection gate: only the stored ``updated`` timestamp is
         # needed, so this deliberately skips the read model and its
-        # component/label joins. SQLite persists naive datetimes, so each
-        # value is UTC-normalised to stay comparable with tz-aware Jira
-        # timestamps.
+        # component/label joins.
         query = sqlalchemy.select(cls.key, cls.updated)
         rows = await session.execute(query)
-        return {
-            key: updated.replace(tzinfo=datetime.UTC)
-            for key, updated in rows.all()
-        }
+        return dict(rows.all())
 
     @classmethod
     async def hard_delete(
@@ -456,11 +449,4 @@ class Task(Base):
         if not result:
             return None
 
-        # TODO: any way to store tz in sqlite?
-        return schemas.Task.model_validate(
-            {
-                'key': result.key,
-                'variant': result.variant,
-                'latest': result.latest.replace(tzinfo=datetime.UTC),
-            }
-        )
+        return schemas.Task.model_validate(result)
