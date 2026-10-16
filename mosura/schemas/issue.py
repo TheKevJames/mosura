@@ -123,12 +123,7 @@ class IssueCreate(pydantic.BaseModel):
 
     @classmethod
     def parse_datetime(cls, x: str) -> datetime.datetime:
-        # Everything downstream stores and compares in UTC, but SQLite's
-        # DateTime drops tzinfo and keeps only the wall clock. If we let a
-        # non-UTC Jira offset through, the stored wall clock is later re-read
-        # as UTC and no longer names the same instant, so change-detection
-        # sees every issue as "updated" each poll. Normalise to UTC here so the
-        # stored wall clock is always the UTC instant.
+        # Date-only Jira fields (eg. "2026-01-05") carry no offset.
         dt = datetime.datetime.fromisoformat(x)
         if dt.tzinfo is None:
             return dt.replace(tzinfo=datetime.UTC)

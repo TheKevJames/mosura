@@ -290,8 +290,8 @@ async def test_naive_stored_timestamp_compares_against_aware_jira(
     seed_issue: Callable[..., Awaitable[None]],
     jira_raw_factory: IssueFactory,
 ) -> None:
-    # SQLite hands back a naive datetime; Jira's timestamp is tz-aware. The
-    # gate must normalise both and decide "unchanged" without raising.
+    # SQLite stores a naive wall clock; Jira's timestamp is tz-aware. The
+    # gate must compare them and decide "unchanged" without raising.
     stored = datetime.datetime(2026, 1, 5, 10, 0, 0, tzinfo=datetime.UTC)
     await seed_issue(
         issue_create_factory(
