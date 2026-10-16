@@ -104,6 +104,11 @@ async def test_issue_get_filters_closed_assignee_and_needs_triage(
             ['API'],
             [],
         ),
+        (
+            issue_create_factory('MOS-6', status='Closed', assignee='Bob'),
+            [],
+            ['feature'],
+        ),
     ]
     for issue, components, labels in seeded:
         await seed_issue(issue, components=components, labels=labels)
@@ -127,6 +132,16 @@ async def test_issue_get_filters_closed_assignee_and_needs_triage(
 
     triage = await models.Issue.get(needs_triage=True, session=db_session)
     assert sorted(issue.key for issue in triage) == ['MOS-3', 'MOS-4', 'MOS-5']
+
+    bob_triage = await models.Issue.get(
+        assignee='Bob', closed=True, needs_triage=True, session=db_session
+    )
+    assert sorted(issue.key for issue in bob_triage) == [
+        'MOS-3',
+        'MOS-4',
+        'MOS-5',
+        'MOS-6',
+    ]
 
     all_for_ada = await models.Issue.get(
         assignee='Ada', closed=True, session=db_session
