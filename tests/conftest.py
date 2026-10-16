@@ -274,42 +274,6 @@ def seed_issue(
 
 
 @pytest.fixture(scope='function')
-def issue_rows_fetcher(
-    db_session: sqlalchemy.ext.asyncio.AsyncSession,
-) -> Callable[..., Awaitable[list[models.IssueRow]]]:
-    async def _fetch(*, key: str | None = None) -> list[models.IssueRow]:
-        query = (
-            sqlalchemy.select(
-                models.Issue.__table__,
-                models.Component.component,
-                models.Label.label,
-            )
-            .join(
-                models.Component.__table__,
-                models.Issue.key == models.Component.key,
-                isouter=True,
-            )
-            .join(
-                models.Label,
-                models.Issue.key == models.Label.key,
-                isouter=True,
-            )
-            .order_by(
-                models.Issue.key,
-                models.Component.component,
-                models.Label.label,
-            )
-        )
-        if key:
-            query = query.where(models.Issue.key == key)
-
-        rows = await db_session.execute(query)
-        return cast(list[models.IssueRow], rows.all())
-
-    return _fetch
-
-
-@pytest.fixture(scope='function')
 def api_session(monkeypatch: pytest.MonkeyPatch) -> types.SimpleNamespace:
     session = types.SimpleNamespace(commit=unittest.mock.AsyncMock())
 
