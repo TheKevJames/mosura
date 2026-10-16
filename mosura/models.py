@@ -225,20 +225,18 @@ class Issue(Base):
             query = query.where(cls.assignee == assignee)
         if not closed:
             query = query.where(cls.status != 'Closed')
-
-        rows = (await session.execute(query)).scalars().all()
-        issues = [schemas.Issue.model_validate(row) for row in rows]
         if needs_triage:
             # TODO: make this configurable
-            # TODO: merge this into sql query
-            issues = [
-                iss
-                for iss in issues
-                if iss.status == 'Needs Triage'
-                or not iss.components
-                or not iss.labels
-            ]
-        return issues
+            query = query.where(
+                sqlalchemy.or_(
+                    cls.status == 'Needs Triage',
+                    ~cls.components.any(),
+                    ~cls.labels.any(),
+                )
+            )
+
+        rows = (await session.execute(query)).scalars().all()
+        return [schemas.Issue.model_validate(row) for row in rows]
 
     @classmethod
     async def list_keys(
