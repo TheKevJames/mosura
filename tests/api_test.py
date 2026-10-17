@@ -132,7 +132,12 @@ async def test_patch_issue_success(  # pylint: disable=too-many-locals
     issue_from_jira_factory: Callable[..., schemas.Issue],
     jira_issue_factory: Callable[[dict[str, Any]], jira.Issue],
 ) -> None:
-    raw = jira_raw_factory(key='MOS-204', summary='Current summary')
+    raw = jira_raw_factory(
+        key='MOS-204',
+        summary='Current summary',
+        components=['Platform'],
+        labels=['okr'],
+    )
     cached_issue = issue_from_jira_factory(
         raw, components=['Platform'], labels=['okr']
     )
