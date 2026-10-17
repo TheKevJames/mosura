@@ -274,10 +274,6 @@ class Issue(Base):
         *,
         session: sqlalchemy.ext.asyncio.AsyncSession,
     ) -> None:
-        # TODO: fix upserts, then avoid the deletion here
-        deletion = sqlalchemy.delete(cls).where(cls.key == issue.key)
-        await session.execute(deletion)
-
         # N.B. set "include" explicitly to support subclasses of IssueCreate
         stmt = sqlalchemy.dialects.sqlite.insert(cls).values(
             **issue.model_dump(
