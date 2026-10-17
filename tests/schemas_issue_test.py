@@ -105,6 +105,60 @@ def test_issue_equality_logs_mismatch_for_jira_issue(
     )
 
 
+def test_issue_equality_ignores_component_and_label_order(
+    jira_raw_factory: Callable[..., dict[str, Any]],
+    issue_from_jira_factory: Callable[..., schemas.Issue],
+    jira_issue_factory: Callable[[dict[str, Any]], Any],
+) -> None:
+    raw = jira_raw_factory(
+        components=['Backend', 'Platform'], labels=['okr', 'tech-debt']
+    )
+    issue = issue_from_jira_factory(
+        raw, components=['Platform', 'Backend'], labels=['tech-debt', 'okr']
+    )
+    jira_issue = jira_issue_factory(raw)
+
+    assert issue == jira_issue
+
+
+@pytest.mark.parametrize(
+    ('field', 'cached', 'live', 'expected_log'),
+    [
+        ('components', ['Platform'], [], "components: ['Platform'] != []"),
+        ('components', [], ['Platform'], "components: [] != ['Platform']"),
+        (
+            'components',
+            ['Backend'],
+            ['Platform'],
+            "components: ['Backend'] != ['Platform']",
+        ),
+        ('labels', ['okr'], [], "labels: ['okr'] != []"),
+        ('labels', [], ['okr'], "labels: [] != ['okr']"),
+        ('labels', ['okr'], ['q3'], "labels: ['okr'] != ['q3']"),
+    ],
+)
+def test_issue_equality_logs_component_and_label_mismatch(
+    field: str,
+    cached: list[str],
+    live: list[str],
+    expected_log: str,
+    caplog: pytest.LogCaptureFixture,
+    jira_raw_factory: Callable[..., dict[str, Any]],
+    issue_from_jira_factory: Callable[..., schemas.Issue],
+    jira_issue_factory: Callable[[dict[str, Any]], Any],
+) -> None:
+    raw = jira_raw_factory(**{field: live})
+    issue = issue_from_jira_factory(raw, **{field: cached})
+    jira_issue = jira_issue_factory(raw)
+
+    with caplog.at_level(logging.ERROR, logger='mosura.schemas'):
+        assert (issue == jira_issue) is False
+
+    print(caplog.text)
+    assert 'attempted update on out-of-sync issue MOS-123' in caplog.text
+    assert expected_log in caplog.text
+
+
 def test_issuecreate_from_jira_parses_created_and_updated(
     jira_raw_factory: Callable[..., dict[str, Any]],
 ) -> None:

@@ -240,6 +240,23 @@ class Issue(IssueCreate):
                     f'{getattr(parsed, field)}'
                 )
 
+        components = {c.component for c in self.components}
+        live_components = {
+            c['name'] for c in other.raw['fields']['components']
+        }
+        if components != live_components:
+            mismatches.append(
+                f'components: {sorted(components)} != '
+                f'{sorted(live_components)}'
+            )
+
+        labels = {lb.label for lb in self.labels}
+        live_labels = set(other.raw['fields']['labels'])
+        if labels != live_labels:
+            mismatches.append(
+                f'labels: {sorted(labels)} != {sorted(live_labels)}'
+            )
+
         if mismatches:
             logger.error(
                 'attempted update on out-of-sync issue %s:\n\t%s',
@@ -248,13 +265,10 @@ class Issue(IssueCreate):
             )
             return False
 
-        # TODO: components_equal and labels_equal
         return True
 
 
 class IssuePatch(pydantic.BaseModel):
-    # TODO: reminder to update Issue.__eq__ before adding support for
-    # components or labels
     priority: Priority | None = None
     summary: str | None = None
 
