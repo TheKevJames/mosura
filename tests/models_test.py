@@ -239,20 +239,20 @@ async def test_issue_upsert_updates_existing_issue(
     )
     await db_session.commit()
 
-    await models.Issue.upsert(
-        issue_create_factory(
-            'MOS-9',
-            status='In Progress',
-            assignee='Bob',
-            summary='after update',
-            priority=schemas.Priority.high,
-            votes=9,
-            description='new',
-            startdate=datetime.date(2026, 2, 1),
-            timeestimate=datetime.timedelta(days=5),
-        ),
-        session=db_session,
+    updated = issue_create_factory(
+        'MOS-9',
+        status='In Progress',
+        assignee=None,
+        summary='after update',
+        priority=schemas.Priority.high,
+        votes=9,
+        description=None,
+        startdate=None,
+        created=datetime.datetime(2026, 3, 1, 0, 0, 0, tzinfo=datetime.UTC),
+        updated=datetime.datetime(2026, 3, 2, 0, 0, 0, tzinfo=datetime.UTC),
+        timeestimate=datetime.timedelta(days=5),
     )
+    await models.Issue.upsert(updated, session=db_session)
     await db_session.commit()
 
     fetched = await models.Issue.get(
@@ -260,11 +260,13 @@ async def test_issue_upsert_updates_existing_issue(
     )
 
     assert len(fetched) == 1
-    assert fetched[0].summary == 'after update'
-    assert fetched[0].assignee == 'Bob'
-    assert fetched[0].priority == schemas.Priority.high
-    assert fetched[0].votes == 9
-    assert fetched[0].startdate == datetime.date(2026, 2, 1)
+    stored = fetched[0].model_dump(
+        include=set(schemas.IssueCreate.model_fields.keys())
+    )
+    print(f'stored={stored!r}')
+    assert stored == updated.model_dump()
+    assert [c.component for c in fetched[0].components] == ['Legacy']
+    assert [label.label for label in fetched[0].labels] == ['legacy']
 
     rows = await db_session.execute(
         sqlalchemy.select(models.Issue).where(models.Issue.key == 'MOS-9')
