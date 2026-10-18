@@ -50,11 +50,19 @@ async def _build_timeline(
 ) -> schemas.Timeline:
     transitions_by_issue: dict[str, list[schemas.IssueTransition]] = {}
 
-    # TODO: for perf, move some filters out of Timeline.from_issues() and into
-    # this SQL command.
+    _, boxes = schemas.Timeline.get_boxes(
+        selected_date=selected_date,
+        current_date=current_date,
+        weeks_before=weeks_before,
+        weeks_after=weeks_after,
+    )
+    # A closed issue's segments end at its close transition (or `updated`
+    # when it has no transitions). Jira bumps `updated` on every transition,
+    # so a closed issue last updated before the view window can't render.
     issues = await models.Issue.get(
         assignee=request.app.state.tracked_user_name,
         closed=True,
+        closed_since=boxes[0][0],
         session=session,
     )
 

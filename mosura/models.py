@@ -212,6 +212,7 @@ class Issue(Base):
         key: str | None = None,
         assignee: str | None = None,
         closed: bool = False,
+        closed_since: datetime.date | None = None,
         needs_triage: bool = False,
         session: sqlalchemy.ext.asyncio.AsyncSession,
     ) -> list[schemas.Issue]:
@@ -225,6 +226,13 @@ class Issue(Base):
             query = query.where(cls.assignee == assignee)
         if not closed:
             query = query.where(cls.status != 'Closed')
+        if closed_since is not None:
+            since = datetime.datetime.combine(
+                closed_since, datetime.time.min, tzinfo=datetime.UTC
+            )
+            query = query.where(
+                sqlalchemy.or_(cls.status != 'Closed', cls.updated >= since)
+            )
         if needs_triage:
             # TODO: make this configurable
             query = query.where(
