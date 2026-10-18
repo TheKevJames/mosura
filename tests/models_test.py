@@ -149,6 +149,64 @@ async def test_issue_get_filters_closed_assignee_and_needs_triage(
     assert sorted(issue.key for issue in all_for_ada) == ['MOS-1', 'MOS-2']
 
 
+async def test_issue_get_closed_since_drops_only_stale_closed_issues(
+    db_session: sqlalchemy.ext.asyncio.AsyncSession,
+    issue_create_factory: Callable[..., schemas.IssueCreate],
+    seed_issue: Callable[..., Awaitable[None]],
+) -> None:
+    since = datetime.date(2026, 3, 2)
+    utc = datetime.UTC
+    seeded = [
+        (
+            'OPEN-STALE',
+            'In Progress',
+            datetime.datetime(2025, 1, 1, tzinfo=utc),
+        ),
+        ('CLOSED-STALE', 'Closed', datetime.datetime(2025, 1, 1, tzinfo=utc)),
+        (
+            'CLOSED-EVE',
+            'Closed',
+            datetime.datetime(2026, 3, 1, 23, 59, tzinfo=utc),
+        ),
+        # 2026-03-01 19:00 UTC: the cutoff is applied in UTC.
+        (
+            'CLOSED-IST',
+            'Closed',
+            datetime.datetime(
+                2026, 3, 2, 0, 30, tzinfo=datetime.timezone(IST)
+            ),
+        ),
+        (
+            'CLOSED-MIDNIGHT',
+            'Closed',
+            datetime.datetime(2026, 3, 2, tzinfo=utc),
+        ),
+        ('CLOSED-RECENT', 'Closed', datetime.datetime(2026, 3, 5, tzinfo=utc)),
+    ]
+    for key, status, updated in seeded:
+        await seed_issue(
+            issue_create_factory(
+                key,
+                status=status,
+                assignee='Ada',
+                created=datetime.datetime(2024, 1, 1, tzinfo=utc),
+                updated=updated,
+            )
+        )
+    await db_session.commit()
+
+    issues = await models.Issue.get(
+        closed=True, closed_since=since, session=db_session
+    )
+    print(f'issues={[(x.key, x.status, x.updated) for x in issues]}')
+
+    assert sorted(issue.key for issue in issues) == [
+        'CLOSED-MIDNIGHT',
+        'CLOSED-RECENT',
+        'OPEN-STALE',
+    ]
+
+
 async def test_issue_list_keys_returns_sorted_keys(
     db_session: sqlalchemy.ext.asyncio.AsyncSession,
     issue_create_factory: Callable[..., schemas.IssueCreate],
