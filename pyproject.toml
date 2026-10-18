@@ -18,10 +18,6 @@ dependencies = [
     "pydantic-settings==2.16.0",
     "requests==2.34.2",
     "sqlalchemy[aiosqlite]==2.1.5",
-    # NOTE: sqlalchemy's greenlet requirement is gated on markers that list
-    # aarch64 but not arm64, so Apple Silicon misses the transitive install.
-    # TODO: Remove once greenlet is reliably installed transitively on arm64.
-    "greenlet==3.5.6; platform_machine == 'arm64'",
     "uvicorn==0.54.0",
     "uvloop==0.23.0",
 ]
