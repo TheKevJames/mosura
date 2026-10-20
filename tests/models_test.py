@@ -1,8 +1,10 @@
 import datetime
+import unittest.mock
 from collections.abc import Awaitable
 from collections.abc import Callable
 
 import pytest
+import sqlalchemy.dialects.sqlite
 import sqlalchemy.exc
 import sqlalchemy.ext.asyncio
 
@@ -330,6 +332,22 @@ async def test_issue_upsert_updates_existing_issue(
         sqlalchemy.select(models.Issue).where(models.Issue.key == 'MOS-9')
     )
     assert len(rows.scalars().all()) == 1
+
+
+async def test_issue_upsert_updates_every_non_key_column(
+    issue_create_factory: Callable[..., schemas.IssueCreate],
+) -> None:
+    session = unittest.mock.AsyncMock(spec=sqlalchemy.ext.asyncio.AsyncSession)
+    issue = issue_create_factory('MOS-1', status='Backlog', assignee=None)
+    await models.Issue.upsert(issue, session=session)
+
+    query = session.execute.await_args.args[0]
+    sql = str(query.compile(dialect=sqlalchemy.dialects.sqlite.dialect()))
+    _, _, update = sql.partition(' DO UPDATE SET ')
+
+    names = {c.name for c in models.Issue.__table__.columns} - {'key'}
+    expected = {f'{name} = excluded.{name}' for name in names}
+    assert set(update.split(', ')) == expected
 
 
 async def test_setting_get_returns_none_for_missing_key(

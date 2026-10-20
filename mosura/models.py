@@ -290,17 +290,11 @@ class Issue(Base):
         )
         query = stmt.on_conflict_do_update(
             index_elements=['key'],
+            # N.B. derive from the table so new columns are never left stale
             set_={
-                'assignee': stmt.excluded.assignee,
-                'created': stmt.excluded.created,
-                'description': stmt.excluded.description,
-                'priority': stmt.excluded.priority,
-                'status': stmt.excluded.status,
-                'summary': stmt.excluded.summary,
-                'startdate': stmt.excluded.startdate,
-                'timeestimate': stmt.excluded.timeestimate,
-                'updated': stmt.excluded.updated,
-                'votes': stmt.excluded.votes,
+                c.name: stmt.excluded[c.name]
+                for c in cls.__table__.columns
+                if not c.primary_key
             },
         )
         await session.execute(query)
