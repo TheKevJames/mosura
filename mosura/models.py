@@ -349,7 +349,7 @@ class Task(Base):
 
     key: sqlalchemy.orm.Mapped[strpkindex]
     variant: sqlalchemy.orm.Mapped[strpkindex]
-    latest: sqlalchemy.orm.Mapped[datetime.datetime | None]
+    latest: sqlalchemy.orm.Mapped[datetime.datetime]
 
     @classmethod
     async def upsert(
