@@ -34,9 +34,19 @@ def timeformat(x: datetime.timedelta) -> str:
     return '<1 Hour'
 
 
-# TODO: issue color template?
+def statuscolor(status: str) -> str:
+    if status == 'Closed':
+        return 'green'
+    if status in {'Code Review', 'In Progress'}:
+        return 'yellow'
+    if status == 'Needs Triage':
+        return 'red'
+    return ''
+
+
 templates.env.filters['dateformat'] = dateformat
 templates.env.filters['dayformat'] = dayformat
+templates.env.filters['statuscolor'] = statuscolor
 templates.env.filters['timeformat'] = timeformat
 
 

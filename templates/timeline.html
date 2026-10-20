@@ -108,12 +108,7 @@
       <tr>
         {% for span, issue in assigned %}
             {% if issue %}
-            <td colspan="{{ span }}" title="{{ issue.key}}: {{ issue.summary }}" class="ui message
-              {% if issue.status == "Closed" %}green
-              {% elif issue.status in ("In Progress", "Code Review") %}yellow
-              {% elif issue.status == "Needs Triage" %}red
-              {% endif %}
-            ">
+            <td colspan="{{ span }}" title="{{ issue.key}}: {{ issue.summary }}" class="ui message {{ issue.status | statuscolor }}">
               <a href="/issues/{{ issue.key }}">{{ issue.summary }}</a>
             {% else %}
             <td colspan="{{ span }}">
@@ -156,12 +151,7 @@
             Unset
           {% endif %}
         </td>
-        <td colspan="5" title="{{ issue.key}}: {{ issue.summary }}" class="ui message
-          {% if issue.status == "Closed" %}green
-          {% elif issue.status in ("In Progress", "Code Review") %}yellow
-          {% elif issue.status == "Needs Triage" %}red
-          {% endif %}
-        ">
+        <td colspan="5" title="{{ issue.key}}: {{ issue.summary }}" class="ui message {{ issue.status | statuscolor }}">
           <a href="/issues/{{ issue.key }}">{{ issue.summary }}</a>
         </td>
       </tr>
@@ -188,12 +178,7 @@
         <td>{{ issue.assignee or "Unassigned" }}</td>
         <td>{{ issue.startdate | dateformat }}</td>
         <td>{{ issue.timeestimate.days / 7 }} Weeks</td>
-        <td colspan="5" title="{{ issue.key}}: {{ issue.summary }}" class="ui message
-          {% if issue.status == "Closed" %}green
-          {% elif issue.status in ("In Progress", "Code Review") %}yellow
-          {% elif issue.status == "Needs Triage" %}red
-          {% endif %}
-        ">
+        <td colspan="5" title="{{ issue.key}}: {{ issue.summary }}" class="ui message {{ issue.status | statuscolor }}">
           <a href="/issues/{{ issue.key }}">{{ issue.summary }}</a>
         </td>
       </tr>
