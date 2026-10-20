@@ -332,6 +332,24 @@ async def _sync_once(app: fastapi.FastAPI, *, variant: str) -> None:
         await session.commit()
 
 
+async def sync_now(app: fastapi.FastAPI) -> None:
+    """
+    Force an immediate sync, eg. from the UI's refresh button.
+
+    Syncs share ``app.state.sync_lock`` with the poll loop so they never
+    overlap. If one is already running, wait for it to finish rather than run
+    a second: its data is just as fresh.
+    """
+    lock: asyncio.Lock = app.state.sync_lock
+    if lock.locked():
+        logger.info('fetch(manual): sync already running, waiting for it')
+        async with lock:
+            return
+
+    async with lock:
+        await _sync_once(app, variant='desired')
+
+
 async def fetch_desired(app: fastapi.FastAPI) -> None:
     variant = 'desired'
     interval = datetime.timedelta(
@@ -353,7 +371,8 @@ async def fetch_desired(app: fastapi.FastAPI) -> None:
             await asyncio.sleep(sleep)
 
         try:
-            await _sync_once(app, variant=variant)
+            async with app.state.sync_lock:
+                await _sync_once(app, variant=variant)
         except _TRANSIENT_ERRORS:
             consecutive_failures += 1
             if consecutive_failures >= _MAX_CONSECUTIVE_TRANSIENT:
