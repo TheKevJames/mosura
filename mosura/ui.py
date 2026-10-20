@@ -34,14 +34,15 @@ def timeformat(x: datetime.timedelta) -> str:
     return '<1 Hour'
 
 
+_STATUS_COLORS = {
+    'closed': 'green',
+    'in-progress': 'yellow',
+    'needs-triage': 'red',
+}
+
+
 def statuscolor(status: str) -> str:
-    if status == 'Closed':
-        return 'green'
-    if status in {'Code Review', 'In Progress'}:
-        return 'yellow'
-    if status == 'Needs Triage':
-        return 'red'
-    return ''
+    return _STATUS_COLORS.get(schemas.Status.normalize_status(status), '')
 
 
 templates.env.filters['dateformat'] = dateformat
