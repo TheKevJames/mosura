@@ -1,5 +1,6 @@
 import asyncio
 import contextlib
+import datetime
 import types
 import unittest.mock
 from collections.abc import AsyncGenerator
@@ -14,6 +15,7 @@ import sqlalchemy.ext.asyncio
 
 from mosura import database
 from mosura import models
+from mosura import schemas
 from mosura import tasks
 
 IssueFactory = Callable[..., dict[str, Any]]
@@ -332,3 +334,29 @@ async def test_fetch_desired_holds_sync_lock(
         await tasks.fetch_desired(app)
 
     assert held == [True]
+
+
+_NOW = datetime.datetime(2026, 2, 2, 12, tzinfo=datetime.UTC)
+_INTERVAL = datetime.timedelta(minutes=10)
+
+
+def _task(latest: datetime.datetime) -> schemas.Task:
+    return schemas.Task(key='MOS', variant='open', latest=latest)
+
+
+@pytest.mark.parametrize(
+    ('task', 'expected'),
+    [
+        (None, None),
+        (_task(_NOW - _INTERVAL), None),
+        (_task(_NOW - datetime.timedelta(hours=1)), None),
+        (_task(_NOW - datetime.timedelta(minutes=4)), 361),
+    ],
+    ids=['never-run', 'due-now', 'overdue', 'not-yet-due'],
+)
+def test_next_sleep_seconds(
+    task: schemas.Task | None, expected: int | None
+) -> None:
+    # pylint: disable=protected-access
+    sleep = tasks._next_sleep_seconds(task, now=_NOW, interval=_INTERVAL)
+    assert sleep == expected
