@@ -11,6 +11,28 @@
     <!-- https://releases.jquery.com/ -->
     <script src="{{ url_for('static', path='/jquery-3.7.1.min.js') }}"></script>
     <script src="{{ url_for('static', path='/semantic-2.5.0.min.js') }}"></script>
+    <script>
+    async function force_sync(event) {
+      event.preventDefault();
+      const icon = $('#sync i');
+      if (icon.hasClass('loading')) {
+        return;
+      }
+
+      icon.removeClass('red').addClass('loading');
+      try {
+        const response = await fetch("/api/v0/sync", {method: "POST"});
+        if (response.ok) {
+          location.reload();
+          return;
+        }
+        console.error('Unable to sync from Jira', response.status);
+      } catch (err) {
+        console.error('Unable to sync from Jira', err);
+      }
+      icon.removeClass('loading').addClass('red');
+    }
+    </script>
     {% block header %}{% endblock %}
   </head>
 
@@ -30,7 +52,9 @@
         <a class="header item" href="/settings">
           <i class="cogs icon"></i>
         </a>
-        <!-- TODO: sync icon. click to force refresh -->
+        <a class="header item" id="sync" href="#" title="Refresh from Jira" onClick="force_sync(event);">
+          <i class="sync icon"></i>
+        </a>
       </div>
     </div>
 

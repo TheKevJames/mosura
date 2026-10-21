@@ -1,3 +1,4 @@
+import asyncio
 import types
 import unittest.mock
 from collections.abc import Callable
@@ -10,6 +11,7 @@ import pytest
 import mosura.app
 from mosura import models
 from mosura import schemas
+from mosura import tasks
 
 
 async def test_read_issue_success(
@@ -312,3 +314,19 @@ async def test_patch_settings_null_clears_setting(
     }
     delete_mock.assert_awaited_once_with('custom_jql', session=api_session)
     api_session.commit.assert_awaited_once()
+
+
+@pytest.mark.parametrize('prefix', ['/api/v0', '/api/latest'])
+async def test_sync_runs_sync_once(
+    client: niquests.AsyncSession, monkeypatch: pytest.MonkeyPatch, prefix: str
+) -> None:
+    sync_once = unittest.mock.AsyncMock()
+    monkeypatch.setattr(tasks, '_sync_once', sync_once)
+    monkeypatch.setattr(
+        mosura.app.app.state, 'sync_lock', asyncio.Lock(), raising=False
+    )
+
+    response = await client.post(f'{prefix}/sync')
+
+    assert response.status_code == 204
+    sync_once.assert_awaited_once_with(mosura.app.app, variant='desired')

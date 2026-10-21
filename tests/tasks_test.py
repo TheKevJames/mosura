@@ -57,6 +57,7 @@ def _build_app(
     app.state.tracked_user_id = tracked_user_id
     app.state.tracked_user_name = tracked_user_name
     app.state.jira_client = types.SimpleNamespace()
+    app.state.sync_lock = asyncio.Lock()
     return app
 
 
@@ -268,3 +269,66 @@ async def test_spawn_creates_single_desired_worker(
     assert len(fetched) == 1
     assert fetched[0] is app
     app.state.jira_client.project.assert_not_called()
+
+
+async def test_sync_now_runs_sync_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = _build_app()
+    sync_once = unittest.mock.AsyncMock()
+    monkeypatch.setattr(tasks, '_sync_once', sync_once)
+
+    await tasks.sync_now(app)
+
+    sync_once.assert_awaited_once_with(app, variant='desired')
+    assert not app.state.sync_lock.locked()
+
+
+async def test_sync_now_waits_for_running_sync_instead_of_rerunning(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = _build_app()
+    release = asyncio.Event()
+
+    async def slow_sync_once(_app: fastapi.FastAPI, *, variant: str) -> None:
+        assert variant == 'desired'
+        await release.wait()
+
+    sync_once = unittest.mock.AsyncMock(side_effect=slow_sync_once)
+    monkeypatch.setattr(tasks, '_sync_once', sync_once)
+
+    first = asyncio.create_task(tasks.sync_now(app))
+    await asyncio.sleep(0)
+    assert app.state.sync_lock.locked()
+
+    second = asyncio.create_task(tasks.sync_now(app))
+    await asyncio.sleep(0)
+    assert not second.done()
+
+    release.set()
+    await asyncio.gather(first, second)
+
+    sync_once.assert_awaited_once()
+
+
+async def test_fetch_desired_holds_sync_lock(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = _build_app()
+    held: list[bool] = []
+
+    async def record_lock(_app: fastapi.FastAPI, *, variant: str) -> None:
+        assert variant == 'desired'
+        held.append(app.state.sync_lock.locked())
+
+    _patch_fetch_loop(
+        monkeypatch,
+        sync_side_effect=[],
+        sleep_side_effect=asyncio.CancelledError(),
+    )
+    monkeypatch.setattr(tasks, '_sync_once', record_lock)
+
+    with pytest.raises(asyncio.CancelledError):
+        await tasks.fetch_desired(app)
+
+    assert held == [True]

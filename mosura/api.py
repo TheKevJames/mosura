@@ -108,6 +108,11 @@ async def patch_settings(
     }
 
 
+@router.post('/sync', status_code=fastapi.status.HTTP_204_NO_CONTENT)
+async def sync(request: fastapi.Request) -> None:
+    await tasks.sync_now(request.app)
+
+
 @router.get('/ping', status_code=fastapi.status.HTTP_204_NO_CONTENT)
 async def ping() -> None:
     return None

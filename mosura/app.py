@@ -70,6 +70,7 @@ async def lifespan(app_: fastapi.FastAPI) -> AsyncGenerator[None, None]:
         await conn.run_sync(models.Base.metadata.create_all)
     logger.info('startup(): initialized db')
 
+    app_.state.sync_lock = asyncio.Lock()
     app_.state.tasks = await tasks.spawn(app_)
     for t in app_.state.tasks:
         t.add_done_callback(_handle_task_exception)
