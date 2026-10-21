@@ -15,9 +15,12 @@ from mosura import ui
         ('Backlog', ''),
         ('Closed', 'green'),
         ('Code Review', 'yellow'),
+        ('Done', 'green'),
         ('In Progress', 'yellow'),
         ('Needs Triage', 'red'),
-        ('Ready for Testing', ''),
+        ('Ready for Testing', 'yellow'),
+        ('Root Caused', 'green'),
+        ('To Do', ''),
     ],
 )
 def test_statuscolor_filter(status: str, color: str) -> None:
