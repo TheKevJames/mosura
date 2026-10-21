@@ -177,3 +177,40 @@ def test_issuecreate_from_jira_parses_created_and_updated(
     )
     assert issue.created == expected_created
     assert issue.updated == expected_updated
+
+
+@pytest.mark.parametrize(
+    ('value', 'expected'),
+    [
+        ('2026-01-05', datetime.date(2026, 1, 5)),
+        ('2026-01-05T20:00:00.000-0800', datetime.date(2026, 1, 5)),
+        ('2026-01-05T02:00:00.000+0900', datetime.date(2026, 1, 5)),
+        ('2026-01-05T23:59:00.000+0000', datetime.date(2026, 1, 5)),
+    ],
+)
+def test_issuecreate_from_jira_keeps_written_start_and_due_dates(
+    value: str,
+    expected: datetime.date,
+    jira_raw_factory: Callable[..., dict[str, Any]],
+) -> None:
+    raw = jira_raw_factory(calendar_start=value, due_date=value)
+
+    issue = schemas.IssueCreate.from_jira(raw)
+
+    assert issue.startdate == expected
+    assert issue.enddate == expected
+
+
+def test_issuecreate_from_jira_keeps_written_issue_start_date(
+    jira_raw_factory: Callable[..., dict[str, Any]],
+) -> None:
+    raw = jira_raw_factory(
+        calendar_start=None,
+        issue_start='2026-01-05T20:00:00.000-0800',
+        due_date='2026-01-19T20:00:00.000-0800',
+    )
+
+    issue = schemas.IssueCreate.from_jira(raw)
+
+    assert issue.startdate == datetime.date(2026, 1, 5)
+    assert issue.timeestimate == datetime.timedelta(days=14)

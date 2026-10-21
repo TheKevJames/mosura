@@ -130,6 +130,15 @@ class IssueCreate(pydantic.BaseModel):
         return dt.astimezone(datetime.UTC)
 
     @classmethod
+    def parse_date(cls, x: str) -> datetime.date:
+        # Start/due fields may be date-only ("2026-01-05") or, for
+        # date-time-picker fields, carry an offset
+        # ("2026-01-05T20:00:00-0800"). Either way, the calendar date the user
+        # picked is the one written in the string, so take it as-is rather
+        # than shifting it to UTC as parse_datetime does.
+        return datetime.date.fromisoformat(x[:10])
+
+    @classmethod
     def parse_timeestimate(cls, total_seconds: str) -> datetime.timedelta:
         # the timeoriginalestimate field lets you type, eg. "3w", but then
         # encodes that time as the number of seconds... assuming a 40 day work
@@ -163,14 +172,14 @@ class IssueCreate(pydantic.BaseModel):
             or data['fields'].get('customfield_12161')  # Start Date (issue)
         )
         startdate = (
-            cls.parse_datetime(startdate_value).date()
+            cls.parse_date(startdate_value)
             if startdate_value is not None
             else None
         )
 
         duedate_value = data['fields']['duedate']  # End Date (cal)
         duedate = (
-            cls.parse_datetime(duedate_value).date()
+            cls.parse_date(duedate_value)
             if duedate_value is not None
             else None
         )
