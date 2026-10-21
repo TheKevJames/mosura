@@ -15,7 +15,7 @@ dependencies = [
     "jinja2==3.1.6",
     "jira==3.10.5",
     "pydantic==2.14.1",
-    "pydantic-settings==2.16.0",
+    "pydantic-settings==2.16.1",
     "requests==2.34.2",
     "sqlalchemy[aiosqlite]==2.1.5",
     "uvicorn==0.54.0",
