@@ -91,36 +91,6 @@
   </div>
   {% endif %}
 
-  <!-- Old Table-based Timeline (temporary fallback for old structure) -->
-  {% if timeline.aligned and not timeline.issues %}
-  <table class="ui celled fixed unstackable structured table">
-    <thead>
-      <tr>
-        {% for header, is_current in timeline.boxes %}
-        <th {% if is_current %}style="background-color:#f5f5f5;"{% endif %}>
-          {{ header | dayformat }}
-        </th>
-        {% endfor %}
-    </thead>
-    <tbody>
-      <tr><td></td></tr>
-      {% for assigned in timeline.aligned %}
-      <tr>
-        {% for span, issue in assigned %}
-            {% if issue %}
-            <td colspan="{{ span }}" title="{{ issue.key}}: {{ issue.summary }}" class="ui message {{ issue.status | statuscolor }}">
-              <a href="/issues/{{ issue.key }}">{{ issue.summary }}</a>
-            {% else %}
-            <td colspan="{{ span }}">
-            {% endif %}
-            </td>
-          {% endfor %}
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% endif %}
-
   <div class="ui divider"></div>
 
   <!-- Requires Attention Section (new structure from task-3) -->
@@ -151,33 +121,6 @@
             Unset
           {% endif %}
         </td>
-        <td colspan="5" title="{{ issue.key}}: {{ issue.summary }}" class="ui message {{ issue.status | statuscolor }}">
-          <a href="/issues/{{ issue.key }}">{{ issue.summary }}</a>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% endif %}
-
-  <!-- Old Incomplete Scheduling Data Section (temporary fallback for old structure) -->
-  {% if timeline.triage and not timeline.attention %}
-  <h3>Incomplete Scheduling Data</h3>
-
-  <table class="ui celled fixed unstackable structured table">
-    <thead>
-      <tr>
-        <th>Assignee</th>
-        <th>Start Date</th>
-        <th>Time Estimate</th>
-        <th colspan="5">Issue</th>
-    </thead>
-    <tbody>
-      {% for issue in timeline.triage %}
-      <tr>
-        <td>{{ issue.assignee or "Unassigned" }}</td>
-        <td>{{ issue.startdate | dateformat }}</td>
-        <td>{{ issue.timeestimate.days / 7 }} Weeks</td>
         <td colspan="5" title="{{ issue.key}}: {{ issue.summary }}" class="ui message {{ issue.status | statuscolor }}">
           <a href="/issues/{{ issue.key }}">{{ issue.summary }}</a>
         </td>
