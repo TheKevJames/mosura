@@ -35,7 +35,7 @@ dev = [
     "niquests==3.21.2",
     "pylint==4.1.3",
     "pytest-asyncio==1.4.1",
-    "pytest==9.1.1",
+    "pytest==9.2.0",
 ]
 
 [tool.hatch.build.targets.wheel]
