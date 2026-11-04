@@ -17,7 +17,7 @@ dependencies = [
     "pydantic==2.14.2",
     "pydantic-settings==2.16.2",
     "requests==2.34.2",
-    "sqlalchemy[aiosqlite]==2.1.6",
+    "sqlalchemy[aiosqlite]==2.1.8",
     "uvicorn==0.54.0",
     "uvloop==0.23.0",
 ]
