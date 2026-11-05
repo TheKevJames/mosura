@@ -297,7 +297,7 @@ def _next_sleep_seconds(
     now: datetime.datetime,
     interval: datetime.timedelta,
 ) -> int | None:
-    if not task or not task.latest:
+    if not task:
         return None
 
     next_run = task.latest + interval
