@@ -193,10 +193,6 @@ def _mock_issue_get(
                 return my_issues.copy()
             if kwargs.get('closed') is True:
                 return timeline_issues.copy()
-        # Handle needs_triage (legacy, should not be called in new
-        # implementation)
-        if kwargs.get('needs_triage'):
-            return []
         return []
 
     return _get
